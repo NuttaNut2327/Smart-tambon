@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <title>Smart City</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %><%= csp_meta_tag %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=account_balance,school,heart_plus,folded_hands,star,directions_car,electrical_services,local_mall,emergency_home,near_me,location_on,timeline,pentagon" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js" defer></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.125.0/Build/Cesium/Widgets/widgets.css">
+    <script>window.CESIUM_BASE_URL = "https://cdn.jsdelivr.net/npm/cesium@1.125.0/Build/Cesium/";</script>
+    <script src="https://cdn.jsdelivr.net/npm/cesium@1.125.0/Build/Cesium/Cesium.js" defer></script>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "auth", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "dashboard", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "dashboard_responsive", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "place_data", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "cesium_terrain", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "flood_simulator", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "map_fix", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "gis_reference", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "analysis_records", "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "application", defer: true, "data-turbo-track": "reload" %>
+  </head>
+  <body class="<%= 'auth-page' if devise_controller? %>"><%= yield %></body>
+</html>

@@ -1,0 +1,53 @@
+:root {
+  --accent: #5ac5a9;
+  --accent-dark: #3da98d;
+  --accent-soft: #e6f7f2;
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: "Noto Sans Thai", sans-serif;
+}
+
+.brand > span,
+.tree-row:hover,
+.tree-row.active,
+.area-search-results button:hover,
+.place-popup a,
+td a {
+  color: var(--accent);
+}
+
+.button-link.primary {
+  background: var(--accent);
+}
+
+.login-story {
+  background: linear-gradient(160deg, #247b6c 0%, var(--accent) 55%, #216d60 100%);
+}
+
+.login-card-mark {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.story-rule {
+  background: var(--accent);
+}
+
+.login-form input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(90 197 169 / 18%);
+}
+
+.remember-option input {
+  accent-color: var(--accent);
+}
+
+.login-submit {
+  background: linear-gradient(100deg, var(--accent), var(--accent-dark));
+}

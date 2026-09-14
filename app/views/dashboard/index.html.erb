@@ -1,0 +1,96 @@
+<% local_admin = current_user.subdistrict_admin? %>
+<% local_account = !current_user.system_admin? %>
+<% initial_area = current_user.access_area&.name.presence || @assigned_subdistrict&.name_th || "ประเทศไทย" %>
+<% page_mode = (@page_mode || :overview).to_sym %>
+<% page_title = { overview: "ภาพรวมเมือง", map: "การวิเคราะห์แผนที่", analysis: "การวิเคราะห์แผนที่", disasters: "ภัยพิบัติและเหตุการณ์" }.fetch(page_mode) %>
+
+<div class="shell dashboard-shell gis-dashboard page-<%= page_mode %>" data-maptiler-key="<%= ENV['MAPTILER_KEY'] %>" data-area-cache-scope="<%= current_user.id %>-<%= current_user.role %>" data-user-role="<%= current_user.role %>">
+  <aside class="dashboard-sidebar sidebar">
+    <div class="dashboard-brand brand"><span class="brand-symbol">⌂</span><div><strong>SMART CITY</strong><small>GEO ADMINISTRATION PLATFORM</small></div></div>
+    <div class="scope-summary"><small>ขอบเขตการดูแล</small><div><b><%= current_user.system_admin? ? "ทุกพื้นที่ทั่วประเทศ" : initial_area %></b><% if local_admin %><button type="button" class="scope-name-edit" data-area-name-edit aria-label="แก้ไขชื่อขอบเขตพื้นที่" title="แก้ไขชื่อขอบเขตพื้นที่">✎</button><% end %></div></div>
+    <div class="sidebar-menu-label">เมนูหลัก</div>
+    <nav class="primary-nav" aria-label="เมนูหลัก">
+      <%= link_to root_path, class: "primary-nav-item #{'active' if current_page?(root_path)}", data: { turbo: false } do %><span>⌂</span>ภาพรวมเมือง<% end %>
+      <%= link_to area_analysis_path, class: "primary-nav-item #{'active' if current_page?(area_analysis_path)}", data: { turbo: false } do %><span>⌖</span>การวิเคราะห์แผนที่<% end %>
+      <%= link_to disasters_path, class: "primary-nav-item #{'active' if current_page?(disasters_path)}", data: { turbo: false } do %><span>!</span>ภัยพิบัติและเหตุการณ์ <em>3</em><% end %>
+      <%= link_to data_layers_path, class: "primary-nav-item #{'active' if current_page?(data_layers_path)}", data: { turbo: false } do %><span>⇧</span>นำเข้าข้อมูล<% end %>
+      <% if system_admin? %><%= link_to users_path, class: "primary-nav-item" do %><span>♙</span>จัดการบัญชี<% end %><% end %>
+    </nav>
+    <% unless local_account %><div class="sidebar-search area-search-wrap"><label class="search"><span>⌕</span><input id="area-search" type="search" placeholder="ค้นหาจังหวัดหรือ ตำบล" autocomplete="off" aria-controls="area-search-results" aria-expanded="false"></label><div id="area-search-results" class="area-search-results" role="listbox" hidden></div></div><% end %>
+    <% if local_account %>
+      <nav id="area-tree" hidden aria-hidden="true">
+    <% else %>
+      <div class="sidebar-menu-label">ขอบเขตพื้นที่</div>
+      <nav id="area-tree" class="tree dashboard-tree">
+    <% end %>
+      <% if current_user.access_area %><button class="tree-row direct-access-area" data-name="<%= current_user.access_area.name %>"><span aria-hidden="true">⌖</span><%= current_user.access_area.name %></button>
+      <% elsif @assigned_subdistrict %><button class="tree-row direct-subdistrict" data-id="<%= @assigned_subdistrict.id %>" data-province-id="<%= @assigned_subdistrict.province_id %>" data-name="<%= @assigned_subdistrict.name_th %>"><span aria-hidden="true">⌖</span><%= @assigned_subdistrict.name_th %></button>
+      <% else %><% @provinces.each do |province| %><div class="province" data-name="<%= province.name_th %>"><button class="tree-row province-button" data-id="<%= province.id %>"><span class="chevron">›</span><span>▰</span><%= province.name_th %></button><div class="children" hidden></div></div><% end %><% end %>
+    </nav>
+    <div class="sidebar-user user"><div class="avatar"><%= current_user.username.first.upcase %></div><div><b><%= current_user.username %></b><small><%= current_user.role_label %></small></div></div>
+    <p class="sidebar-system-status"><i></i> ระบบทำงานปกติ <span>อัปเดต <%= Time.current.strftime("%H:%M") %> น.</span></p>
+    <%= button_to "ออกจากระบบ", destroy_user_session_path, method: :delete, class: "logout" %>
+  </aside>
+
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker">SMART GIS PLATFORM</p><span class="breadcrumb"><span><%= page_title %></span><b>›</b><span id="selection-label"><%= initial_area %></span></span></div><button type="button" class="global-search" aria-label="ค้นหาสถานที่ พิกัด หรือชุดข้อมูล"><span>⌕</span>ค้นหาสถานที่ พิกัด หรือชุดข้อมูล <kbd>⌘ K</kbd></button><div class="header-tools"><div id="longdo-usage" class="longdo-usage" aria-live="polite"><b>Longdo API</b><span>กำลังโหลด…</span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></div></header>
+    <div class="dashboard-content">
+      <section id="city-overview" class="city-heading"><div><p class="page-kicker"><%= page_mode == :overview ? "ภาพรวมประจำวัน" : "เครื่องมือภูมิสารสนเทศ" %></p><div class="city-title-line"><h1><%= page_title %></h1></div><p><%= page_mode == :analysis ? "กำหนดขอบเขตบนแผนที่เพื่อวิเคราะห์สถานที่ภายในพื้นที่" : "ข้อมูลสถานการณ์เมืองแบบเรียลไทม์ · #{Time.current.strftime('%-d %B %Y')}" %></p></div><div class="city-live-status"><i></i><span>สถานะเมือง</span><b>พร้อมใช้งาน</b><small>อัปเดตล่าสุด <%= Time.current.strftime("%H:%M") %> น.</small></div></section>
+      <% if page_mode == :overview %>
+      <section class="city-kpi-grid"><article><span class="kpi-icon blue">!</span><p>เหตุการณ์ที่กำลังดำเนินการ</p><strong>8</strong><small>2 เหตุระดับเร่งด่วน</small></article><article><span class="kpi-icon amber">⌖</span><p>พื้นที่ต้องเฝ้าระวัง</p><strong>3</strong><small>จากทั้งหมด 12 พื้นที่</small></article><article><span class="kpi-icon purple">♧</span><p>ประชากรในพื้นที่เสี่ยง</p><strong>1,240</strong><small>เพิ่มขึ้น 180 คนวันนี้</small></article><article><span class="kpi-icon red">⌁</span><p>การแจ้งเตือนใหม่วันนี้</p><strong>5</strong><small>ตรวจสอบแล้ว 3 รายการ</small></article></section>
+      <% end %>
+      <% if page_mode != :none %>
+      <section class="city-section-head"><div><h2><%= page_mode == :overview ? "แผนที่ภาพรวมพื้นที่" : page_mode == :analysis ? "เลือกพื้นที่เพื่อวิเคราะห์" : "แผนที่และชั้นข้อมูล" %></h2><p><%= page_mode == :overview ? "แผนที่โฟกัสขอบเขตพื้นที่ที่คุณดูแล" : page_mode == :analysis ? "เลือกจุด เส้น หรือ Polygon บนแผนที่" : "แสดงข้อมูลจริงของระบบ พร้อมสถานะสรุปสำหรับการติดตาม" %></p></div><div class="map-legend"><span><i class="critical"></i>วิกฤต</span><span><i class="watch"></i>เฝ้าระวัง</span><span><i class="normal"></i>ปกติ</span></div></section>
+      <div id="map-section" class="dashboard-grid gis-map-grid">
+        <section class="map-card"><div class="map-toolbar"><div class="map-tabs"><button class="active" data-basemap="street">ถนน</button><button data-basemap="satellite">ดาวเทียม</button><% if page_mode != :overview %><button type="button" data-map-mode="3d">3D</button><% end %></div><div class="map-toolbar-actions"><div class="map-toolbar-title">ขอบเขตพื้นที่: <b id="map-area-label"><%= initial_area %></b></div></div></div><div class="map-wrap"><div id="map"></div><div id="cesium-map" aria-label="แผนที่ภูมิประเทศ 3 มิติ"></div><% if page_mode == :analysis %><button id="area-select-toggle" class="area-select-toggle" type="button" aria-pressed="false" title="เลือกพื้นที่"><span class="material-symbols-outlined">near_me</span></button><section id="area-select-card" class="area-select-card" hidden aria-live="polite"><div class="area-select-heading"><div><b>เลือกพื้นที่บนแผนที่</b><small>ดูสถานที่ที่อยู่ภายในขอบเขต</small></div><button id="area-select-close" type="button" aria-label="ปิด">×</button></div><div class="area-select-modes" role="group" aria-label="รูปแบบการเลือกพื้นที่"><button type="button" data-area-select-mode="point" class="active"><span class="material-symbols-outlined">location_on</span>จุด</button><button type="button" data-area-select-mode="line"><span class="material-symbols-outlined">timeline</span>เส้น</button><button type="button" data-area-select-mode="polygon"><span class="material-symbols-outlined">pentagon</span>Polygon</button></div><label id="area-select-distance-label">รัศมีจากจุด (เมตร)<input id="area-select-distance" type="number" min="0" max="10000" step="10" value="1000"></label><p id="area-select-hint" class="area-select-hint">คลิกจุดบนแผนที่เพื่อเลือกพื้นที่</p><div id="area-select-result" class="area-select-result">ยังไม่ได้เลือกพื้นที่</div><button id="area-select-clear" class="area-select-clear" type="button" disabled>ล้างพื้นที่เลือก</button></section><% end %><div class="place-controls" aria-label="เลือกหมวดหมู่สถานที่"><% {government:["account_balance","สถานที่ราชการ"],education:["school","การศึกษา"],health:["heart_plus","สาธารณสุข"],culture:["folded_hands","ศาสนา/วัฒนธรรม"],tourism:["star","ท่องเที่ยว"],transport:["directions_car","คมนาคม"],service:["local_mall","ร้านค้า/บริการ"],emergency:["emergency_home","ความปลอดภัย/ฉุกเฉิน"]}.each do |key,(icon,label)| %><button type="button" data-place-category="<%= key %>" aria-pressed="false"><span class="place-dot <%= key %>"><span class="material-symbols-outlined"><%= icon %></span></span><span><%= label %></span><small data-place-count="<%= key %>">ปิดอยู่</small></button><% end %></div><div id="place-popup" class="place-popup" hidden></div><div id="map-message" class="map-message">กำลังโหลดขอบเขตพื้นที่และข้อมูลบนแผนที่…</div></div></section>
+        <aside id="overview" class="overview-panel gis-layer-panel"><section class="summary-card layer-panel-heading"><div><h2>ชั้นข้อมูลบนแผนที่</h2><p class="card-caption">เปิดใช้งานข้อมูลสำคัญตามพื้นที่</p></div><span>6 / 9</span></section><section class="summary-card layer-list"><label><input type="checkbox" checked disabled><span class="layer-dot poi"></span><b>จุดสนใจ (POI)</b><small>ข้อมูลจริง</small></label><label><input type="checkbox" checked disabled><span class="layer-dot boundary"></span><b>ขอบเขตการปกครอง</b><small>ข้อมูลจริง</small></label><label><input type="checkbox" checked disabled><span class="layer-dot imported"></span><b>ชั้นข้อมูลนำเข้า</b><small>พร้อมใช้</small></label><label><input type="checkbox" disabled><span class="layer-dot water"></span><b>ระดับน้ำ</b><small>เร็ว ๆ นี้</small></label></section><section class="summary-card area-summary"><h2>พื้นที่ที่กำลังแสดง</h2><p class="card-caption"><%= initial_area %></p><div class="summary-row"><span>สถานที่ราชการ</span><b id="place-summary-government">0 แห่ง</b></div><div class="summary-row"><span>สถานพยาบาล</span><b id="place-summary-hospital">0 แห่ง</b></div><div class="summary-row"><span>สถานศึกษา</span><b id="place-summary-school">0 แห่ง</b></div><div class="summary-row"><span>แหล่งท่องเที่ยว</span><b id="place-summary-attraction">0 แห่ง</b></div></section><section id="flood-simulator" class="summary-card flood-simulator"><h2>จำลองระดับน้ำ</h2><p class="card-caption">ใช้งานได้เฉพาะแผนที่ 3D</p><button id="flood-pick-point" type="button" disabled>⌖ เลือกจุดเริ่มต้นบนแผนที่</button><p id="flood-point-status" class="flood-status">เปิดโหมด 3D เพื่อเริ่มจำลอง</p><label class="flood-rise-label">ระดับน้ำเพิ่มขึ้น (ม.)<input id="flood-rise" type="number" min="0" max="500" step="1" value="5" disabled></label><div class="flood-actions"><button id="flood-run" type="button" disabled>แสดงพื้นที่น้ำท่วม</button><button id="flood-clear" type="button" disabled>ล้าง</button></div><div id="flood-summary" class="flood-summary" hidden></div></section></aside>
+      </div>
+      <% if page_mode == :disasters %>
+        <% center = @assigned_subdistrict&.center; base_lon = center&.x || 100.5018; base_lat = center&.y || 13.7563 %>
+        <section class="disaster-workspace" data-disaster-center="<%= [base_lon, base_lat].join(',') %>">
+          <aside class="disaster-event-list"><div class="disaster-list-tabs"><b>กำลังเกิดขึ้น 3</b><span>เหตุการณ์ทั้งหมด</span></div><button class="disaster-event active" data-event="flood"><i>!</i><span><b>น้ำเอ่อล้นตลิ่ง ชุมชนริมแม่น้ำ</b><small>พื้นที่ริมน้ำ · วันนี้ 13:42</small></span><em>เร่งด่วน</em></button><button class="disaster-event" data-event="rain"><i>☂</i><span><b>ฝนตกหนักต่อเนื่อง</b><small>เขตพื้นที่ลุ่มต่ำ · วันนี้ 11:15</small></span><em>เฝ้าระวัง</em></button><button class="disaster-event" data-event="fire"><i>!</i><span><b>ไฟไหม้หญ้าพื้นที่ว่าง</b><small>แนวชุมชน · 2 ก.ย. 18:40</small></span><em>ติดตาม</em></button></aside>
+          <article class="disaster-detail"><div class="disaster-map-note"><span>⌖</span><b id="disaster-map-note">เลือกเหตุการณ์เพื่อโฟกัสพื้นที่บนแผนที่</b></div><div class="disaster-detail-heading"><div><small id="disaster-severity">เร่งด่วน</small><h2 id="disaster-title">น้ำเอ่อล้นตลิ่ง ชุมชนริมแม่น้ำ</h2><p id="disaster-location">พื้นที่ริมน้ำ · วันนี้ 13:42</p></div></div><div class="disaster-impact-grid"><div><small>ประชากรที่ได้รับผลกระทบ</small><b id="impact-people">1,840 คน</b></div><div><small>ครัวเรือน</small><b id="impact-households">612 หลัง</b></div><div><small>สถานที่สำคัญเสี่ยง</small><b id="impact-places">8 แห่ง</b></div></div><section class="disaster-preparedness"><h3>แผนรับมือและทรัพยากรที่ควรเตรียม</h3><p id="preparedness-note">เตรียมรองรับการอพยพและการช่วยเหลือภายใน 24 ชั่วโมง</p><div class="preparedness-grid"><div><span>ศูนย์พักพิง</span><b id="resource-shelters">3 แห่ง</b></div><div><span>เครื่องสูบน้ำ</span><b id="resource-pumps">12 เครื่อง</b></div><div><span>กำลังเจ้าหน้าที่</span><b id="resource-staff">48 คน</b></div><div><span>น้ำดื่ม</span><b id="resource-water">5,520 ลิตร</b></div><div><span>อาหาร</span><b id="resource-food">5,520 มื้อ</b></div><div><span>ชุดยังชีพ</span><b id="resource-kits">612 ชุด</b></div></div></section></article>
+        </section>
+      <% end %>
+      <% if page_mode == :map %>
+        <section class="longdo-place-summary" aria-live="polite">
+          <div class="section-card-heading"><div><h2>สรุปข้อมูลจาก Longdo Map</h2><p>สถานที่ภายในขอบเขต <b><%= initial_area %></b></p></div><strong id="place-summary-total">0 แห่ง</strong></div>
+          <div class="longdo-place-summary-grid">
+            <% { government: "สถานที่ราชการ", education: "การศึกษา", health: "สาธารณสุข", culture: "ศาสนา/วัฒนธรรม", tourism: "ท่องเที่ยว", transport: "คมนาคม", service: "ร้านค้า/บริการ", emergency: "ความปลอดภัย/ฉุกเฉิน" }.each do |key, label| %>
+              <div><span><%= label %></span><b id="place-summary-<%= key %>">0 แห่ง</b></div>
+            <% end %>
+          </div>
+        </section>
+      <% end %>
+      <% end %>
+      <% if page_mode == :overview %><section class="below-map-grid"><article class="attention-card"><div class="section-card-heading"><div><h2>พื้นที่ต้องให้ความสนใจ</h2><p>เรียงตามระดับความเร่งด่วน</p></div><span>วันนี้</span></div><ol><li><b>1</b><div><strong>พื้นที่ติดตามลำดับแรก</strong><small>ตรวจสอบข้อมูลพื้นที่และสภาพแวดล้อม</small></div><mark>เฝ้าระวัง</mark></li><li><b>2</b><div><strong>พื้นที่เสี่ยงน้ำท่วมผิวจราจร</strong><small>ปริมาณฝนสะสมสูงกว่าค่าเฉลี่ย</small></div><mark>ปานกลาง</mark></li></ol></article><article class="events-card"><div class="section-card-heading"><div><h2>เหตุการณ์วันนี้</h2><p>ข้อมูลสาธิตสำหรับหน้าภาพรวม</p></div><span>ดูทั้งหมด →</span></div><table><tbody><tr><td>09:42</td><td><b>ตรวจสอบสถานการณ์พื้นที่</b><small><%= initial_area %></small></td><td><mark>เฝ้าระวัง</mark></td></tr><tr><td>08:15</td><td><b>อัปเดตข้อมูลแผนที่</b><small>ระบบแผนที่</small></td><td><mark>ปกติ</mark></td></tr></tbody></table></article></section><% end %>
+      <% if page_mode == :overview %>
+        <section class="overview-operational-grid" aria-label="สถานะเมืองเพิ่มเติม">
+          <article class="environment-card">
+            <div class="section-card-heading"><div><h2>สิ่งแวดล้อมวันนี้</h2><p>สถานะสภาพอากาศและคุณภาพสิ่งแวดล้อม</p></div><span>อัปเดตล่าสุด</span></div>
+            <div class="environment-metrics">
+              <div><span>☀</span><small>อุณหภูมิ</small><b>34°C</b></div>
+              <div><span>◒</span><small>ความชื้น</small><b>62%</b></div>
+              <div><span>☁</span><small>ปริมาณฝน</small><b>18 มม.</b></div>
+              <div><span>↝</span><small>ลม</small><b>12 กม./ชม.</b></div>
+              <div><span>◌</span><small>AQI</small><b>82</b></div>
+              <div><span>♨</span><small>คุณภาพน้ำ</small><b>ปกติ</b></div>
+            </div>
+          </article>
+          <article class="infrastructure-card">
+            <div class="section-card-heading"><div><h2>สถานะระบบและโครงสร้างพื้นฐาน</h2><p>อุปกรณ์และบริการที่เชื่อมต่อกับระบบ</p></div><span class="system-ok">พร้อมใช้งาน</span></div>
+            <ul class="infrastructure-list">
+              <li><span>◉</span><div><b>เซนเซอร์</b><small>184 / 190 ออนไลน์</small></div><em>97%</em></li>
+              <li><span>◫</span><div><b>กล้อง CCTV</b><small>247 / 254 ออนไลน์</small></div><em>97%</em></li>
+              <li><span>≋</span><div><b>สถานีวัดน้ำ</b><small>18 / 18 ออนไลน์</small></div><em>100%</em></li>
+              <li><span>⌁</span><div><b>สถานีอากาศ</b><small>12 / 12 ออนไลน์</small></div><em>100%</em></li>
+            </ul>
+            <p class="infrastructure-alert">● อุปกรณ์ออฟไลน์ <b>7 เครื่อง</b></p>
+          </article>
+        </section>
+      <% end %>
+    </div><footer class="dashboard-footer">© <%= Time.current.year %> Smart City Geo Administration Platform</footer>
+  </main>
+</div>
+<% if local_admin %><dialog class="area-name-dialog" data-area-name-dialog><%= form_with url: my_access_area_path, method: :patch do %><div class="area-name-dialog-heading"><b>แก้ไขชื่อขอบเขตพื้นที่</b><button type="button" data-area-name-close aria-label="ปิด">×</button></div><label>ชื่อที่แสดงบนแผนที่<input type="text" name="access_area[name]" value="<%= current_user.access_area&.name || current_user.subdistrict&.name_th %>" required autocomplete="off"></label><small>การแก้ไขชื่อนี้ไม่เปลี่ยนขอบเขตหรือสิทธิ์การเข้าถึง</small><div><button type="submit" class="button-link primary">บันทึกชื่อ</button><button type="button" class="button-link" data-area-name-close>ยกเลิก</button></div><% end %></dialog><dialog id="place-import-dialog" class="place-import-dialog"><form id="place-import-form" enctype="multipart/form-data"><div class="import-dialog-heading"><div><h2>เพิ่มสถานที่สำคัญ</h2><p>เพิ่มข้อมูลสถานที่ลงบนแผนที่</p></div><button type="button" class="dialog-close" data-close-place-import aria-label="ปิด">×</button></div><label class="import-file-field"><span>ไฟล์ข้อมูล</span><input type="file" name="file" accept=".kmz,.xlsx,.xls" required><small>รองรับไฟล์ KMZ, XLSX และ XLS</small></label><div class="import-format-help"><b>รูปแบบ Excel</b><span>ต้องมีคอลัมน์ <code>name</code>, <code>lat</code>, <code>lon</code></span></div><p id="place-import-status" class="place-import-status" aria-live="polite"></p><div class="import-actions"><button type="button" class="button-link" data-close-place-import>ยกเลิก</button><button type="submit" class="import-submit">อัปโหลดและเพิ่มสถานที่</button></div></form></dialog><% end %>
+<script>const areaNameDialog=document.querySelector("[data-area-name-dialog]");document.querySelectorAll("[data-area-name-edit]").forEach(button=>button.addEventListener("click",()=>areaNameDialog?.showModal()));document.querySelectorAll("[data-area-name-close]").forEach(button=>button.addEventListener("click",()=>areaNameDialog?.close()));</script>

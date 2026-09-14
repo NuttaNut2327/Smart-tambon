@@ -1,0 +1,57 @@
+#!/bin/sh
+set -eu
+
+DATA_DIR="${DATA_DIR:-tmp/data}"
+FILE="${FILE:-$DATA_DIR/tambons.geojson}"
+LAYER_URL="${GISTDA_TAMBON_LAYER_URL:-https://gistdaportal.gistda.or.th/arcgis/rest/services/%E0%B8%82%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B8%B9%E0%B8%A5%E0%B9%80%E0%B8%82%E0%B8%95%E0%B8%81%E0%B8%B2%E0%B8%A3%E0%B8%9B%E0%B8%81%E0%B8%84%E0%B8%A3%E0%B8%AD%E0%B8%87/MapServer/4}"
+BATCH_SIZE="${GISTDA_BATCH_SIZE:-250}"
+BATCH_DIR="$DATA_DIR/gistda-batches"
+IDS_FILE="$DATA_DIR/gistda-object-ids.json"
+
+mkdir -p "$BATCH_DIR"
+rm -f "$BATCH_DIR"/*.geojson "$FILE.part"
+
+echo "Requesting GISTDA feature IDs..."
+curl --fail --location --retry 5 --retry-all-errors \
+  --get "$LAYER_URL/query" \
+  --data-urlencode "where=1=1" \
+  --data-urlencode "returnIdsOnly=true" \
+  --data-urlencode "f=json" \
+  --output "$IDS_FILE.part"
+mv "$IDS_FILE.part" "$IDS_FILE"
+
+echo "Downloading GISTDA boundaries in batches of $BATCH_SIZE..."
+ruby -rjson -e '
+  ids = JSON.parse(File.read(ARGV[0])).fetch("objectIds")
+  size = Integer(ARGV[1])
+  ids.each_slice(size).with_index { |slice, index| puts "#{index + 1}|#{slice.join(",")}" }
+' "$IDS_FILE" "$BATCH_SIZE" | while IFS='|' read -r batch_number object_ids; do
+  batch_file="$BATCH_DIR/batch-$(printf '%04d' "$batch_number").geojson"
+  echo "Downloading batch $batch_number..."
+  curl --fail --location --retry 5 --retry-all-errors \
+    --request POST "$LAYER_URL/query" \
+    --data-urlencode "objectIds=$object_ids" \
+    --data-urlencode "outFields=*" \
+    --data-urlencode "returnGeometry=true" \
+    --data-urlencode "outSR=4326" \
+    --data-urlencode "f=geojson" \
+    --output "$batch_file.part"
+  mv "$batch_file.part" "$batch_file"
+done
+
+echo "Combining downloaded batches..."
+ruby -rjson -e '
+  files = Dir[File.join(ARGV[0], "*.geojson")].sort
+  abort "No batch files downloaded" if files.empty?
+  features = files.flat_map do |path|
+    data = JSON.parse(File.read(path))
+    abort "ArcGIS error in #{path}: #{data["error"]}" if data["error"]
+    data.fetch("features")
+  end
+  File.write(ARGV[1], JSON.generate(type: "FeatureCollection", features: features))
+  puts "Combined #{features.length} features"
+' "$BATCH_DIR" "$FILE.part"
+mv "$FILE.part" "$FILE"
+
+echo "Importing boundaries into PostGIS..."
+FILE="$FILE" bundle exec rails geo:import_tambons

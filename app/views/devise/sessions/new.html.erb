@@ -1,0 +1,28 @@
+<main class="login-shell">
+  <section class="login-story" aria-label="Smart City">
+    <div class="login-brand"><span class="brand-mark">⌂</span><div><strong>SMART CITY</strong><small>Geo Administration Platform</small></div></div>
+    <div class="story-copy"><p class="eyebrow">SMART CITY GEO PLATFORM</p><h1>บริหารจัดการข้อมูล<br>เมืองอัจฉริยะ</h1><span class="story-rule"></span><p>เชื่อมโยงข้อมูลพื้นที่ เพื่อการวางแผน<br>และบริการชุมชนอย่างมีประสิทธิภาพ</p></div>
+    <div class="city-network" aria-hidden="true"><span>⌖</span><span>⌂</span><span>✚</span><span>◌</span><i></i><i></i><i></i></div>
+    <div class="story-note"><span>✓</span><div><b>ข้อมูลพื้นที่ปลอดภัย</b><small>สิทธิ์การใช้งานกำหนดตามบทบาทผู้ใช้</small></div></div>
+    <footer>© <%= Time.current.year %> Smart City Geo Administration Platform</footer>
+  </section>
+
+  <section class="login-panel">
+    <div class="login-card">
+      <div class="login-card-mark">⌂</div>
+      <h2>เข้าสู่ระบบ</h2>
+      <p class="login-intro">กรุณาเข้าสู่ระบบเพื่อใช้งานแผนที่และข้อมูลเมืองอัจฉริยะ</p>
+
+      <% if flash[:alert].present? %><div class="login-alert"><%= flash[:alert] %></div><% end %>
+      <% if flash[:notice].present? %><div class="login-notice"><%= flash[:notice] %></div><% end %>
+
+      <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "login-form" }) do |form| %>
+        <label>ชื่อผู้ใช้งาน<%= form.text_field :username, autofocus: true, autocomplete: "username", placeholder: "กรอกชื่อผู้ใช้งาน" %></label>
+        <label>รหัสผ่าน<%= form.password_field :password, autocomplete: "current-password", placeholder: "กรอกรหัสผ่าน" %></label>
+        <% if devise_mapping.rememberable? %><label class="remember-option"><%= form.check_box :remember_me %><span>จดจำการเข้าสู่ระบบ</span></label><% end %>
+        <%= form.submit "เข้าสู่ระบบ", class: "login-submit" %>
+      <% end %>
+      <p class="login-access-note">บัญชีผู้ใช้ถูกสร้างและกำหนดสิทธิ์โดยผู้ดูแลระบบ</p>
+    </div>
+  </section>
+</main>

@@ -1,0 +1,52 @@
+<main class="users-page"><header><div><h1><%= title %></h1><p>กำหนด role และขอบเขตพื้นที่ที่บัญชีเข้าถึงได้</p></div><%= link_to "กลับรายการผู้ใช้", users_path, class: "button-link" %></header>
+  <section class="users-card"><%= form_with model: user, html: { multipart: true } do |form| %>
+    <% if user.errors.any? %><div class="form-errors"><%= user.errors.full_messages.to_sentence %></div><% end %>
+
+    <label>ชื่อขอบเขตพื้นที่ดูแล<input type="text" name="access_area[name]" value="<%= user.access_area&.name %>" placeholder="เช่น พื้นที่รับผิดชอบ อบต.บ้านแป้น"><small>ชื่อนี้จะแสดงเป็นหัวข้อพื้นที่บนแผนที่</small></label>
+    <label>Role<%= form.select :role, [["ผู้ดูแลระบบ", "system_admin"], ["ผู้ดูแลประจำตำบล", "subdistrict_admin"], ["ผู้ใช้งานประจำตำบล", "subdistrict_user"]] %></label>
+
+    <% selected_ids = user.access_area&.subdistrict_ids.presence || [user.subdistrict_id].compact %>
+    <% all_subdistricts = Subdistrict.includes(:province).order(:code) %>
+    <% boundary_source = user.access_area&.source %>
+    <fieldset class="access-area-fields"><legend>ขอบเขตพื้นที่ดูแล</legend><p>เลือกวิธีกำหนดขอบเขตก่อน แล้วตั้งค่าจากการ์ดที่เลือก</p><div class="access-area-mode" role="radiogroup" aria-label="วิธีกำหนดขอบเขต"><label><input type="radio" name="access_area_mode" value="subdistricts" data-access-area-mode <%= "checked" unless %w[kmz kml geojson shapefile].include?(boundary_source) %>><span>⌖</span><b>เลือกพื้นที่เอง</b><small>เลือกได้หนึ่งหรือหลายตำบล</small></label><label><input type="radio" name="access_area_mode" value="file" data-access-area-mode <%= "checked" if %w[kmz kml geojson shapefile].include?(boundary_source) %>><span>⇧</span><b>เพิ่มไฟล์ขอบเขต</b><small>รองรับ KMZ, KML, GeoJSON และ Shapefile</small></label></div><section class="access-area-card" data-access-area-card="subdistricts"><label>ค้นหาชื่อตำบลหรือรหัสตำบล<input type="search" class="subdistrict-search" data-subdistrict-search placeholder="เช่น หันตรา หรือ 140113" autocomplete="off"></label><div class="selected-subdistricts"><b>รายชื่อตำบลทั้งหมด</b><div data-subdistrict-options><% all_subdistricts.each do |subdistrict| %><label class="subdistrict-check" data-subdistrict-option data-search-text="<%= "#{subdistrict.code} #{subdistrict.name_th} #{subdistrict.province.name_th}".downcase %>"><input type="checkbox" name="access_area[subdistrict_ids][]" value="<%= subdistrict.id %>" <%= "checked" if selected_ids.map(&:to_i).include?(subdistrict.id) %>><span><%= subdistrict.code %> — <%= subdistrict.name_th %> — <%= subdistrict.province.name_th %></span></label><% end %></div></div></section><section class="access-area-card" data-access-area-card="file"><label>ไฟล์ขอบเขต<input type="file" name="access_area[boundary_file]" accept=".kmz,.kml,.geojson,.json,.shp,.zip"><small>รองรับ KMZ, KML, GeoJSON และ Shapefile; Shapefile แนะนำให้อัปโหลดเป็น ZIP ที่มี .shp, .shx, .dbf และ .prj และต้องใช้พิกัด WGS84 (EPSG:4326)</small></label></section></fieldset>
+
+    <label>ชื่อผู้ใช้งาน<%= form.text_field :username, required: true, autocomplete: "username", placeholder: "เช่น admin140113 หรือ user140113" %></label>
+    <label>รหัสผ่าน<%= form.password_field :password, required: user.new_record?, autocomplete: "new-password" %></label>
+    <label>ยืนยันรหัสผ่าน<%= form.password_field :password_confirmation, required: user.new_record?, autocomplete: "new-password" %></label>
+    <div class="form-actions"><%= form.submit "บันทึก", class: "button-link primary" %><%= link_to "ยกเลิก", users_path, class: "button-link" %></div>
+  <% end %></section>
+</main>
+
+<script>
+  function setAccessAreaMode(mode) {
+    document.querySelectorAll("[data-access-area-card]").forEach(card => { card.hidden = card.dataset.accessAreaCard !== mode; });
+    document.querySelectorAll("[data-access-area-mode]").forEach(input => input.closest("label")?.classList.toggle("active", input.value === mode));
+  }
+  document.querySelectorAll("[data-access-area-mode]").forEach(input => input.addEventListener("change", () => setAccessAreaMode(input.value)));
+  setAccessAreaMode(document.querySelector("[data-access-area-mode]:checked")?.value || "subdistricts");
+  const subdistrictSearch = document.querySelector("[data-subdistrict-search]");
+  const subdistrictOptions = Array.from(document.querySelectorAll("[data-subdistrict-option]"));
+  let subdistrictSearchTimer;
+  let subdistrictFilterVersion = 0;
+  function filterSubdistrictOptions(query) {
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+    const version = ++subdistrictFilterVersion;
+    let index = 0;
+    function applyNextBatch() {
+      const frameStartedAt = performance.now();
+      while (index < subdistrictOptions.length && performance.now() - frameStartedAt < 8) {
+        if (version !== subdistrictFilterVersion) return;
+        const option = subdistrictOptions[index++];
+        const hidden = normalizedQuery.length > 0 && !option.dataset.searchText.includes(normalizedQuery);
+        if (option.hidden !== hidden) option.hidden = hidden;
+      }
+      if (index < subdistrictOptions.length && version === subdistrictFilterVersion) requestAnimationFrame(applyNextBatch);
+    }
+    requestAnimationFrame(applyNextBatch);
+  }
+  subdistrictSearch?.addEventListener("input", event => {
+    clearTimeout(subdistrictSearchTimer);
+    const query = event.currentTarget.value;
+    subdistrictSearchTimer = setTimeout(() => filterSubdistrictOptions(query), 250);
+  });
+</script>

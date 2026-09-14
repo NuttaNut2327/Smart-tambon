@@ -1,0 +1,13 @@
+development:
+  clients:
+    default:
+      uri: <%= ENV.fetch("MONGODB_URI", "mongodb://localhost:27017/smart_city_development") %>
+test:
+  clients:
+    default:
+      uri: <%= ENV.fetch("MONGODB_URI", "mongodb://localhost:27017/smart_city_test") %>
+production:
+  clients:
+    default:
+      uri: <%= ENV.fetch("MONGODB_URI") %>
+

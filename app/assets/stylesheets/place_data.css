@@ -1,0 +1,111 @@
+.place-table-wrap {
+  margin-top: 14px;
+  overflow-x: auto;
+}
+
+.important-places-table {
+  min-width: 580px;
+  margin: 0;
+  font-size: 11px;
+}
+
+.important-places-table th {
+  padding: 9px 10px;
+  background: #f4f9f8;
+  color: #617784;
+  text-align: left;
+}
+
+.important-places-table td {
+  padding: 10px;
+  color: #405968;
+  vertical-align: middle;
+}
+
+.important-places-table td:first-child {
+  min-width: 260px;
+}
+
+.important-places-table td b,
+.important-places-table td small {
+  display: block;
+}
+
+.important-places-table td b {
+  color: #29465a;
+  font-size: 11px;
+}
+
+.important-places-table td small {
+  max-width: 420px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #8a9aa4;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.place-category-tag {
+  display: inline-block;
+  padding: 4px 7px;
+  border-radius: 99px;
+  background: #e6f7f2;
+  color: #277b68;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.place-category-tag.school { background: #fff5e7; color: #b87311; }
+.place-category-tag.hospital { background: #fff0f2; color: #c9445e; }
+.place-category-tag.attraction { background: #f3edff; color: #7651bb; }
+.place-category-summary .summary-icon.government { background: #eaf0ff; color: #2563eb; }
+.place-category-summary .summary-icon.school { background: #fff5e7; color: #b87311; }
+.place-category-summary .summary-icon.attraction { background: #f3edff; color: #7651bb; }
+
+.population-estimate-note {
+  margin: 9px 0 0;
+  color: #8a9aa4;
+  font-size: 9px;
+}
+
+.add-place-button,
+.import-submit {
+  padding: 8px 11px;
+  border: 0;
+  border-radius: 6px;
+  background: #5ac5a9;
+  color: #083044;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.place-import-dialog {
+  width: min(92vw, 510px);
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: 0 18px 52px rgb(12 45 60 / 25%);
+}
+
+.place-import-dialog::backdrop { background: rgb(8 35 54 / 45%); }
+.place-browser-card .place-controls button[aria-pressed="true"] .place-dot { border: 0 !important; background: transparent !important; box-shadow: none !important; }
+.place-browser-card{max-height:560px;overflow:auto}.place-browser-card .place-controls{position:static;display:flex;max-width:none;gap:6px;flex-wrap:wrap}.place-browser-card .place-controls button{display:grid;place-items:center;width:34px;height:34px;padding:4px;border-radius:8px;background:#f8fbfb}.place-browser-card .place-controls button>span:not(.place-dot),.place-browser-card .place-controls button small{display:none}.place-browser-card .place-controls .place-dot{width:24px;height:24px;font-size:13px}.place-detail-tree{margin-top:12px;border-top:1px solid #e6eef0;padding-top:8px;color:#718290;font-size:10px}.place-tree-category,.place-tree-tag{border-bottom:1px solid #e7eef0}.place-tree-category>summary,.place-tree-tag>summary{display:flex;justify-content:space-between;gap:8px;cursor:pointer;list-style:none;padding:8px 2px;color:#2f4c5e}.place-tree-category>summary:before,.place-tree-tag>summary:before{content:"›";margin-right:6px;font-size:15px;line-height:10px;transition:transform .15s}.place-tree-category[open]>summary:before,.place-tree-tag[open]>summary:before{transform:rotate(90deg)}.place-tree-category>summary span,.place-tree-tag>summary span{margin-right:auto}.place-tree-category>summary{font-weight:800}.place-tree-tag>summary{padding-left:10px;font-size:10px}.place-tree-category summary::-webkit-details-marker,.place-tree-tag summary::-webkit-details-marker{display:none}.place-tree-item{display:grid;gap:2px;margin:0 0 7px 18px;padding:7px;border-radius:5px;background:#f4f8f8}.place-tree-item strong{color:#244257;font-size:10px}.place-tree-item small{font-size:9px;line-height:1.4}.place-tree-empty{margin:0 0 7px 18px;color:#95a5ad;font-size:9px}
+.place-browser-card .material-symbols-outlined{font-size:17px;font-variation-settings:"FILL" 1,"wght" 550,"GRAD" 0,"opsz" 20}
+.place-browser-card .place-controls button[data-place-category="government"]{background:#2563eb;color:#fff}.place-browser-card .place-controls button[data-place-category="education"]{background:#f59e0b;color:#fff}.place-browser-card .place-controls button[data-place-category="health"]{background:#e11d48;color:#fff}.place-browser-card .place-controls button[data-place-category="culture"]{background:#8b5cf6;color:#fff}.place-browser-card .place-controls button[data-place-category="tourism"]{background:#f97316;color:#fff}.place-browser-card .place-controls button[data-place-category="transport"]{background:#0ea5a4;color:#fff}.place-browser-card .place-controls button[data-place-category="utility"]{background:#64748b;color:#fff}.place-browser-card .place-controls button[data-place-category="service"]{background:#ec4899;color:#fff}.place-browser-card .place-controls button[data-place-category="emergency"]{background:#dc2626;color:#fff}.place-browser-card .place-controls button[aria-pressed="true"]{box-shadow:inset 0 0 0 2px currentColor,0 1px 4px rgb(10 35 50 / 12%);transform:none}.place-browser-card .place-controls button[data-place-category="government"][aria-pressed="true"]{background:#dbeafe;color:#2563eb}.place-browser-card .place-controls button[data-place-category="education"][aria-pressed="true"]{background:#fef3c7;color:#b45309}.place-browser-card .place-controls button[data-place-category="health"][aria-pressed="true"]{background:#ffe4e6;color:#e11d48}.place-browser-card .place-controls button[data-place-category="culture"][aria-pressed="true"]{background:#ede9fe;color:#7c3aed}.place-browser-card .place-controls button[data-place-category="tourism"][aria-pressed="true"]{background:#ffedd5;color:#ea580c}.place-browser-card .place-controls button[data-place-category="transport"][aria-pressed="true"]{background:#ccfbf1;color:#0f766e}.place-browser-card .place-controls button[data-place-category="utility"][aria-pressed="true"]{background:#e2e8f0;color:#475569}.place-browser-card .place-controls button[data-place-category="service"][aria-pressed="true"]{background:#fce7f3;color:#db2777}.place-browser-card .place-controls button[data-place-category="emergency"][aria-pressed="true"]{background:#fee2e2;color:#b91c1c}.place-browser-card .place-controls .place-dot{background:transparent!important;color:inherit}
+.place-browser-card .place-controls{display:grid;grid-template-columns:repeat(4,34px);gap:8px}.place-browser-card .place-controls button{border:0;justify-self:center}.place-browser-card .place-controls button[data-place-category="government"]{background:rgb(37 99 235 / 30%);color:#2563eb}.place-browser-card .place-controls button[data-place-category="education"]{background:rgb(245 158 11 / 30%);color:#b45309}.place-browser-card .place-controls button[data-place-category="health"]{background:rgb(225 29 72 / 30%);color:#e11d48}.place-browser-card .place-controls button[data-place-category="culture"]{background:rgb(139 92 246 / 30%);color:#7c3aed}.place-browser-card .place-controls button[data-place-category="tourism"]{background:rgb(249 115 22 / 30%);color:#ea580c}.place-browser-card .place-controls button[data-place-category="transport"]{background:rgb(14 165 164 / 30%);color:#0f766e}.place-browser-card .place-controls button[data-place-category="service"]{background:rgb(236 72 153 / 30%);color:#db2777}.place-browser-card .place-controls button[data-place-category="emergency"]{background:rgb(220 38 38 / 30%);color:#b91c1c}.place-browser-card .place-controls button[data-place-category="government"][aria-pressed="true"]{background:#2563eb;color:#fff}.place-browser-card .place-controls button[data-place-category="education"][aria-pressed="true"]{background:#f59e0b;color:#fff}.place-browser-card .place-controls button[data-place-category="health"][aria-pressed="true"]{background:#e11d48;color:#fff}.place-browser-card .place-controls button[data-place-category="culture"][aria-pressed="true"]{background:#8b5cf6;color:#fff}.place-browser-card .place-controls button[data-place-category="tourism"][aria-pressed="true"]{background:#f97316;color:#fff}.place-browser-card .place-controls button[data-place-category="transport"][aria-pressed="true"]{background:#0ea5a4;color:#fff}.place-browser-card .place-controls button[data-place-category="service"][aria-pressed="true"]{background:#ec4899;color:#fff}.place-browser-card .place-controls button[data-place-category="emergency"][aria-pressed="true"]{background:#dc2626;color:#fff}.place-browser-card .place-controls button[aria-pressed="true"]{box-shadow:none}
+.place-import-dialog form { display: grid; gap: 18px; padding: 22px; }
+.import-dialog-heading { display: flex; justify-content: space-between; gap: 15px; }
+.import-dialog-heading h2 { margin: 0; color: #234258; font-size: 18px; }
+.import-dialog-heading p { margin: 4px 0 0; color: #768995; font-size: 11px; }
+.dialog-close { width: 28px; height: 28px; border: 0; border-radius: 50%; background: #edf4f3; color: #426172; font-size: 21px; cursor: pointer; }
+.import-file-field { display: grid; gap: 7px; color: #38566a; font-size: 12px; font-weight: 700; }
+.import-file-field input { padding: 12px; border: 1px dashed #94cfc0; border-radius: 7px; background: #f7fcfa; font: inherit; }
+.import-file-field small,.import-format-help { color: #80929d; font-size: 10px; font-weight: 400; }
+.import-format-help { display: grid; gap: 5px; padding: 11px; border-radius: 7px; background: #f3f8f7; line-height: 1.65; }.import-format-help b { color: #4d697a; }.import-format-help code { color: #237a68; }
+.place-import-status { min-height: 15px; margin: -6px 0 0; color: #277b68; font-size: 11px; }.place-import-status.error { color: #b93450; }
+.import-actions { display: flex; justify-content: flex-end; gap: 9px; }.import-actions .button-link { padding: 7px 11px; }
+@media(max-width: 540px) { .card-heading:has(.add-place-button) { align-items: flex-start; }.add-place-button { white-space: nowrap; }.place-import-dialog form { padding: 18px; } }

@@ -1,0 +1,16 @@
+#cesium-map { position: absolute; inset: 0; z-index: 1; display: none; background: #dce6ea; }
+#cesium-map.active { display: block; }
+#map.map-hidden { visibility: hidden; }
+.map-wrap:has(#cesium-map.active) .place-controls,
+.map-wrap:has(#cesium-map.active) .place-popup { display: none; }
+.map-tabs button[data-map-mode="3d"].active { background: #5ac5a9; color: #083044; }
+.cesium-viewer-toolbar { top: 10px; right: 10px; }
+#terrain-source-notice { position: absolute; z-index: 5; right: 12px; bottom: 12px; display: none; max-width: calc(100% - 24px); padding: 7px 10px; border-radius: 5px; background: rgb(255 255 255 / 91%); box-shadow: 0 2px 9px rgb(8 43 56 / 18%); color: #31586a; font-size: 9px; text-decoration: none; }
+#terrain-source-notice.active { display: block; }
+#terrain-source-notice:hover { color: #237b68; }
+#terrain-elevation-legend { position: absolute; z-index: 5; bottom: 12px; left: 12px; display: none; width: 190px; padding: 10px 12px; border: 1px solid rgb(255 255 255 / 76%); border-radius: 8px; background: rgb(255 255 255 / 91%); box-shadow: 0 2px 9px rgb(8 43 56 / 18%); color: #345465; }
+#terrain-elevation-legend.active { display: block; }
+#terrain-elevation-legend b { font-size: 10px; }.terrain-legend-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+#terrain-color-toggle { position: relative; width: 30px; height: 17px; padding: 0; border: 0; border-radius: 99px; background: #aebcb5; cursor: pointer; transition: background-color .18s; }.terrain-switch span { position: absolute; top: 3px; left: 3px; width: 11px; height: 11px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 25%); transition: transform .18s; }.terrain-switch.is-on { background: #237b68 !important; }.terrain-switch.is-on span { transform: translateX(13px); }.terrain-gradient { display: block; height: 8px; border-radius: 99px; background: linear-gradient(90deg, #def1ca 0%, #aed589 18%, #5b9a5a 42%, #266943 65%, #144736 82%, #071f1d 100%); }
+#terrain-elevation-legend > div:last-child { display: flex; justify-content: space-between; gap: 4px; margin-top: 5px; } #terrain-elevation-legend small { color: #647985; font-size: 7px; white-space: nowrap; }
+@media(max-width:540px) { #terrain-elevation-legend { width: 155px; bottom: 43px; } #terrain-source-notice { right: 8px; bottom: 8px; font-size: 8px; } }

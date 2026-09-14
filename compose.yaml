@@ -1,0 +1,61 @@
+name: smart-tambon
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: smart_city
+      POSTGRES_PASSWORD: smart_city
+      POSTGRES_DB: smart_city_development
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smart_city -d smart_city_development"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  mongo:
+    image: mongo:7
+    volumes: [mongo_data:/data/db]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  web:
+    build: .
+    image: smart-tambon-web:latest
+    environment:
+      DATABASE_URL: postgis://smart_city:smart_city@db:5432/smart_city_development
+      MONGODB_URI: mongodb://mongo:27017/smart_city_development
+      RAILS_ENV: development
+      MAPTILER_KEY: ${MAPTILER_KEY:-}
+      LONGDO_MAP_KEY: ${LONGDO_MAP_KEY:-}
+      LONGDO_CACHE_TTL: ${LONGDO_CACHE_TTL:-86400}
+      SAMPLE_USER_PASSWORD: ${SAMPLE_USER_PASSWORD:-}
+    ports: ["3000:3000"]
+    volumes: [.:/rails, bundle_data:/usr/local/bundle]
+    depends_on:
+      db: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+  water_station_sync:
+    image: smart-tambon-web:latest
+    command: >
+      sh -c 'while true; do
+        bin/rails water_stations:sync || echo "DWR station sync failed; retrying in 15 minutes";
+        sleep 900;
+      done'
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgis://smart_city:smart_city@db:5432/smart_city_development
+      MONGODB_URI: mongodb://mongo:27017/smart_city_development
+      RAILS_ENV: development
+    volumes: [.:/rails, bundle_data:/usr/local/bundle]
+    depends_on:
+      db: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+volumes:
+  postgres_data:
+  mongo_data:
+  bundle_data:
