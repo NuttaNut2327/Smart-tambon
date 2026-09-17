@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="th">
   <head>
-    <title>Smart City</title>
+    <title>Smart Tambon</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %><%= csp_meta_tag %>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=account_balance,school,heart_plus,folded_hands,star,directions_car,electrical_services,local_mall,emergency_home,near_me,location_on,timeline,pentagon" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.6.1/ol.css">
     <script src="https://cdn.jsdelivr.net/npm/ol@10.6.1/dist/ol.js" defer></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.125.0/Build/Cesium/Widgets/widgets.css">
@@ -23,8 +23,16 @@
     <%= stylesheet_link_tag "flood_simulator", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "map_fix", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "gis_reference", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "header_cleanup", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "analysis_records", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "resource_rules", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "resource_rules_heading", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "resource_rules_wizard", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "resource_rules_hotspot", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "resource_rules_readability", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "typography", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", defer: true, "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "resource_rules", defer: true, "data-turbo-track": "reload" %>
   </head>
   <body class="<%= 'auth-page' if devise_controller? %>"><%= yield %></body>
 </html>

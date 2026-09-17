@@ -1,0 +1,47 @@
+.condition-head,
+.condition-row {
+  grid-template-columns: 1.1fr 1.2fr .75fr .4fr 1.45fr 24px;
+}
+
+.condition-area-control {
+  display: grid;
+  grid-template-columns: auto minmax(65px, .75fr) minmax(78px, 1fr);
+  gap: 6px;
+  align-items: center;
+}
+
+.condition-area-control > span {
+  white-space: nowrap;
+}
+
+.condition-area-empty {
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .condition-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .condition-area-control {
+    grid-column: 1 / -1;
+  }
+}
+
+.rule-wizard-steps li::after {
+  z-index: 0;
+}
+
+.rule-wizard-steps li > span,
+.rule-wizard-steps li > b {
+  position: relative;
+  z-index: 1;
+}
+
+.rule-wizard-steps li > b {
+  margin: 0;
+  padding: 2px 7px 2px 0;
+  background: #f8fafc;
+  font: inherit;
+  white-space: nowrap;
+}

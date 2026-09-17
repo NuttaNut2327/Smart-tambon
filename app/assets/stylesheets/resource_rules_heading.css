@@ -1,0 +1,155 @@
+.rules-heading.city-heading {
+  align-items: flex-end;
+  margin: 0 0 20px;
+}
+
+.rules-heading.city-heading h1 {
+  margin: 0;
+  color: #152b45;
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+}
+
+.rules-heading.city-heading > div > p:last-child {
+  margin: 5px 0 0;
+  color: #7d8da0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 700px) {
+  .rules-heading.city-heading {
+    align-items: flex-start;
+  }
+}
+
+.rules-topbar-title h1 {
+  margin: 0;
+  color: #152b45;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.rules-topbar-title p {
+  margin: 4px 0 0;
+  color: #8294a7;
+  font-size: 10px;
+}
+
+.rules-topbar .header-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.rules-notification {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #dbe5ef;
+  border-radius: 9px;
+  background: #fff;
+  color: #34516f;
+  font: inherit;
+  cursor: pointer;
+}
+
+.rules-notification i {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: #ef5565;
+}
+
+.rule-wizard-modal .formula-head,
+.rule-wizard-modal .formula-row {
+  grid-template-columns: 1.5fr .65fr .65fr 28px .65fr 1.15fr .7fr 24px;
+}
+
+.rule-wizard-modal .formula-basis-unit {
+  padding: 11px 4px;
+  white-space: nowrap;
+}
+
+.rule-wizard-modal .rule-form-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.resource-rule-card .rule-detail {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.resource-rule-card summary {
+  grid-template-columns: 48px minmax(320px, 1fr) auto auto 20px;
+}
+
+.resource-rule-card .rule-main em.severity-watch {
+  background: #fff5d9;
+  color: #b77905;
+}
+
+.resource-rule-card .rule-main em.severity-urgent {
+  background: #fff0e5;
+  color: #df6c1d;
+}
+
+.resource-rule-card .rule-main em.severity-critical {
+  background: #ffe9eb;
+  color: #df4755;
+}
+
+.rules-empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  padding: 32px;
+  border: 1px dashed #cbd9e7;
+  border-radius: 12px;
+  background: #fff;
+  color: #8394a7;
+  text-align: center;
+}
+
+.rules-empty-state span {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: #eaf3ff;
+  color: #176fe5;
+  font-size: 22px;
+}
+
+.rules-empty-state b {
+  margin-top: 12px;
+  color: #334d68;
+  font-size: 14px;
+}
+
+.rules-empty-state p {
+  margin: 4px 0 0;
+  font-size: 11px;
+}
+
+@media (max-width: 700px) {
+  .rule-wizard-modal .formula-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .rule-wizard-modal .rule-form-columns {
+    grid-template-columns: 1fr;
+  }
+}

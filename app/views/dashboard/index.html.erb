@@ -5,35 +5,10 @@
 <% page_title = { overview: "ภาพรวมเมือง", map: "การวิเคราะห์แผนที่", analysis: "การวิเคราะห์แผนที่", disasters: "ภัยพิบัติและเหตุการณ์" }.fetch(page_mode) %>
 
 <div class="shell dashboard-shell gis-dashboard page-<%= page_mode %>" data-maptiler-key="<%= ENV['MAPTILER_KEY'] %>" data-area-cache-scope="<%= current_user.id %>-<%= current_user.role %>" data-user-role="<%= current_user.role %>">
-  <aside class="dashboard-sidebar sidebar">
-    <div class="dashboard-brand brand"><span class="brand-symbol">⌂</span><div><strong>SMART CITY</strong><small>GEO ADMINISTRATION PLATFORM</small></div></div>
-    <div class="scope-summary"><small>ขอบเขตการดูแล</small><div><b><%= current_user.system_admin? ? "ทุกพื้นที่ทั่วประเทศ" : initial_area %></b><% if local_admin %><button type="button" class="scope-name-edit" data-area-name-edit aria-label="แก้ไขชื่อขอบเขตพื้นที่" title="แก้ไขชื่อขอบเขตพื้นที่">✎</button><% end %></div></div>
-    <div class="sidebar-menu-label">เมนูหลัก</div>
-    <nav class="primary-nav" aria-label="เมนูหลัก">
-      <%= link_to root_path, class: "primary-nav-item #{'active' if current_page?(root_path)}", data: { turbo: false } do %><span>⌂</span>ภาพรวมเมือง<% end %>
-      <%= link_to area_analysis_path, class: "primary-nav-item #{'active' if current_page?(area_analysis_path)}", data: { turbo: false } do %><span>⌖</span>การวิเคราะห์แผนที่<% end %>
-      <%= link_to disasters_path, class: "primary-nav-item #{'active' if current_page?(disasters_path)}", data: { turbo: false } do %><span>!</span>ภัยพิบัติและเหตุการณ์ <em>3</em><% end %>
-      <%= link_to data_layers_path, class: "primary-nav-item #{'active' if current_page?(data_layers_path)}", data: { turbo: false } do %><span>⇧</span>นำเข้าข้อมูล<% end %>
-      <% if system_admin? %><%= link_to users_path, class: "primary-nav-item" do %><span>♙</span>จัดการบัญชี<% end %><% end %>
-    </nav>
-    <% unless local_account %><div class="sidebar-search area-search-wrap"><label class="search"><span>⌕</span><input id="area-search" type="search" placeholder="ค้นหาจังหวัดหรือ ตำบล" autocomplete="off" aria-controls="area-search-results" aria-expanded="false"></label><div id="area-search-results" class="area-search-results" role="listbox" hidden></div></div><% end %>
-    <% if local_account %>
-      <nav id="area-tree" hidden aria-hidden="true">
-    <% else %>
-      <div class="sidebar-menu-label">ขอบเขตพื้นที่</div>
-      <nav id="area-tree" class="tree dashboard-tree">
-    <% end %>
-      <% if current_user.access_area %><button class="tree-row direct-access-area" data-name="<%= current_user.access_area.name %>"><span aria-hidden="true">⌖</span><%= current_user.access_area.name %></button>
-      <% elsif @assigned_subdistrict %><button class="tree-row direct-subdistrict" data-id="<%= @assigned_subdistrict.id %>" data-province-id="<%= @assigned_subdistrict.province_id %>" data-name="<%= @assigned_subdistrict.name_th %>"><span aria-hidden="true">⌖</span><%= @assigned_subdistrict.name_th %></button>
-      <% else %><% @provinces.each do |province| %><div class="province" data-name="<%= province.name_th %>"><button class="tree-row province-button" data-id="<%= province.id %>"><span class="chevron">›</span><span>▰</span><%= province.name_th %></button><div class="children" hidden></div></div><% end %><% end %>
-    </nav>
-    <div class="sidebar-user user"><div class="avatar"><%= current_user.username.first.upcase %></div><div><b><%= current_user.username %></b><small><%= current_user.role_label %></small></div></div>
-    <p class="sidebar-system-status"><i></i> ระบบทำงานปกติ <span>อัปเดต <%= Time.current.strftime("%H:%M") %> น.</span></p>
-    <%= button_to "ออกจากระบบ", destroy_user_session_path, method: :delete, class: "logout" %>
-  </aside>
+  <%= render "dashboard/sidebar", active_nav: page_mode, initial_area: initial_area, assigned_subdistrict: @assigned_subdistrict, provinces: @provinces %>
 
   <main class="dashboard-main content">
-    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker">SMART GIS PLATFORM</p><span class="breadcrumb"><span><%= page_title %></span><b>›</b><span id="selection-label"><%= initial_area %></span></span></div><button type="button" class="global-search" aria-label="ค้นหาสถานที่ พิกัด หรือชุดข้อมูล"><span>⌕</span>ค้นหาสถานที่ พิกัด หรือชุดข้อมูล <kbd>⌘ K</kbd></button><div class="header-tools"><div id="longdo-usage" class="longdo-usage" aria-live="polite"><b>Longdo API</b><span>กำลังโหลด…</span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></div></header>
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker">SMART GIS PLATFORM</p><span class="breadcrumb"><span id="selection-label"><%= initial_area %></span><b>›</b><span><%= page_title %></span></span></div><div class="header-tools"><div id="longdo-usage" class="longdo-usage" aria-live="polite"><b>Longdo API</b><span>กำลังโหลด…</span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></div></header>
     <div class="dashboard-content">
       <section id="city-overview" class="city-heading"><div><p class="page-kicker"><%= page_mode == :overview ? "ภาพรวมประจำวัน" : "เครื่องมือภูมิสารสนเทศ" %></p><div class="city-title-line"><h1><%= page_title %></h1></div><p><%= page_mode == :analysis ? "กำหนดขอบเขตบนแผนที่เพื่อวิเคราะห์สถานที่ภายในพื้นที่" : "ข้อมูลสถานการณ์เมืองแบบเรียลไทม์ · #{Time.current.strftime('%-d %B %Y')}" %></p></div><div class="city-live-status"><i></i><span>สถานะเมือง</span><b>พร้อมใช้งาน</b><small>อัปเดตล่าสุด <%= Time.current.strftime("%H:%M") %> น.</small></div></section>
       <% if page_mode == :overview %>
@@ -89,7 +64,7 @@
           </article>
         </section>
       <% end %>
-    </div><footer class="dashboard-footer">© <%= Time.current.year %> Smart City Geo Administration Platform</footer>
+    </div><footer class="dashboard-footer">© <%= Time.current.year %> Smart Tambon GIS Platform</footer>
   </main>
 </div>
 <% if local_admin %><dialog class="area-name-dialog" data-area-name-dialog><%= form_with url: my_access_area_path, method: :patch do %><div class="area-name-dialog-heading"><b>แก้ไขชื่อขอบเขตพื้นที่</b><button type="button" data-area-name-close aria-label="ปิด">×</button></div><label>ชื่อที่แสดงบนแผนที่<input type="text" name="access_area[name]" value="<%= current_user.access_area&.name || current_user.subdistrict&.name_th %>" required autocomplete="off"></label><small>การแก้ไขชื่อนี้ไม่เปลี่ยนขอบเขตหรือสิทธิ์การเข้าถึง</small><div><button type="submit" class="button-link primary">บันทึกชื่อ</button><button type="button" class="button-link" data-area-name-close>ยกเลิก</button></div><% end %></dialog><dialog id="place-import-dialog" class="place-import-dialog"><form id="place-import-form" enctype="multipart/form-data"><div class="import-dialog-heading"><div><h2>เพิ่มสถานที่สำคัญ</h2><p>เพิ่มข้อมูลสถานที่ลงบนแผนที่</p></div><button type="button" class="dialog-close" data-close-place-import aria-label="ปิด">×</button></div><label class="import-file-field"><span>ไฟล์ข้อมูล</span><input type="file" name="file" accept=".kmz,.xlsx,.xls" required><small>รองรับไฟล์ KMZ, XLSX และ XLS</small></label><div class="import-format-help"><b>รูปแบบ Excel</b><span>ต้องมีคอลัมน์ <code>name</code>, <code>lat</code>, <code>lon</code></span></div><p id="place-import-status" class="place-import-status" aria-live="polite"></p><div class="import-actions"><button type="button" class="button-link" data-close-place-import>ยกเลิก</button><button type="submit" class="import-submit">อัปโหลดและเพิ่มสถานที่</button></div></form></dialog><% end %>

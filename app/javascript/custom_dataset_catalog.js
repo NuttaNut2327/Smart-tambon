@@ -1,4 +1,12 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const breadcrumb = document.querySelector(".data-layers-shell .breadcrumb");
+  const areaName = document.querySelector(".data-layers-shell .scope-summary b")?.textContent.trim();
+  if (breadcrumb && areaName) {
+    const area = document.createElement("span"); area.id = "selection-label"; area.textContent = areaName;
+    const separator = document.createElement("b"); separator.textContent = "›";
+    const section = document.createElement("span"); section.textContent = "นำเข้าข้อมูล";
+    breadcrumb.replaceChildren(area, separator, section);
+  }
   const list = document.querySelector(".custom-dataset-list");
   if (!list || !list.querySelector("article")) return;
   const catalog = list.closest(".dataset-catalog");

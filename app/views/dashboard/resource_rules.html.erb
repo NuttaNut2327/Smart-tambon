@@ -1,0 +1,64 @@
+<% initial_area = current_user.access_area&.name.presence || @assigned_subdistrict&.name_th || "ทุกพื้นที่ทั่วประเทศ" %>
+<% variable_labels = { "water_level" => "ระดับน้ำ", "rainfall" => "ปริมาณฝน", "wind_speed" => "ความเร็วลม", "hotspot_count" => "จำนวน Hotspot", "population" => "จำนวนประชากร", "households" => "จำนวนครัวเรือน", "area" => "พื้นที่" } %>
+<% variable_units = { "water_level" => "ม.", "rainfall" => "มม.", "wind_speed" => "กม./ชม.", "hotspot_count" => "จุด", "population" => "คน", "households" => "ครัวเรือน", "area" => "ตร.กม." } %>
+<% comparator_labels = { "gte" => "≥", "gt" => ">", "lte" => "≤", "lt" => "<", "eq" => "=" } %>
+<% area_unit_labels = { "sqm" => "ตร.ม.", "sqkm" => "ตร.กม.", "rai" => "ไร่" } %>
+<% basis_labels = { "population" => "จำนวนประชากร", "households" => "จำนวนครัวเรือน", "area" => "พื้นที่ที่ได้รับผลกระทบ", "villages" => "จำนวนหมู่บ้าน" } %>
+<% disaster_icons = { "flood" => "♧", "fire" => "♨", "wind" => "≋", "drought" => "☀", "other" => "⌁" } %>
+<% severity_labels = { "watch" => "เฝ้าระวัง", "urgent" => "เร่งด่วน", "critical" => "วิกฤต" } %>
+<% saved_rules = @resource_rules.map do |rule|
+     condition_text = rule.conditions.map do |item|
+       text = "#{variable_labels[item['variable']] || item['variable']} #{comparator_labels[item['comparator']] || item['comparator']} #{item['value']} #{variable_units[item['variable']]}"
+       item['variable'] == 'hotspot_count' ? "#{text} ในพื้นที่ #{item['area_value']} #{area_unit_labels[item['area_unit']] || 'ตร.กม.'}" : text
+     end.join(" หรือ ")
+     formula_texts = rule.formulas.map do |item|
+       per_value = item['per_value'].to_f
+       per_value = per_value.to_i if per_value.to_i == per_value
+       denominator = case item['basis']
+                     when 'area' then "พื้นที่ #{per_value} #{ { 'sqm' => 'ตร.ม.', 'sqkm' => 'ตร.กม.', 'rai' => 'ไร่' }[item['basis_unit']] || 'ตร.กม.' }"
+                     when 'households' then per_value == 1 ? 'ครัวเรือน' : "#{per_value} ครัวเรือน"
+                     when 'villages' then per_value == 1 ? 'หมู่บ้าน' : "#{per_value} หมู่บ้าน"
+                     else per_value == 1 ? 'คน' : "#{per_value} คน"
+                     end
+       "#{item['resource']} #{item['amount']} #{item['unit']} / #{denominator}"
+     end
+     payload = { id: rule.id.to_s, name: rule.name, disaster_type: rule.disaster_type, severity: rule.severity, description: rule.description, conditions: rule.conditions, formulas: rule.formulas, active: rule.active? }
+     { id: "R-#{rule.id.to_s.last(4).upcase}", type: rule.disaster_type, icon: disaster_icons[rule.disaster_type], title: rule.name, level: severity_labels[rule.severity] || "เฝ้าระวัง", condition: condition_text, formulas: formula_texts, payload: payload, updated: thai_short_datetime(rule.updated_at) }
+   end %>
+<% rules = saved_rules %>
+<div class="shell dashboard-shell gis-dashboard resource-rules-page">
+  <%= render "dashboard/sidebar", active_nav: :resource_rules, initial_area: initial_area, assigned_subdistrict: @assigned_subdistrict, provinces: @provinces %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker">SMART GIS PLATFORM</p><span class="breadcrumb"><span id="selection-label"><%= initial_area %></span><b>›</b><span>กฎการประเมินทรัพยากร</span></span></div><div class="header-tools"><div id="longdo-usage" class="longdo-usage" aria-live="polite"><b>Longdo API</b><span>กำลังโหลด…</span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></div></header>
+    <div class="dashboard-content rules-workspace" data-rule-resource-options="<%= json_escape(@rule_resource_options.to_json) %>">
+      <section class="rules-heading city-heading"><div><p class="page-kicker">ระบบช่วยประเมินอัตโนมัติ</p><h1>กฎการประเมินทรัพยากร</h1><p>กำหนดเงื่อนไขและสูตรที่ระบบใช้คำนวณกำลังคน อุปกรณ์ และสิ่งของสำหรับแต่ละประเภทภัย</p></div><button type="button" class="rules-create-button" data-open-rule-wizard>＋ สร้างกฎใหม่</button></section>
+      <section class="rules-toolbar"><label><span>⌕</span><input type="search" placeholder="ค้นหาชื่อกฎหรือเงื่อนไข" data-rule-search></label><div class="rule-filters"><button class="active" type="button" data-rule-filter="all">ทั้งหมด</button><button type="button" data-rule-filter="flood">น้ำท่วม</button><button type="button" data-rule-filter="fire">ไฟป่า</button><button type="button" data-rule-filter="wind">วาตภัย</button></div><span data-rule-count>แสดง <%= rules.size %> กฎ</span></section>
+      <section class="rules-list" data-rules-list>
+        <% if rules.empty? %><div class="rules-empty-state"><span>▥</span><b>ยังไม่มีกฎการประเมินทรัพยากร</b><p>กด “สร้างกฎใหม่” เพื่อกำหนดเงื่อนไขและสูตรคำนวณทรัพยากร</p></div><% end %>
+        <% rules.each_with_index do |rule, index| %>
+          <% severity_class = { "เฝ้าระวัง" => "watch", "เร่งด่วน" => "urgent", "วิกฤต" => "critical" }.fetch(rule[:level], "watch") %>
+          <details class="resource-rule-card <%= rule[:type] %>" data-rule-card data-rule-type="<%= rule[:type] %>" data-rule-search="<%= "#{rule[:title]} #{rule[:condition]}".downcase %>" data-rule-payload="<%= json_escape(rule[:payload].to_json) %>" <%= "open" if index.zero? %>>
+            <summary>
+              <span class="rule-icon"><%= rule[:icon] %></span><div class="rule-main"><div><b><%= rule[:title] %></b><em class="severity-<%= severity_class %>"><%= rule[:level] %></em></div><p><%= rule[:condition] %></p><small><%= rule[:id] %> · แก้ไขล่าสุด <%= rule[:updated] %></small></div>
+              <button type="button" class="rule-edit" data-edit-rule>แก้ไข</button><label class="rule-switch" onclick="event.stopPropagation()"><input type="checkbox" <%= "checked" if rule[:payload][:active] %>><span></span><b>เปิดใช้</b></label><i class="rule-chevron">⌄</i>
+            </summary>
+            <div class="rule-detail">
+              <div><h3>สูตรคำนวณทรัพยากร</h3><ol><% rule[:formulas].each do |formula| %><li><%= formula %></li><% end %></ol></div>
+            </div>
+          </details>
+        <% end %>
+      </section>
+    </div>
+  </main>
+</div>
+<dialog class="rule-wizard-modal" data-rule-wizard>
+  <header><div><small data-rule-wizard-kicker>สร้างกฎการประเมินใหม่</small><h2 data-rule-wizard-title>ข้อมูลกฎ</h2></div><button type="button" data-close-rule-wizard aria-label="ปิด">×</button></header>
+  <ol class="rule-wizard-steps">
+    <li class="active"><span>1</span><b>ข้อมูลกฎ</b></li><li><span>2</span><b>เงื่อนไข</b></li><li><span>3</span><b>สูตรคำนวณ</b></li><li><span>4</span><b>ตรวจสอบ</b></li>
+  </ol>
+  <form data-rule-wizard-form>
+    <div class="rule-wizard-body" data-rule-wizard-body></div>
+    <p class="rule-wizard-status" data-rule-wizard-status></p>
+    <footer><button type="button" class="button-link" data-rule-wizard-back>‹ ย้อนกลับ</button><span data-rule-step-count>ขั้นตอน 1 จาก 4</span><button type="button" class="rules-create-button" data-rule-wizard-next>ถัดไป ›</button></footer>
+  </form>
+</dialog>

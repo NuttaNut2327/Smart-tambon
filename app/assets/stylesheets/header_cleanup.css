@@ -1,0 +1,7 @@
+.gis-topbar {
+  grid-template-columns: minmax(200px, 1fr) auto;
+}
+
+.gis-topbar .header-tools {
+  justify-self: end;
+}

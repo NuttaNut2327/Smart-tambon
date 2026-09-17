@@ -1,0 +1,95 @@
+.resource-rules-page,
+.rule-wizard-modal {
+  font-size: 15px;
+}
+
+.resource-rules-page .rules-heading.city-heading h1 {
+  font-size: 32px !important;
+  font-weight: 800 !important;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+}
+
+.rules-heading > div > p:last-child {
+  font-size: 12px !important;
+  line-height: 1.65;
+}
+
+.rules-create-button {
+  font-size: 14px;
+}
+
+.rules-summary b {
+  font-size: 26px;
+}
+
+.rules-summary span,
+.rules-toolbar input,
+.rule-filters button,
+.rules-toolbar > span {
+  font-size: 13px;
+}
+
+.rule-main b {
+  font-size: 16px;
+}
+
+.rule-main p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.rule-main small,
+.rule-tags span,
+.rule-edit,
+.rule-switch,
+.rule-detail ol,
+.rule-detail ul {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.rule-detail h3 {
+  font-size: 14px;
+}
+
+.rule-wizard-modal > header small,
+.rule-wizard-steps li,
+.rule-wizard-info small,
+.rule-builder-head,
+.rule-builder-row > span,
+.rule-formula-preview,
+.rule-review-list dt,
+.rule-review-example,
+.rule-wizard-status,
+.rule-wizard-modal footer > span {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.rule-wizard-modal > header h2 {
+  font-size: 23px;
+}
+
+.rule-form-grid label,
+.rule-form-grid input,
+.rule-form-grid select,
+.rule-form-grid textarea,
+.rule-builder-row input,
+.rule-builder-row select,
+.rule-review-list dd {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.rule-wizard-info b,
+.rule-formula-preview b,
+.rule-review-title b {
+  font-size: 14px;
+}
+
+@media (max-width: 700px) {
+  .resource-rules-page .rules-heading.city-heading h1 {
+    font-size: clamp(21px, 6vw, 27px) !important;
+  }
+}

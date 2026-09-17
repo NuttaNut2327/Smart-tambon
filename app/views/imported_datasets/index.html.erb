@@ -5,3 +5,13 @@ document.addEventListener("DOMContentLoaded",()=>{const dialog=document.querySel
 <% end %>
 <%= javascript_include_tag "custom_dataset_wizard", defer: true %>
 <%= javascript_include_tag "custom_dataset_catalog", defer: true %>
+<template data-shared-dashboard-sidebar><%= render "dashboard/sidebar", active_nav: :data_layers, initial_area: (current_user.access_area&.name || current_user.subdistrict&.name_th || "ประเทศไทย") %></template>
+<%= javascript_tag nonce: true do %>
+  document.addEventListener("DOMContentLoaded", () => {
+    const template = document.querySelector("[data-shared-dashboard-sidebar]");
+    const currentSidebar = document.querySelector(".dashboard-shell > .dashboard-sidebar");
+    const sharedSidebar = template?.content.firstElementChild;
+    if (currentSidebar && sharedSidebar) currentSidebar.replaceWith(sharedSidebar);
+    template?.remove();
+  }, { once: true });
+<% end %>

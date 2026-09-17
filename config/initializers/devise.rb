@@ -1,5 +1,5 @@
 Devise.setup do |config|
-  config.mailer_sender = "noreply@smart-city.local"
+  config.mailer_sender = "noreply@smart-tambon.local"
   require "devise/orm/active_record"
   config.authentication_keys = [:username]
   config.case_insensitive_keys = [:username]

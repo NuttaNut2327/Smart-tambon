@@ -1,4 +1,4 @@
-# Smart City Geo Admin
+# Smart Tambon Geo Admin
 
 ต้นแบบ Rails สำหรับแผนที่จังหวัด/ตำบล: PostgreSQL + PostGIS เก็บขอบเขตที่ต้อง query เชิงพื้นที่, MongoDB เก็บข้อมูล dynamic, OpenLayers แสดง OSM และ MapTiler satellite, Devise ดูแล login
 

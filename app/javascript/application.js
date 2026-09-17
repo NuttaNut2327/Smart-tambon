@@ -1,4 +1,29 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const rulesList = document.querySelector("[data-rules-list]");
+  if (rulesList) {
+    const search = document.querySelector("[data-rule-search]");
+    const filters = [...document.querySelectorAll("[data-rule-filter]")];
+    const count = document.querySelector("[data-rule-count]");
+    let activeType = "all";
+    const applyRuleFilters = () => {
+      const query = search.value.trim().toLowerCase();
+      let visible = 0;
+      rulesList.querySelectorAll("[data-rule-card]").forEach(card => {
+        card.hidden = (activeType !== "all" && card.dataset.ruleType !== activeType) || !card.dataset.ruleSearch.includes(query);
+        if (!card.hidden) visible += 1;
+      });
+      count.textContent = `แสดง ${visible} กฎ`;
+    };
+    search.addEventListener("input", applyRuleFilters);
+    filters.forEach(button => button.addEventListener("click", () => {
+      filters.forEach(item => item.classList.toggle("active", item === button));
+      activeType = button.dataset.ruleFilter;
+      applyRuleFilters();
+    }));
+  }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
   if (!document.querySelector("#map") || !window.ol) return;
   const key = document.querySelector(".shell").dataset.maptilerKey;
   const street = new ol.layer.Tile({ source: new ol.source.OSM() });
@@ -241,7 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const terrainTileCache=new Map();
   try {
     Object.keys(sessionStorage)
-      .filter(key=>key.startsWith("smart-city:selected-area:"))
+      .filter(key=>key.startsWith("smart-tambon:selected-area:"))
       .forEach(key=>sessionStorage.removeItem(key));
   } catch (_) { /* Browser storage may be unavailable. */ }
   const terrainTileUrl=(x,y,level)=>`/api/terrain_tiles/${level}/${x}/${y}`;

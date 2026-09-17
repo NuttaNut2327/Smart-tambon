@@ -1,0 +1,18 @@
+:root {
+  --app-font-family: "Google Sans", "Noto Sans Thai", sans-serif;
+}
+
+html,
+body,
+body *:not(.material-symbols-outlined) {
+  font-family: var(--app-font-family) !important;
+}
+
+button,
+input,
+select,
+textarea,
+optgroup,
+option {
+  font-family: var(--app-font-family) !important;
+}

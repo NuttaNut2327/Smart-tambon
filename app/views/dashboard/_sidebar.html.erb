@@ -1,0 +1,34 @@
+<% active_nav = local_assigns.fetch(:active_nav, nil)&.to_sym %>
+<% sidebar_assigned_subdistrict = local_assigns[:assigned_subdistrict] || (current_user.subdistrict unless system_admin?) %>
+<% sidebar_provinces = local_assigns[:provinces] || (global_viewer? ? Province.alphabetical : (sidebar_assigned_subdistrict ? [sidebar_assigned_subdistrict.province] : [])) %>
+<% sidebar_initial_area = local_assigns[:initial_area].presence || current_user.access_area&.name.presence || sidebar_assigned_subdistrict&.name_th || "ประเทศไทย" %>
+<% sidebar_local_admin = current_user.subdistrict_admin? %>
+<% sidebar_local_account = !current_user.system_admin? %>
+
+<aside class="dashboard-sidebar sidebar">
+  <div class="dashboard-brand brand"><span class="brand-symbol">⌂</span><div><strong>SMART TAMBON</strong><small>SMART GIS PLATFORM</small></div></div>
+  <div class="scope-summary"><small>ขอบเขตการดูแล</small><div><b><%= current_user.system_admin? ? "ทุกพื้นที่ทั่วประเทศ" : sidebar_initial_area %></b><% if sidebar_local_admin %><button type="button" class="scope-name-edit" data-area-name-edit aria-label="แก้ไขชื่อขอบเขตพื้นที่" title="แก้ไขชื่อขอบเขตพื้นที่">✎</button><% end %></div></div>
+  <div class="sidebar-menu-label">เมนูหลัก</div>
+  <nav class="primary-nav" aria-label="เมนูหลัก">
+    <%= link_to root_path, class: "primary-nav-item #{'active' if active_nav == :overview}", data: { turbo: false } do %><span>⌂</span>ภาพรวมเมือง<% end %>
+    <%= link_to area_analysis_path, class: "primary-nav-item #{'active' if active_nav == :analysis}", data: { turbo: false } do %><span>⌖</span>แผนที่และชั้นข้อมูล<% end %>
+    <%= link_to disasters_path, class: "primary-nav-item #{'active' if active_nav == :disasters}", data: { turbo: false } do %><span>!</span>ภัยพิบัติและเหตุการณ์ <em>3</em><% end %>
+    <%= link_to resource_rules_path, class: "primary-nav-item #{'active' if active_nav == :resource_rules}", data: { turbo: false } do %><span>▥</span>กฎการประเมินทรัพยากร<% end %>
+    <%= link_to data_layers_path, class: "primary-nav-item #{'active' if active_nav == :data_layers}", data: { turbo: false } do %><span>⇧</span>นำเข้าข้อมูล<% end %>
+    <% if system_admin? %><%= link_to users_path, class: "primary-nav-item" do %><span>♙</span>จัดการบัญชี<% end %><% end %>
+  </nav>
+  <% unless sidebar_local_account %><div class="sidebar-search area-search-wrap"><label class="search"><span>⌕</span><input id="area-search" type="search" placeholder="ค้นหาจังหวัดหรือ ตำบล" autocomplete="off" aria-controls="area-search-results" aria-expanded="false"></label><div id="area-search-results" class="area-search-results" role="listbox" hidden></div></div><% end %>
+  <% if sidebar_local_account %>
+    <nav id="area-tree" hidden aria-hidden="true">
+  <% else %>
+    <div class="sidebar-menu-label">ขอบเขตพื้นที่</div>
+    <nav id="area-tree" class="tree dashboard-tree">
+  <% end %>
+    <% if current_user.access_area %><button class="tree-row direct-access-area" data-name="<%= current_user.access_area.name %>"><span aria-hidden="true">⌖</span><%= current_user.access_area.name %></button>
+    <% elsif sidebar_assigned_subdistrict %><button class="tree-row direct-subdistrict" data-id="<%= sidebar_assigned_subdistrict.id %>" data-province-id="<%= sidebar_assigned_subdistrict.province_id %>" data-name="<%= sidebar_assigned_subdistrict.name_th %>"><span aria-hidden="true">⌖</span><%= sidebar_assigned_subdistrict.name_th %></button>
+    <% else %><% sidebar_provinces.each do |province| %><div class="province" data-name="<%= province.name_th %>"><button class="tree-row province-button" data-id="<%= province.id %>"><span class="chevron">›</span><span>▰</span><%= province.name_th %></button><div class="children" hidden></div></div><% end %><% end %>
+  </nav>
+  <div class="sidebar-user user"><div class="avatar"><%= current_user.username.first.upcase %></div><div><b><%= current_user.username %></b><small><%= current_user.role_label %></small></div></div>
+  <p class="sidebar-system-status"><i></i> ระบบทำงานปกติ <span>อัปเดต <%= Time.current.strftime("%H:%M") %> น.</span></p>
+  <%= button_to "ออกจากระบบ", destroy_user_session_path, method: :delete, class: "logout" %>
+</aside>

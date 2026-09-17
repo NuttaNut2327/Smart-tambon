@@ -20,6 +20,20 @@ class DashboardController < ApplicationController
     render :index
   end
 
+  def resource_rules
+    load_area_context
+    @resource_rules = ResourceRule.visible_to(current_user).desc(:created_at).to_a
+    datasets = ImportedDataset.visible_to(current_user).where(:data_type.in => %w[resources workforce]).to_a
+    @rule_resource_options = datasets.flat_map do |dataset|
+      Array(dataset.current_version&.records).filter_map do |record|
+        label = record["name"].presence || record["team_name"].presence
+        next if label.blank?
+
+        { label: label, source_type: dataset.data_type }
+      end
+    end.uniq { |item| [item[:label], item[:source_type]] }
+  end
+
   private
 
   def load_area_context

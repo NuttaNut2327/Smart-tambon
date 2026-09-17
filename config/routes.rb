@@ -6,6 +6,9 @@ Rails.application.routes.draw do
   get "map", to: "dashboard#map", as: :map
   get "area_analysis", to: "dashboard#area_analysis", as: :area_analysis
   get "disasters", to: "dashboard#disasters", as: :disasters
+  get "resource_rules", to: "dashboard#resource_rules", as: :resource_rules
+  post "resource_rules", to: "resource_rules#create"
+  patch "resource_rules/:id", to: "resource_rules#update", as: :resource_rule
   resources :population_imports, only: :create
   resources :population_datasets, only: :destroy
   resources :population_dashboards, only: :show
