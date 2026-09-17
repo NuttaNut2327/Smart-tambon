@@ -2,7 +2,7 @@ class UserAccessAreaService
   def initialize(user:, name:, subdistrict_ids:, boundary_file:)
     @user = user
     @name = name.to_s.strip
-    @subdistrict_ids = Array(subdistrict_ids).reject(&:blank?).map(&:to_i).uniq
+    @subdistrict_ids = Array(subdistrict_ids).reject(&:blank?).map { |id| Integer(id.to_s, 10) }.uniq
     @boundary_file = boundary_file
   end
 
@@ -16,9 +16,15 @@ class UserAccessAreaService
       label = @name.presence || "ขอบเขตที่กำหนดจาก #{source_label}"
       area.assign_attributes(name: label, source: source, subdistrict_ids: @subdistrict_ids, boundary: boundary)
     else
-      subdistricts = Subdistrict.where(id: @subdistrict_ids)
+      subdistricts = Subdistrict.where(id: @subdistrict_ids).index_by(&:id)
       raise ArgumentError, "กรุณาเลือกตำบลอย่างน้อย 1 ตำบล หรืออัปโหลด KMZ" if subdistricts.empty?
-      area.assign_attributes(name: @name.presence || subdistricts.map(&:name_th).join(", "), source: "subdistricts", subdistrict_ids: subdistricts.ids, boundary: merged_boundary(subdistricts))
+      found_ids = subdistricts.keys
+      missing_ids = @subdistrict_ids - found_ids
+      raise ArgumentError, "ไม่พบตำบลที่เลือก: #{missing_ids.join(', ')}" if missing_ids.any?
+      subdistricts = @subdistrict_ids.map { |id| subdistricts.fetch(id) }
+
+      area.assign_attributes(name: @name.presence || subdistricts.map(&:name_th).join(", "), source: "subdistricts",
+        subdistrict_ids: @subdistrict_ids, boundary: merged_boundary(subdistricts))
     end
     area.save!
     area
@@ -27,8 +33,11 @@ class UserAccessAreaService
   private
 
   def merged_boundary(subdistricts)
-    boundaries = subdistricts.map(&:boundary).compact
-    raise ArgumentError, "ตำบลที่เลือกไม่มีข้อมูลขอบเขต" if boundaries.empty?
+    missing_boundaries = subdistricts.select { |subdistrict| subdistrict.boundary.blank? }
+    if missing_boundaries.any?
+      raise ArgumentError, "ตำบลที่เลือกไม่มีข้อมูลขอบเขต: #{missing_boundaries.map(&:name_th).join(', ')}"
+    end
+    boundaries = subdistricts.map(&:boundary)
 
     factory = boundaries.first.factory
     polygons = boundaries.flat_map do |boundary|

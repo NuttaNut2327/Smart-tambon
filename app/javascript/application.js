@@ -68,6 +68,12 @@ document.addEventListener("DOMContentLoaded", () => {
     source:new ol.source.Vector(),
     style:feature=>isPlaceInsideManualSelection(feature) ? importedSelectedStyle : importedMutedStyle
   });
+  const importedDatasetLayer = new ol.layer.Vector({
+    source:new ol.source.Vector(),
+    style:new ol.style.Style({
+      image:new ol.style.Circle({radius:8,fill:new ol.style.Fill({color:"#7c3aed"}),stroke:new ol.style.Stroke({color:"#fff",width:2})})
+    })
+  });
   const waterStationLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
     style:new ol.style.Style({
@@ -90,8 +96,12 @@ document.addEventListener("DOMContentLoaded", () => {
     source:new ol.source.Vector(),
     style:new ol.style.Style({image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#237d69"}),stroke:new ol.style.Stroke({color:"white",width:3})})})
   });
-  const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,...Object.values(placeLayers),importedPlacesLayer,waterStationLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5}) });
+  const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,...Object.values(placeLayers),importedPlacesLayer,importedDatasetLayer,waterStationLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5}) });
   window.smartCityMap=map;
+  fetch("/api/imported_datasets",{headers:{Accept:"application/json"}}).then(response=>response.ok?response.json():null).then(data=>{
+    if(!data)return;
+    importedDatasetLayer.getSource().addFeatures(new ol.format.GeoJSON().readFeatures(data,{featureProjection:"EPSG:3857"}));
+  }).catch(error=>console.warn("Unable to load imported dataset layers",error));
   const disasterWorkspace=document.querySelector(".disaster-workspace");
   if(disasterWorkspace){
     const disasterEventList=disasterWorkspace.querySelector(".disaster-event-list");
@@ -1095,7 +1105,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if(selectedProvinceId) query.set("province_id",selectedProvinceId);
       if(selectedAreaCode)query.set("area",selectedAreaCode);
       const response = await fetch(`/api/places?${query}`,{headers:{Accept:"application/json"},signal:placeRequests[category].signal});
-      const payload = await response.json();
+      const responseText = await response.text();
+      let payload;
+      try { payload = JSON.parse(responseText); }
+      catch (_) { throw new Error(response.ok ? "ข้อมูลสถานที่จากเซิร์ฟเวอร์ไม่ถูกต้อง" : `โหลดสถานที่ไม่สำเร็จ (HTTP ${response.status})`); }
       if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
       if(button.getAttribute("aria-pressed") !== "true" || placeLoadVersions[category] !== loadVersion) return;
       updateCategoryPlaces(category,payload.data);
@@ -1192,7 +1205,10 @@ document.addEventListener("DOMContentLoaded", () => {
       next.query.set("load_more","1");
       try {
         const response=await fetch(`/api/places?${next.query}`,{headers:{Accept:"application/json"},signal:controller.signal});
-        const payload=await response.json();
+        const responseText=await response.text();
+        let payload;
+        try { payload=JSON.parse(responseText); }
+        catch (_) { throw new Error(response.ok ? "ข้อมูลสถานที่จากเซิร์ฟเวอร์ไม่ถูกต้อง" : `โหลดสถานที่ไม่สำเร็จ (HTTP ${response.status})`); }
         if(!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
         if(button.getAttribute("aria-pressed") !== "true" || placeLoadVersions[next.category] !== next.loadVersion) return;
         updateCategoryPlaces(next.category,payload.data);
@@ -1218,9 +1234,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   let initialPlaceLoadStarted=false;
   const loadInitialPlaceCategories=()=>{
-    if(!document.querySelector(".page-map, .page-analysis")) return;
+    if(!document.querySelector(".page-overview, .page-map, .page-analysis")) return;
     if(initialPlaceLoadStarted) return;
     initialPlaceLoadStarted=true;
+    loadImportedPlaces();
     document.querySelectorAll("[data-place-category]").forEach((button,index) => {
       window.setTimeout(()=>loadPlaces(button.dataset.placeCategory),index*250);
     });

@@ -9,6 +9,6 @@ development:
 test:
   <<: *default
   database: smart_city_test
+  url: <%= ENV.fetch("TEST_DATABASE_URL") { ENV.fetch("DATABASE_URL", "postgis://smart_city:smart_city@localhost:5432/smart_city_development").sub(%r{/[^/?]+(?=\?|$)}, "/smart_city_test") } %>
 production:
   <<: *default
-

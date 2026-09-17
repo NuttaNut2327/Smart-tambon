@@ -8,6 +8,7 @@
     <% selected_ids = user.access_area&.subdistrict_ids.presence || [user.subdistrict_id].compact %>
     <% all_subdistricts = Subdistrict.includes(:province).order(:code) %>
     <% boundary_source = user.access_area&.source %>
+    <input type="hidden" name="access_area[selected_subdistrict_count]" value="<%= selected_ids.size %>" data-selected-subdistrict-count>
     <fieldset class="access-area-fields"><legend>ขอบเขตพื้นที่ดูแล</legend><p>เลือกวิธีกำหนดขอบเขตก่อน แล้วตั้งค่าจากการ์ดที่เลือก</p><div class="access-area-mode" role="radiogroup" aria-label="วิธีกำหนดขอบเขต"><label><input type="radio" name="access_area_mode" value="subdistricts" data-access-area-mode <%= "checked" unless %w[kmz kml geojson shapefile].include?(boundary_source) %>><span>⌖</span><b>เลือกพื้นที่เอง</b><small>เลือกได้หนึ่งหรือหลายตำบล</small></label><label><input type="radio" name="access_area_mode" value="file" data-access-area-mode <%= "checked" if %w[kmz kml geojson shapefile].include?(boundary_source) %>><span>⇧</span><b>เพิ่มไฟล์ขอบเขต</b><small>รองรับ KMZ, KML, GeoJSON และ Shapefile</small></label></div><section class="access-area-card" data-access-area-card="subdistricts"><label>ค้นหาชื่อตำบลหรือรหัสตำบล<input type="search" class="subdistrict-search" data-subdistrict-search placeholder="เช่น หันตรา หรือ 140113" autocomplete="off"></label><div class="selected-subdistricts"><b>รายชื่อตำบลทั้งหมด</b><div data-subdistrict-options><% all_subdistricts.each do |subdistrict| %><label class="subdistrict-check" data-subdistrict-option data-search-text="<%= "#{subdistrict.code} #{subdistrict.name_th} #{subdistrict.province.name_th}".downcase %>"><input type="checkbox" name="access_area[subdistrict_ids][]" value="<%= subdistrict.id %>" <%= "checked" if selected_ids.map(&:to_i).include?(subdistrict.id) %>><span><%= subdistrict.code %> — <%= subdistrict.name_th %> — <%= subdistrict.province.name_th %></span></label><% end %></div></div></section><section class="access-area-card" data-access-area-card="file"><label>ไฟล์ขอบเขต<input type="file" name="access_area[boundary_file]" accept=".kmz,.kml,.geojson,.json,.shp,.zip"><small>รองรับ KMZ, KML, GeoJSON และ Shapefile; Shapefile แนะนำให้อัปโหลดเป็น ZIP ที่มี .shp, .shx, .dbf และ .prj และต้องใช้พิกัด WGS84 (EPSG:4326)</small></label></section></fieldset>
 
     <label>ชื่อผู้ใช้งาน<%= form.text_field :username, required: true, autocomplete: "username", placeholder: "เช่น admin140113 หรือ user140113" %></label>
@@ -26,6 +27,12 @@
   setAccessAreaMode(document.querySelector("[data-access-area-mode]:checked")?.value || "subdistricts");
   const subdistrictSearch = document.querySelector("[data-subdistrict-search]");
   const subdistrictOptions = Array.from(document.querySelectorAll("[data-subdistrict-option]"));
+  const selectedSubdistrictCount = document.querySelector("[data-selected-subdistrict-count]");
+  function syncSelectedSubdistrictCount() {
+    if (selectedSubdistrictCount) selectedSubdistrictCount.value = subdistrictOptions.filter(option => option.querySelector("input[type=checkbox]")?.checked).length;
+  }
+  subdistrictOptions.forEach(option => option.querySelector("input[type=checkbox]")?.addEventListener("change", syncSelectedSubdistrictCount));
+  syncSelectedSubdistrictCount();
   let subdistrictSearchTimer;
   let subdistrictFilterVersion = 0;
   function filterSubdistrictOptions(query) {

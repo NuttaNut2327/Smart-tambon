@@ -14,6 +14,8 @@ gem "importmap-rails"
 gem "turbo-rails"
 gem "stimulus-rails"
 gem "roo", "~> 2.10"
+gem "roo-xls", "~> 1.2"
+gem "pdf-reader", "~> 2.13"
 gem "rexml", "~> 3.3"
 gem "rubyzip", "~> 2.3"
 gem "chunky_png", "~> 1.4"
@@ -21,5 +23,6 @@ gem "bootsnap", require: false
 gem "tzinfo-data", platforms: %i[windows jruby]
 
 group :development, :test do
+  gem "minitest", "< 6"
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
 end

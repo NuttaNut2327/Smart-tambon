@@ -9,6 +9,22 @@ Rails.application.routes.draw do
   resources :population_imports, only: :create
   resources :population_datasets, only: :destroy
   resources :population_dashboards, only: :show
+  resources :imported_datasets do
+    resources :records, controller: "imported_dataset_records", only: %i[update destroy]
+    resources :versions, controller: "imported_dataset_versions", only: %i[show create] do
+      get :download, on: :member
+      post :restore, on: :member
+    end
+  end
+  resources :dataset_import_drafts, only: %i[create destroy] do
+    post :manual, on: :collection
+    member do
+      post :validate
+      get :preview
+      post :finalize
+    end
+  end
+  get "dataset_templates/:data_type", to: "data_layers#template", as: :dataset_template
   resources :place_imports, only: :create
   authenticated :user do
     root "dashboard#index", as: :authenticated_root
@@ -28,6 +44,7 @@ Rails.application.routes.draw do
       get :search, on: :collection
     end
     resources :dynamic_layers, only: :index
+    resources :imported_datasets, only: %i[index show]
     resources :water_stations, only: :index
     resource :access_area, only: :show
     resources :places, only: :index do

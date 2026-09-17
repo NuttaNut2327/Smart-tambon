@@ -8,7 +8,8 @@ class UserAccessArea < ApplicationRecord
     {
       type: "Feature",
       id: id,
-      properties: { name_th: name, level: "access_area", source: source },
+      properties: { name_th: name, level: "access_area", source: source,
+                    subdistrict_ids: subdistrict_ids, subdistrict_count: subdistrict_ids.size },
       geometry: boundary && RGeo::GeoJSON.encode(boundary)
     }
   end

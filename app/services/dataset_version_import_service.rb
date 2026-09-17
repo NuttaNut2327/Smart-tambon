@@ -1,0 +1,138 @@
+require "csv"
+
+class DatasetVersionImportService
+  SUPPORTED_EXTENSIONS = %w[.csv .xls .xlsx .pdf].freeze
+  MAX_FILE_SIZE = 20.megabytes
+  MAX_RECORDS = 25_000
+
+  def initialize(dataset:, user:, upload: nil, manual_records: nil, change_note: nil, source_kind: nil,
+                 source_filename: nil, source_content_type: nil, source_content: nil, allow_empty: false,
+                 append_records: false)
+    @dataset = dataset
+    @user = user
+    @upload = upload
+    @manual_records = manual_records
+    @change_note = change_note
+    @source_kind = source_kind || (upload.present? ? "file" : "manual")
+    @source_filename = source_filename
+    @source_content_type = source_content_type
+    @source_content = source_content
+    @allow_empty = allow_empty
+    @append_records = append_records
+  end
+
+  def import!
+    rows = @upload.present? ? rows_from_upload : rows_from_manual
+    rows = current_records + rows if @append_records
+    raise ArgumentError, "นำเข้าได้ไม่เกิน #{MAX_RECORDS.to_fs(:delimited)} รายการต่อ Version" if rows.size > MAX_RECORDS
+    records, errors = normalize(rows)
+    raise ArgumentError, errors.first(20).join(" · ") if errors.any?
+    raise ArgumentError, "ไม่พบข้อมูลสำหรับนำเข้า" if records.empty? && !@allow_empty
+
+    version = @dataset.versions.create!(
+        user_id: @user.id,
+        version_number: @dataset.versions.max(:version_number).to_i + 1,
+        source_kind: @source_kind,
+        source_filename: @source_filename || @upload&.original_filename,
+        source_content_type: @source_content_type || @upload&.content_type,
+        record_count: records.size,
+        validation_summary: { "total" => records.size, "valid" => records.size, "invalid" => 0 },
+        change_note: @change_note.presence
+      )
+    documents = records.each_with_index.map do |record, index|
+      { imported_dataset_version_id: version.id, position: index, payload: record,
+        location: record_location(record), created_at: Time.current }
+    end
+    ImportedDatasetRecord.collection.insert_many(documents) if documents.any?
+    content = @source_content || begin @upload&.rewind; @upload&.read end
+    version.update!(source_file_id: DatasetGridFileStore.upload(version.source_filename, content,
+      content_type: version.source_content_type)) if content.present?
+    @dataset.update!(current_version_id: version.id)
+    version
+  rescue StandardError
+    version&.destroy
+    raise
+  end
+
+  def validate_records(rows)
+    normalize(rows)
+  end
+
+  private
+
+  def rows_from_upload
+    DatasetFilePreviewService.new(@upload).parse![:rows]
+  end
+
+  def rows_from_manual
+    value = @manual_records.is_a?(String) ? JSON.parse(@manual_records) : @manual_records
+    rows = Array(value)
+    rows
+  rescue JSON::ParserError
+    raise ArgumentError, "ข้อมูลที่กรอกไม่อยู่ในรูปแบบที่ถูกต้อง"
+  end
+
+  def current_records
+    Array(@dataset.current_version&.records).map(&:deep_dup)
+  end
+
+  def normalize(rows)
+    errors = []
+    records = rows.each_with_index.filter_map do |raw, index|
+      raw = raw.to_h.stringify_keys
+      normalized = {}
+      @dataset.effective_schema_definition.each do |field|
+        source_value = raw[field["key"]]
+        source_value = raw[field["label"]] if source_value.blank?
+        if field["required"] && source_value.blank?
+          errors << "แถว #{index + 2}: #{field['label']} จำเป็นต้องกรอก"
+        end
+        normalized[field["key"]] = cast(source_value, field["type"])
+      rescue ArgumentError
+        errors << "แถว #{index + 2}: #{field['label']} มีชนิดข้อมูลไม่ถูกต้อง"
+      end
+      validate_location(normalized, index, errors)
+      normalized unless normalized.values.all?(&:blank?)
+    end
+    [records, errors]
+  end
+
+  def cast(value, type)
+    return nil if value.blank?
+    case type
+    when "number" then Float(value)
+    when "integer"
+      number = Float(value)
+      raise ArgumentError unless number.finite? && number == number.to_i
+      number.to_i
+    when "boolean" then ActiveModel::Type::Boolean.new.cast(value)
+    when "date" then Date.parse(value.to_s).iso8601
+    else value.to_s.strip
+    end
+  end
+
+  def validate_location(record, index, errors)
+    return unless @dataset.geometry_type == "point"
+    lat, lon = record["latitude"], record["longitude"]
+    if lat.blank? || lon.blank? || !lat.to_f.between?(-90, 90) || !lon.to_f.between?(-180, 180)
+      errors << "แถว #{index + 2}: พิกัดไม่ถูกต้อง"
+      return
+    end
+    return if @user.system_admin? || point_inside_access_boundary?(lon, lat)
+    errors << "แถว #{index + 2}: พิกัดอยู่นอกพื้นที่รับผิดชอบ"
+  end
+
+  def point_inside_access_boundary?(lon, lat)
+    boundary = @user.access_boundary
+    return false unless boundary
+    sql = ActiveRecord::Base.sanitize_sql_array([
+      "SELECT ST_Covers(?::geography, ST_SetSRID(ST_Point(?, ?), 4326)::geography)", boundary, lon, lat
+    ])
+    ActiveRecord::Base.connection.select_value(sql)
+  end
+
+  def record_location(record)
+    return unless @dataset.geometry_type == "point"
+    [record["longitude"].to_f, record["latitude"].to_f]
+  end
+end

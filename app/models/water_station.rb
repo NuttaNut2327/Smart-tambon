@@ -1,7 +1,9 @@
 class WaterStation < ApplicationRecord
   validates :station_id, :location, presence: true
 
-  scope :inside, ->(boundary) { where("ST_Intersects(water_stations.location, ?)", boundary) }
+  scope :inside, ->(boundary) {
+    where("ST_Intersects(water_stations.location, ST_GeomFromText(?, 4326))", boundary.as_text)
+  }
 
   def as_map_json
     {

@@ -57,7 +57,7 @@ class UsersController < ApplicationController
   end
 
   def access_area_params
-    params.fetch(:access_area, {}).permit(:name, :boundary_file, subdistrict_ids: [])
+    params.fetch(:access_area, {}).permit(:name, :boundary_file, :selected_subdistrict_count, subdistrict_ids: [])
   end
 
   def save_user_and_access_area
@@ -91,12 +91,20 @@ class UsersController < ApplicationController
     end
 
     submitted_ids = Array(access_area_params[:subdistrict_ids]).reject(&:blank?)
+    submitted_ids = submitted_ids.map { |id| Integer(id.to_s, 10) }.uniq
     selected_ids = submitted_ids.presence || [@user.subdistrict_id]
     mode = params[:access_area_mode].presence || "subdistricts"
     raise ArgumentError, "กรุณาแนบไฟล์ขอบเขต" if mode == "file" && access_area_params[:boundary_file].blank?
     raise ArgumentError, "กรุณาเลือกตำบลอย่างน้อย 1 ตำบล" if mode == "subdistricts" && submitted_ids.blank?
+    expected_count = Integer(access_area_params[:selected_subdistrict_count].presence || submitted_ids.size)
+    if mode == "subdistricts" && expected_count != submitted_ids.size
+      raise ArgumentError, "จำนวนตำบลที่ส่งมาไม่ครบ (เลือก #{expected_count} แต่ได้รับ #{submitted_ids.size}) กรุณาเลือกใหม่แล้วบันทึกอีกครั้ง"
+    end
 
-    UserAccessAreaService.new(user: @user, name: access_area_params[:name], subdistrict_ids: selected_ids, boundary_file: access_area_params[:boundary_file]).save!
+    area = UserAccessAreaService.new(user: @user, name: access_area_params[:name], subdistrict_ids: selected_ids, boundary_file: access_area_params[:boundary_file]).save!
+    if mode == "subdistricts" && area.subdistrict_ids.map(&:to_i).sort != submitted_ids.sort
+      raise ArgumentError, "บันทึกรายการตำบลไม่ครบ กรุณาลองอีกครั้ง"
+    end
     true
   rescue ActiveRecord::RecordInvalid, ArgumentError => error
     @user.errors.add(:base, error.message)

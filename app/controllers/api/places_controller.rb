@@ -140,11 +140,13 @@ module Api
     end
 
     def access_area_cache_key(access_area_id, category)
-      ["access_area", access_area_id, category].join(":")
+      area = UserAccessArea.find(access_area_id)
+      ["access_area", access_area_id, area.updated_at.to_i, category].join(":")
     end
 
     def selected_subdistrict
-      return current_user.subdistrict unless global_viewer?
+      return current_user.subdistrict if !global_viewer? && current_user.access_area.blank?
+      return unless global_viewer?
 
       code = params[:area].to_s
       return if code.blank?
@@ -159,9 +161,7 @@ module Api
     end
 
     def selected_access_area
-      return if global_viewer? || current_user.access_area&.source == "subdistricts"
-
-      current_user.access_area
+      current_user.access_area unless global_viewer?
     end
 
     def province_center(province)
@@ -268,12 +268,7 @@ module Api
       boundary = current_user.access_boundary
       return [] unless boundary
 
-      point_factory = boundary.factory
-      Array(places).select do |place|
-        lon = Float(place["lon"], exception: false)
-        lat = Float(place["lat"], exception: false)
-        lon && lat && boundary.contains?(point_factory.point(lon, lat))
-      end
+      AccessBoundaryPointFilter.new(boundary).filter(places) { |place| [place["lon"], place["lat"]] }
     end
 
     def fetch_places_page(tag, lon, lat, query_span, query_area, offset)
@@ -356,7 +351,8 @@ module Api
         elsif province
           { "type" => "province", "province_id" => province.id, "province_code" => province.code }
         elsif access_area
-          { "type" => "access_area", "access_area_id" => access_area.id }
+          { "type" => "access_area", "access_area_id" => access_area.id,
+            "source" => access_area.source, "subdistrict_ids" => access_area.subdistrict_ids }
         else
           { "type" => "nearby" }
         end

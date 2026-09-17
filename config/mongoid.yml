@@ -5,9 +5,8 @@ development:
 test:
   clients:
     default:
-      uri: <%= ENV.fetch("MONGODB_URI", "mongodb://localhost:27017/smart_city_test") %>
+      uri: <%= ENV.fetch("MONGODB_TEST_URI") { ENV.fetch("MONGODB_URI", "mongodb://localhost:27017/smart_city_development").sub(%r{/[^/?]+(?=\?|$)}, "/smart_city_test") } %>
 production:
   clients:
     default:
       uri: <%= ENV.fetch("MONGODB_URI") %>
-
