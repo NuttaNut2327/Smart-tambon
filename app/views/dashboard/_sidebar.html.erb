@@ -10,12 +10,12 @@
   <div class="scope-summary"><small>ขอบเขตการดูแล</small><div><b><%= current_user.system_admin? ? "ทุกพื้นที่ทั่วประเทศ" : sidebar_initial_area %></b><% if sidebar_local_admin %><button type="button" class="scope-name-edit" data-area-name-edit aria-label="แก้ไขชื่อขอบเขตพื้นที่" title="แก้ไขชื่อขอบเขตพื้นที่">✎</button><% end %></div></div>
   <div class="sidebar-menu-label">เมนูหลัก</div>
   <nav class="primary-nav" aria-label="เมนูหลัก">
-    <%= link_to root_path, class: "primary-nav-item #{'active' if active_nav == :overview}", data: { turbo: false } do %><span>⌂</span>ภาพรวมเมือง<% end %>
-    <%= link_to area_analysis_path, class: "primary-nav-item #{'active' if active_nav == :analysis}", data: { turbo: false } do %><span>⌖</span>แผนที่และชั้นข้อมูล<% end %>
-    <%= link_to disasters_path, class: "primary-nav-item #{'active' if active_nav == :disasters}", data: { turbo: false } do %><span>!</span>ภัยพิบัติและเหตุการณ์ <em>3</em><% end %>
-    <%= link_to resource_rules_path, class: "primary-nav-item #{'active' if active_nav == :resource_rules}", data: { turbo: false } do %><span>▥</span>กฎการประเมินทรัพยากร<% end %>
-    <%= link_to data_layers_path, class: "primary-nav-item #{'active' if active_nav == :data_layers}", data: { turbo: false } do %><span>⇧</span>นำเข้าข้อมูล<% end %>
-    <% if system_admin? %><%= link_to users_path, class: "primary-nav-item" do %><span>♙</span>จัดการบัญชี<% end %><% end %>
+    <%= link_to root_path, class: "primary-nav-item #{'active' if active_nav == :overview}", data: { turbo: false } do %><span class="material-symbols-outlined">home</span>ภาพรวมเมือง<% end %>
+    <%= link_to area_analysis_path, class: "primary-nav-item #{'active' if active_nav == :analysis}", data: { turbo: false } do %><span class="material-symbols-outlined">map</span>แผนที่และชั้นข้อมูล<% end %>
+    <%= link_to disasters_path, class: "primary-nav-item #{'active' if active_nav == :disasters}", data: { turbo: false } do %><span class="material-symbols-outlined">warning</span>ภัยพิบัติและเหตุการณ์<% if pending_incident_count.positive? %><em class="nav-alert-count"><%= pending_incident_count %></em><% end %><% end %>
+    <%= link_to resource_rules_path, class: "primary-nav-item #{'active' if active_nav == :resource_rules}", data: { turbo: false } do %><span class="material-symbols-outlined">rule</span>กฎการประเมินทรัพยากร<% end %>
+    <%= link_to data_layers_path, class: "primary-nav-item #{'active' if active_nav == :data_layers}", data: { turbo: false } do %><span class="material-symbols-outlined">upload</span>นำเข้าข้อมูล<% end %>
+    <% if system_admin? %><%= link_to users_path, class: "primary-nav-item" do %><span class="material-symbols-outlined">manage_accounts</span>จัดการบัญชี<% end %><% end %>
   </nav>
   <% unless sidebar_local_account %><div class="sidebar-search area-search-wrap"><label class="search"><span>⌕</span><input id="area-search" type="search" placeholder="ค้นหาจังหวัดหรือ ตำบล" autocomplete="off" aria-controls="area-search-results" aria-expanded="false"></label><div id="area-search-results" class="area-search-results" role="listbox" hidden></div></div><% end %>
   <% if sidebar_local_account %>

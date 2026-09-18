@@ -6,6 +6,12 @@ Rails.application.routes.draw do
   get "map", to: "dashboard#map", as: :map
   get "area_analysis", to: "dashboard#area_analysis", as: :area_analysis
   get "disasters", to: "dashboard#disasters", as: :disasters
+  post "incidents", to: "incidents#create", as: :incidents
+  patch "incidents/:id", to: "incidents#update", as: :incident
+  post "incidents/:id/progress", to: "incidents#add_progress", as: :incident_progress
+  post "incidents/:id/assessments", to: "incidents#assess", as: :incident_assessments
+  patch "incidents/:id/activate_plan", to: "incidents#activate_plan", as: :activate_incident_plan
+  patch "incidents/:id/acknowledge", to: "incidents#acknowledge", as: :acknowledge_incident
   get "resource_rules", to: "dashboard#resource_rules", as: :resource_rules
   post "resource_rules", to: "resource_rules#create"
   patch "resource_rules/:id", to: "resource_rules#update", as: :resource_rule

@@ -1,0 +1,165 @@
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("[data-open-incident-dialog]").forEach((button) => {
+    button.addEventListener("click", () => document.getElementById(button.dataset.openIncidentDialog)?.showModal());
+  });
+  document.querySelectorAll("[data-close-incident-dialog]").forEach((button) => {
+    button.addEventListener("click", () => button.closest("dialog")?.close());
+  });
+  document.querySelectorAll("dialog.incident-dialog").forEach((dialog) => {
+    dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
+  });
+
+  if (window.ol) {
+    const importantPlaceCategories = ["government", "education", "health", "culture", "tourism", "transport", "service", "emergency"];
+    const importantPlaceColors = { government: "#2563eb", education: "#d99000", health: "#e11d48", culture: "#7c3aed", tourism: "#ea580c", transport: "#0891b2", service: "#db2777", emergency: "#dc2626", imported: "#059669" };
+    const importantPlacesPromise = Promise.all([
+      ...importantPlaceCategories.map((category) => fetch(`/api/places?category=${category}`, { headers: { Accept: "application/json" } })
+        .then((response) => response.ok ? response.json() : { data: [] })
+        .then((payload) => (payload.data || []).map((place) => ({ ...place, category })))
+        .catch(() => [])),
+      fetch("/api/dynamic_layers?layer_key=important_place", { headers: { Accept: "application/json" } })
+        .then((response) => response.ok ? response.json() : [])
+        .then((records) => records.map((record) => ({ name: record.name, lon: record.location?.[0], lat: record.location?.[1], category: "imported" })))
+        .catch(() => [])
+    ]).then((groups) => groups.flat().filter((place) => Number.isFinite(Number(place.lon)) && Number.isFinite(Number(place.lat))).slice(0, 350));
+
+    document.querySelectorAll("[data-incident-location-picker]").forEach((picker) => {
+      const mapElement = picker.querySelector("[data-picker-map]");
+      const latitudeInput = picker.querySelector("[data-picker-latitude]");
+      const longitudeInput = picker.querySelector("[data-picker-longitude]");
+      const coordinateLabel = picker.querySelector("[data-picker-coordinate]");
+      const savedLongitude = Number(mapElement.dataset.longitude);
+      const savedLatitude = Number(mapElement.dataset.latitude);
+      const hasSavedPoint = Number.isFinite(savedLongitude) && Number.isFinite(savedLatitude);
+      const defaultLongitude = Number(mapElement.dataset.defaultLongitude);
+      const defaultLatitude = Number(mapElement.dataset.defaultLatitude);
+      const center = ol.proj.fromLonLat(hasSavedPoint ? [savedLongitude, savedLatitude] : [defaultLongitude, defaultLatitude]);
+      const markerSource = new ol.source.Vector();
+      const markerLayer = new ol.layer.Vector({ source: markerSource });
+      const placesSource = new ol.source.Vector();
+      const placesLayer = new ol.layer.Vector({
+        source: placesSource,
+        declutter: true,
+        style: (feature) => {
+          const place = feature.get("place");
+          const color = importantPlaceColors[place.category] || "#475569";
+          return new ol.style.Style({
+            image: new ol.style.Circle({ radius: 5, fill: new ol.style.Fill({ color }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) }),
+            text: new ol.style.Text({ text: place.name || "สถานที่สำคัญ", offsetY: -13, font: '500 11px "Google Sans", sans-serif', fill: new ol.style.Fill({ color: "#173653" }), stroke: new ol.style.Stroke({ color: "rgba(255,255,255,.95)", width: 3 }), padding: [2, 3, 2, 3] })
+          });
+        }
+      });
+      const boundarySource = new ol.source.Vector();
+      const maskSource = new ol.source.Vector();
+      const boundaryLayer = new ol.layer.Vector({
+        source: boundarySource,
+        style: new ol.style.Style({
+          fill: new ol.style.Fill({ color: "rgba(0, 0, 0, 0)" }),
+          stroke: new ol.style.Stroke({ color: "#176fe5", width: 2.5 })
+        })
+      });
+      const maskLayer = new ol.layer.Vector({
+        source: maskSource,
+        style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(12, 29, 48, 0.58)" }) })
+      });
+      let accessBoundary = null;
+
+      const setMarker = (longitude, latitude) => {
+        markerSource.clear();
+        const marker = new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([longitude, latitude])));
+        marker.setStyle(new ol.style.Style({
+          image: new ol.style.Circle({ radius: 8, fill: new ol.style.Fill({ color: "#176fe5" }), stroke: new ol.style.Stroke({ color: "#ffffff", width: 3 }) })
+        }));
+        markerSource.addFeature(marker);
+        latitudeInput.value = latitude.toFixed(6);
+        longitudeInput.value = longitude.toFixed(6);
+        coordinateLabel.textContent = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+      };
+
+      const pickerMap = new ol.Map({
+        target: mapElement,
+        layers: [new ol.layer.Tile({ source: new ol.source.OSM() }), maskLayer, boundaryLayer, placesLayer, markerLayer],
+        view: new ol.View({ center, zoom: hasSavedPoint ? 15 : 12 }),
+        controls: []
+      });
+      if (hasSavedPoint) setMarker(savedLongitude, savedLatitude);
+      pickerMap.on("click", (event) => {
+        if (accessBoundary && !accessBoundary.intersectsCoordinate(event.coordinate)) {
+          coordinateLabel.textContent = "กรุณาปักหมุดภายในขอบเขตพื้นที่ที่ดูแล";
+          return;
+        }
+        const [longitude, latitude] = ol.proj.toLonLat(event.coordinate);
+        setMarker(longitude, latitude);
+      });
+
+      fetch("/api/access_area", { headers: { Accept: "application/json" } })
+        .then((response) => {
+          if (!response.ok) throw new Error("boundary unavailable");
+          return response.json();
+        })
+        .then((data) => {
+          const boundaryFeature = new ol.format.GeoJSON().readFeature(data, { featureProjection: "EPSG:3857" });
+          accessBoundary = boundaryFeature.getGeometry();
+          boundarySource.addFeature(boundaryFeature);
+
+          const world = ol.geom.Polygon.fromExtent(ol.proj.get("EPSG:3857").getExtent());
+          const polygons = accessBoundary.getType() === "Polygon" ? [accessBoundary] : accessBoundary.getPolygons();
+          polygons.forEach((polygon) => world.appendLinearRing(new ol.geom.LinearRing(polygon.getCoordinates()[0])));
+          maskSource.addFeature(new ol.Feature(world));
+
+          importantPlacesPromise.then((places) => {
+            places.filter((place) => accessBoundary.intersectsCoordinate(ol.proj.fromLonLat([Number(place.lon), Number(place.lat)]))).forEach((place) => {
+              placesSource.addFeature(new ol.Feature({ geometry: new ol.geom.Point(ol.proj.fromLonLat([Number(place.lon), Number(place.lat)])), place }));
+            });
+          });
+
+          if (!hasSavedPoint) pickerMap.getView().fit(accessBoundary.getExtent(), { padding: [24, 24, 24, 24], maxZoom: 16, duration: 250 });
+        })
+        .catch(() => {
+          coordinateLabel.textContent = "ไม่สามารถโหลดขอบเขตพื้นที่ได้ กรุณาลองเปิดฟอร์มใหม่";
+        });
+      picker.closest("form")?.addEventListener("submit", (event) => {
+        if (latitudeInput.value && longitudeInput.value) return;
+        event.preventDefault();
+        coordinateLabel.textContent = "กรุณาคลิกปักหมุดสถานที่เกิดเหตุบนแผนที่";
+        coordinateLabel.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      const pickerDialog = picker.closest("dialog");
+      if (pickerDialog) {
+        pickerDialog.addEventListener("toggle", () => setTimeout(() => pickerMap.updateSize(), 0));
+        pickerDialog._incidentPickerMaps ||= [];
+        pickerDialog._incidentPickerMaps.push(pickerMap);
+      }
+    });
+
+    document.querySelectorAll("[data-open-incident-dialog]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const dialog = document.getElementById(button.dataset.openIncidentDialog);
+        setTimeout(() => dialog?._incidentPickerMaps?.forEach((map) => map.updateSize()), 50);
+      });
+    });
+  }
+
+  const element = document.querySelector("[data-incident-map]");
+  if (!element || !window.ol) return;
+
+  const longitude = Number(element.dataset.longitude);
+  const latitude = Number(element.dataset.latitude);
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return;
+
+  const point = ol.proj.fromLonLat([longitude, latitude]);
+  const marker = new ol.Feature(new ol.geom.Point(point));
+  marker.setStyle(new ol.style.Style({
+    image: new ol.style.Circle({ radius: 7, fill: new ol.style.Fill({ color: "#176fe5" }), stroke: new ol.style.Stroke({ color: "#ffffff", width: 3 }) })
+  }));
+
+  new ol.Map({
+    target: element,
+    layers: [
+      new ol.layer.Tile({ source: new ol.source.OSM() }),
+      new ol.layer.Vector({ source: new ol.source.Vector({ features: [marker] }) })
+    ],
+    view: new ol.View({ center: point, zoom: 15 }),
+    controls: []
+  });
+});

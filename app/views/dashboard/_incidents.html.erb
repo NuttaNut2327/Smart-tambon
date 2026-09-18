@@ -1,0 +1,105 @@
+<% status_labels = { "pending" => "รอรับเรื่อง", "acknowledged" => "รับเรื่องแล้ว", "assessing" => "กำลังประเมิน", "in_progress" => "กำลังดำเนินการ", "completed" => "เสร็จสิ้น" } %>
+<% severity_labels = { "watch" => "เฝ้าระวัง", "urgent" => "เร่งด่วน", "critical" => "วิกฤต" } %>
+<% total_count = @incidents.size %>
+
+<section class="incident-page" data-incident-page>
+  <div class="incident-page-heading">
+    <div><p class="page-kicker">ศูนย์รับแจ้งเหตุประชาชน</p><h1>ติดตามสถานะเหตุการณ์</h1><p>ดูรายละเอียด ตำแหน่ง การดำเนินงาน แผนรับมือ และทรัพยากรของแต่ละเหตุ</p></div>
+    <button type="button" class="incident-primary-action" data-open-incident-dialog="new-incident-dialog"><span class="material-symbols-outlined">add</span>บันทึกเหตุการณ์ใหม่</button>
+  </div>
+
+  <% if notice %><div class="incident-flash success"><%= notice %></div><% end %>
+  <% if alert %><div class="incident-flash error"><%= alert %></div><% end %>
+
+  <section class="incident-summary-grid" aria-label="สรุปจำนวนเหตุการณ์">
+    <article class="summary-total"><span class="material-symbols-outlined">dataset</span><div><small>เหตุการณ์ทั้งหมด</small><strong><%= @incident_summary[:total] %></strong></div></article>
+    <article class="summary-pending"><span class="material-symbols-outlined">hourglass_top</span><div><small>เหตุการณ์ที่รอรับเรื่อง</small><strong><%= @incident_summary[:pending] %></strong></div></article>
+    <article class="summary-progress"><span class="material-symbols-outlined">pending_actions</span><div><small>เหตุการณ์กำลังดำเนินการ</small><strong><%= @incident_summary[:in_progress] %></strong></div></article>
+    <article class="summary-completed"><span class="material-symbols-outlined">task_alt</span><div><small>เหตุการณ์เสร็จสิ้น</small><strong><%= @incident_summary[:completed] %></strong></div></article>
+  </section>
+
+  <nav class="incident-category-tabs" aria-label="ประเภทการแจ้งเหตุ">
+    <%= link_to disasters_path, class: ("active" if @incident_category.blank?) do %><span class="material-symbols-outlined">layers</span><b>เหตุการณ์ทั้งหมด</b><small><%= total_count %></small><% end %>
+    <%= link_to disasters_path(category: "disaster"), class: ("active" if @incident_category == "disaster") do %><span class="material-symbols-outlined">warning</span><b>แจ้งเตือนภัยพิบัติ</b><% end %>
+    <%= link_to disasters_path(category: "general"), class: ("active" if @incident_category == "general") do %><span class="material-symbols-outlined">campaign</span><b>เหตุการณ์ทั่วไป</b><% end %>
+  </nav>
+
+  <% if @incidents.empty? %>
+    <section class="incident-empty"><span class="material-symbols-outlined">notifications</span><h2>ยังไม่มีเหตุการณ์ที่ประชาชนแจ้งเข้ามา</h2><p>รายการใหม่จะแสดงที่หน้านี้เมื่อระบบได้รับข้อมูลแจ้งเหตุ</p></section>
+  <% else %>
+    <div class="incident-layout">
+      <aside class="incident-list-panel">
+        <div class="incident-list-title"><b>รายการรับแจ้ง</b><span><%= total_count %> รายการ</span></div>
+        <div class="incident-list">
+          <% @incidents.each do |incident| %>
+            <%= link_to disasters_path(category: @incident_category, incident_id: incident.id), class: "incident-list-card incident-severity-#{incident.severity} #{'active' if incident == @selected_incident}" do %>
+              <div><small><%= incident.reference_code %></small><em class="severity-<%= incident.severity %>"><%= severity_labels[incident.severity] %></em></div>
+              <strong><%= incident.title %></strong>
+              <p><span class="material-symbols-outlined">location_on</span><%= incident.location_name.presence || "ไม่ระบุตำแหน่ง" %></p>
+              <footer><span><%= incident.category_label %></span><b><%= status_labels[incident.status] %></b></footer>
+            <% end %>
+          <% end %>
+        </div>
+      </aside>
+
+      <% incident = @selected_incident %>
+      <article class="incident-detail-panel">
+        <header class="incident-detail-header">
+          <div><small><%= incident.category_label %> · <%= incident.reference_code %></small><div class="incident-title-row"><h2><%= incident.title %></h2><em class="severity-<%= incident.severity %>"><%= severity_labels[incident.severity] %></em></div><p><span class="material-symbols-outlined">location_on</span><%= incident.location_name.presence || "ไม่ระบุตำแหน่ง" %> · รับแจ้ง <%= thai_short_datetime(incident.created_at) %></p></div>
+          <div class="incident-header-actions">
+            <button type="button" class="incident-secondary-action" data-open-incident-dialog="edit-incident-dialog"><span class="material-symbols-outlined">edit</span>แก้ไขข้อมูล</button>
+            <% if incident.status == "pending" %><button type="button" class="incident-acknowledge-button" data-open-incident-dialog="acknowledge-incident-dialog">รับเรื่อง</button><% end %>
+          </div>
+        </header>
+
+        <section class="incident-status-strip">
+          <div><small>สถานะการทำงาน</small><b><%= status_labels[incident.status] %></b></div>
+          <div><small>ผู้รับผิดชอบ</small><b><%= incident.assigned_to.presence || "ยังไม่ได้มอบหมาย" %></b></div>
+          <div><small>ผู้รับเรื่อง</small><b><%= incident.received_by.presence || "ยังไม่มีผู้รับเรื่อง" %></b></div>
+          <div><small>อัปเดตล่าสุด</small><b><%= thai_short_datetime(incident.updated_at) %></b></div>
+          <div class="incident-work-actions"><button type="button" class="incident-primary-action compact" data-open-incident-dialog="progress-incident-dialog">อัปเดตการทำงาน</button><button type="button" class="incident-secondary-action compact" data-open-incident-dialog="assess-incident-dialog">ประเมินสถานการณ์</button></div>
+        </section>
+
+        <div class="incident-information-grid">
+          <section class="incident-card">
+            <h3>รายละเอียดเหตุการณ์</h3>
+            <p><%= incident.description.presence || "ไม่มีรายละเอียดเพิ่มเติม" %></p>
+            <dl><div><dt>ผู้แจ้งเหตุ</dt><dd><%= incident.reporter_name.presence || "ไม่ระบุ" %></dd></div><div><dt>เบอร์ติดต่อ</dt><dd><%= incident.reporter_contact.presence || "ไม่ระบุ" %></dd></div><div><dt>ผลกระทบเบื้องต้น</dt><dd><%= incident.initial_impact.presence || (incident.affected_people.to_i.positive? || incident.affected_households.to_i.positive? ? "ประชาชน #{incident.affected_people} คน · #{incident.affected_households} ครัวเรือน" : "ยังไม่มีข้อมูล") %></dd></div></dl>
+          </section>
+          <section class="incident-card incident-location-card">
+            <h3>ตำแหน่งเหตุการณ์</h3>
+            <% if incident.longitude.present? && incident.latitude.present? %>
+              <div class="incident-mini-map" data-incident-map data-longitude="<%= incident.longitude %>" data-latitude="<%= incident.latitude %>" aria-label="แผนที่ตำแหน่งเหตุการณ์"></div>
+              <p><%= incident.latitude %>, <%= incident.longitude %></p>
+            <% else %><div class="incident-location-empty">ยังไม่มีพิกัดตำแหน่ง</div><% end %>
+          </section>
+        </div>
+
+        <% if incident.response_plan_versions.any? %>
+          <section class="incident-card incident-plan-card">
+            <div class="incident-card-heading"><div><h3>แผนรับมือของเหตุการณ์นี้</h3><p>เลือกดูแต่ละ Version และกำหนด Version ที่ต้องการนำไปใช้</p></div></div>
+            <nav class="incident-plan-tabs">
+              <% incident.response_plan_versions.sort_by { |version| -version["version"].to_i }.each do |version| %>
+                <%= link_to disasters_path(category: @incident_category, incident_id: incident.id, plan_version: version["version"]), class: "#{'active' if version == @selected_plan}" do %>
+                  <b>v<%= version["version"] %> <%= "ใช้งานปัจจุบัน" if version["version"].to_i == incident.active_plan_version.to_i %></b><small><%= version["title"].presence || "แผนรับมือ" %></small>
+                <% end %>
+              <% end %>
+            </nav>
+            <% if @selected_plan %>
+              <div class="incident-plan-summary"><div><small>ประชากรที่ได้รับผลกระทบ</small><b><%= @selected_plan["affected_people"].to_i %> คน</b></div><div><small>งบประมาณ</small><b><%= number_with_delimiter(@selected_plan["budget"].to_i) %> บาท</b></div><div><small>วันที่ประเมิน</small><b><%= @selected_plan["assessed_at"].presence || "ไม่ระบุ" %></b></div></div>
+              <% plan_resources = Array(@selected_plan["resources"]) %>
+              <div class="incident-plan-resources"><table><thead><tr><th>ทรัพยากรตามแผน</th><th>ต้องใช้</th><th>มีพร้อมใช้</th><th>ผลประเมิน</th></tr></thead><tbody><% plan_resources.each do |resource| %><tr><td><%= resource["name"] %></td><td><%= resource["required"] %> <%= resource["unit"] %></td><td><%= resource["available"] %> <%= resource["unit"] %></td><td><span class="<%= resource["available"].to_f >= resource["required"].to_f ? 'enough' : 'shortage' %>"><%= resource["available"].to_f >= resource["required"].to_f ? "เพียงพอ" : "ไม่เพียงพอ" %></span></td></tr><% end %></tbody></table></div>
+              <% unless @selected_plan["version"].to_i == incident.active_plan_version.to_i %><%= button_to "เลือกใช้ Version นี้", activate_incident_plan_path(incident), method: :patch, params: { version: @selected_plan["version"] }, class: "incident-use-plan" %><% end %>
+            <% end %>
+          </section>
+        <% end %>
+
+        <section class="incident-card incident-history-card"><div class="incident-card-heading"><div><h3>ประวัติการดำเนินงาน</h3><p>ลำดับการรับเรื่อง การประเมิน และการปฏิบัติงาน</p></div></div><ol><% Array(incident.histories).sort_by { |item| item["occurred_at"].to_s }.reverse_each do |history| %><li><div><b><%= history["title"] %></b><p><%= history["description"] %></p><% Array(history["resources"]).each do |resource| %><span><%= resource["name"] %> <%= resource["quantity"] %> <%= resource["unit"] %></span><% end %></div><time><%= history["occurred_at"] %><small><%= history["actor"] %></small></time></li><% end %><% if incident.histories.empty? %><li class="empty">ยังไม่มีประวัติการดำเนินงาน</li><% end %></ol></section>
+
+        <section class="incident-card incident-resources-card"><div class="incident-card-heading"><div><h3>สรุปทรัพยากรที่ใช้ในเหตุการณ์</h3><p>ยอดสะสมจากประวัติการดำเนินงาน</p></div><b><%= incident.resources_used.size %> รายการ</b></div><div class="incident-resource-list"><% Array(incident.resources_used).each do |resource| %><article><span class="material-symbols-outlined">inventory_2</span><div><b><%= resource["name"] %></b><small><%= resource["note"] %></small></div><strong>ใช้แล้ว <%= resource["quantity"] %> <%= resource["unit"] %></strong></article><% end %><% if incident.resources_used.empty? %><p>ยังไม่มีการบันทึกทรัพยากรที่ใช้</p><% end %></div></section>
+      </article>
+    </div>
+  <% end %>
+
+  <%= render "dashboard/incident_dialogs", incident: @selected_incident %>
+</section>

@@ -1,0 +1,80 @@
+<dialog id="new-incident-dialog" class="incident-dialog">
+  <%= form_with url: incidents_path, method: :post, scope: :incident, local: true do |form| %>
+    <header><div><small>จัดการเหตุการณ์</small><h2>บันทึกเหตุการณ์ใหม่</h2></div><button type="button" data-close-incident-dialog aria-label="ปิด">×</button></header>
+    <div class="incident-form-grid">
+      <label>ชื่อเหตุการณ์<%= form.text_field :title, required: true %></label>
+      <label>หมวดเหตุการณ์<%= form.select :category, [["แจ้งเตือนภัยพิบัติ", "disaster"], ["เหตุการณ์ทั่วไป", "general"]] %></label>
+      <label>ประเภทเหตุการณ์<%= form.text_field :incident_type, placeholder: "เช่น น้ำท่วม ไฟป่า ถนนชำรุด" %></label>
+      <label>ระดับความรุนแรง<%= form.select :severity, [["เฝ้าระวัง", "watch"], ["เร่งด่วน", "urgent"], ["วิกฤต", "critical"]] %></label>
+      <label class="wide">รายละเอียด<%= form.text_area :description, rows: 3 %></label>
+      <label>ผู้แจ้งเหตุ<%= form.text_field :reporter_name %></label><label>เบอร์ติดต่อ<%= form.text_field :reporter_contact %></label>
+      <div class="wide incident-location-picker" data-incident-location-picker>
+        <div><b>สถานที่เกิดเหตุ</b></div>
+        <div class="incident-picker-map" data-picker-map data-default-longitude="100.9246" data-default-latitude="19.4028"></div>
+        <p data-picker-coordinate>คลิกบนแผนที่เพื่อปักหมุดตำแหน่ง</p>
+        <%= form.hidden_field :location_name, value: "ตำแหน่งที่ปักหมุดบนแผนที่", data: { picker_location: true } %>
+        <%= form.hidden_field :latitude, data: { picker_latitude: true } %>
+        <%= form.hidden_field :longitude, data: { picker_longitude: true } %>
+      </div>
+      <label class="wide">ผลกระทบเบื้องต้น<%= form.text_area :initial_impact, rows: 4, placeholder: "ระบุผลกระทบต่อประชาชน บ้านเรือน การเดินทาง หรือทรัพย์สิน" %></label>
+    </div>
+    <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "บันทึกเหตุการณ์", class: "incident-primary-action" %></footer>
+  <% end %>
+</dialog>
+
+<% if incident %>
+  <dialog id="edit-incident-dialog" class="incident-dialog">
+    <%= form_with url: incident_path(incident), method: :patch, scope: :incident, local: true do |form| %>
+      <header><div><small><%= incident.reference_code %></small><h2>แก้ไขข้อมูลเหตุการณ์</h2></div><button type="button" data-close-incident-dialog>×</button></header>
+      <div class="incident-form-grid">
+        <label>ชื่อเหตุการณ์<%= form.text_field :title, value: incident.title, required: true %></label>
+        <label>หมวดเหตุการณ์<%= form.select :category, [["แจ้งเตือนภัยพิบัติ", "disaster"], ["เหตุการณ์ทั่วไป", "general"]], selected: incident.category %></label>
+        <label>ประเภทเหตุการณ์<%= form.text_field :incident_type, value: incident.incident_type %></label>
+        <label>ระดับความรุนแรง<%= form.select :severity, [["เฝ้าระวัง", "watch"], ["เร่งด่วน", "urgent"], ["วิกฤต", "critical"]], selected: incident.severity %></label>
+        <label class="wide">ทีมผู้รับผิดชอบ<%= form.select :assigned_to, options_for_select(([incident.assigned_to].compact + @incident_team_options).uniq, incident.assigned_to), { include_blank: "เลือกทีมผู้รับผิดชอบ" } %></label>
+        <label class="wide">รายละเอียด<%= form.text_area :description, value: incident.description, rows: 3 %></label>
+        <label>ผู้แจ้งเหตุ<%= form.text_field :reporter_name, value: incident.reporter_name %></label><label>เบอร์ติดต่อ<%= form.text_field :reporter_contact, value: incident.reporter_contact %></label>
+        <div class="wide incident-location-picker" data-incident-location-picker>
+          <div><b>สถานที่เกิดเหตุ</b></div>
+          <div class="incident-picker-map" data-picker-map data-default-longitude="100.9246" data-default-latitude="19.4028" data-longitude="<%= incident.longitude %>" data-latitude="<%= incident.latitude %>"></div>
+          <p data-picker-coordinate><%= incident.latitude.present? && incident.longitude.present? ? "#{format('%.6f', incident.latitude)}, #{format('%.6f', incident.longitude)}" : "คลิกบนแผนที่เพื่อปักหมุดตำแหน่ง" %></p>
+          <%= form.hidden_field :location_name, value: incident.location_name.presence || "ตำแหน่งที่ปักหมุดบนแผนที่", data: { picker_location: true } %>
+          <%= form.hidden_field :latitude, value: incident.latitude, data: { picker_latitude: true } %>
+          <%= form.hidden_field :longitude, value: incident.longitude, data: { picker_longitude: true } %>
+        </div>
+        <label class="wide">ผลกระทบเบื้องต้น<%= form.text_area :initial_impact, value: incident.initial_impact, rows: 4, placeholder: "ระบุผลกระทบต่อประชาชน บ้านเรือน การเดินทาง หรือทรัพย์สิน" %></label>
+      </div>
+      <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "บันทึกการแก้ไข", class: "incident-primary-action" %></footer>
+    <% end %>
+  </dialog>
+
+  <% if incident.status == "pending" %>
+    <dialog id="acknowledge-incident-dialog" class="incident-dialog small">
+      <%= form_with url: acknowledge_incident_path(incident), method: :patch, scope: :incident, local: true do |form| %>
+        <header><div><small><%= incident.reference_code %></small><h2>รับเรื่องเหตุการณ์</h2></div><button type="button" data-close-incident-dialog>×</button></header>
+        <div class="incident-form-grid">
+          <div class="wide incident-receiver-summary"><small>บัญชีผู้รับเรื่อง</small><strong><%= current_user.username %></strong><p>ระบบจะบันทึกชื่อบัญชีและเวลาที่รับเรื่องโดยอัตโนมัติ</p></div>
+          <label class="wide">ทีมผู้รับผิดชอบ<%= form.select :assigned_to, options_for_select(@incident_team_options), { include_blank: "เลือกทีมผู้รับผิดชอบ" }, required: true %></label>
+          <% if @incident_team_options.empty? %><p class="wide incident-form-warning">ยังไม่มีข้อมูลทีมงาน กรุณานำเข้าข้อมูลทีมงานและกำลังคนก่อนรับเรื่อง</p><% end %>
+        </div>
+        <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "ยืนยันรับเรื่อง", class: "incident-primary-action", disabled: @incident_team_options.empty? %></footer>
+      <% end %>
+    </dialog>
+  <% end %>
+
+  <dialog id="progress-incident-dialog" class="incident-dialog small">
+    <%= form_with url: incident_progress_path(incident), method: :post, scope: :progress, local: true do |form| %>
+      <header><div><small><%= incident.reference_code %></small><h2>อัปเดตการทำงาน</h2></div><button type="button" data-close-incident-dialog>×</button></header>
+      <div class="incident-form-grid"><label>สถานะ<%= form.select :status, [["รับเรื่องแล้ว", "acknowledged"], ["กำลังประเมิน", "assessing"], ["กำลังดำเนินการ", "in_progress"], ["เสร็จสิ้น", "completed"]], selected: incident.status %></label><label>ผู้รับผิดชอบ<%= form.text_field :assigned_to, value: incident.assigned_to %></label><label class="wide">หัวข้อการอัปเดต<%= form.text_field :title, required: true %></label><label class="wide">รายละเอียดการดำเนินงาน<%= form.text_area :description, rows: 4 %></label></div>
+      <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "บันทึกการทำงาน", class: "incident-primary-action" %></footer>
+    <% end %>
+  </dialog>
+
+  <dialog id="assess-incident-dialog" class="incident-dialog small">
+    <%= form_with url: incident_assessments_path(incident), method: :post, scope: :assessment, local: true do |form| %>
+      <header><div><small><%= incident.reference_code %></small><h2>ประเมินสถานการณ์</h2></div><button type="button" data-close-incident-dialog>×</button></header>
+      <div class="incident-form-grid"><label class="wide">ชื่อแผนรับมือ Version ใหม่<%= form.text_field :title, placeholder: "เช่น ปรับแผนตามระดับน้ำล่าสุด" %></label><label>ประชากรที่ได้รับผลกระทบ<%= form.number_field :affected_people, value: incident.affected_people, min: 0 %></label><label>งบประมาณ (บาท)<%= form.number_field :budget, min: 0 %></label><label class="wide">ทรัพยากรที่ต้องใช้<%= form.text_area :resource_lines, rows: 5, placeholder: "หนึ่งรายการต่อหนึ่งบรรทัด เช่น\nเรือท้องแบน | 4 | 3 | ลำ\nเจ้าหน้าที่ | 18 | 30 | คน" %><small>รูปแบบ: ชื่อ | ต้องใช้ | มีพร้อมใช้ | หน่วย</small></label><label class="wide checkbox"><%= form.check_box :activate %> ใช้ Version นี้ทันทีหลังบันทึก</label></div>
+      <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "บันทึกผลประเมิน", class: "incident-primary-action" %></footer>
+    <% end %>
+  </dialog>
+<% end %>

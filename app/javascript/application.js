@@ -1311,6 +1311,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (!place) {
       popupElement.hidden=true; popup.setPosition(undefined);
+      if (currentUserRole === "subdistrict_admin") return;
       const subdistrict = map.forEachFeatureAtPixel(event.pixel,item => item,{
         layerFilter:layer => layer === siblingBoundaries
       });
