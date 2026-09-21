@@ -3,7 +3,8 @@ class Incident
   include Mongoid::Timestamps
 
   CATEGORIES = %w[disaster general].freeze
-  STATUSES = %w[pending acknowledged assessing in_progress completed].freeze
+  DISASTER_INCIDENT_TYPES = ["น้ำท่วม", "ไฟป่า", "วาตภัย", "ภัยแล้ง", "อื่น ๆ"].freeze
+  STATUSES = %w[pending assessing in_progress completed].freeze
   SEVERITIES = %w[watch urgent critical].freeze
 
   field :user_id, type: Integer

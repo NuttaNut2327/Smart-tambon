@@ -4,8 +4,29 @@ module ApplicationHelper
   def thai_short_datetime(value)
     return "—" if value.blank?
 
-    time = value.in_time_zone
+    time = value.in_time_zone("Asia/Bangkok")
     "#{time.day} #{THAI_SHORT_MONTHS[time.month - 1]} #{time.year + 543} #{time.strftime('%H:%M')} น."
+  end
+
+  def thai_numeric_datetime(value)
+    return "—" if value.blank?
+
+    value.in_time_zone("Asia/Bangkok").strftime("%d/%m/%Y %H:%M")
+  end
+
+  def thai_incident_datetime(value)
+    return "—" if value.blank?
+    return value.in_time_zone("Asia/Bangkok").strftime("%d/%m/%Y %H:%M") unless value.is_a?(String)
+
+    time = if value.match?(%r{\A\d{2}/\d{2}/\d{4} \d{2}:\d{2}\z})
+      # Incident history used to be stored as a UTC string without an offset.
+      Time.find_zone!("UTC").strptime(value, "%d/%m/%Y %H:%M")
+    else
+      Time.zone.parse(value)
+    end
+    time&.in_time_zone("Asia/Bangkok")&.strftime("%d/%m/%Y %H:%M") || value
+  rescue ArgumentError, TypeError
+    value
   end
 
   def pending_incident_count

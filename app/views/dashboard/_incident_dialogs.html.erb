@@ -3,8 +3,9 @@
     <header><div><small>จัดการเหตุการณ์</small><h2>บันทึกเหตุการณ์ใหม่</h2></div><button type="button" data-close-incident-dialog aria-label="ปิด">×</button></header>
     <div class="incident-form-grid">
       <label>ชื่อเหตุการณ์<%= form.text_field :title, required: true %></label>
-      <label>หมวดเหตุการณ์<%= form.select :category, [["แจ้งเตือนภัยพิบัติ", "disaster"], ["เหตุการณ์ทั่วไป", "general"]] %></label>
-      <label>ประเภทเหตุการณ์<%= form.text_field :incident_type, placeholder: "เช่น น้ำท่วม ไฟป่า ถนนชำรุด" %></label>
+      <label>หมวดเหตุการณ์<%= form.select :category, [["แจ้งเตือนภัยพิบัติ", "disaster"], ["เหตุการณ์ทั่วไป", "general"]], {}, data: { incident_category_select: true } %></label>
+      <label data-disaster-incident-type>ประเภทภัย *<%= select_tag "incident[incident_type]", options_for_select(Incident::DISASTER_INCIDENT_TYPES), id: "new-incident-disaster-type", required: true %></label>
+      <label data-general-incident-type hidden>ประเภทเหตุการณ์<%= text_field_tag "incident[incident_type]", nil, id: "new-incident-general-type", placeholder: "เช่น ถนนชำรุด ไฟฟ้าขัดข้อง", disabled: true %></label>
       <label>ระดับความรุนแรง<%= form.select :severity, [["เฝ้าระวัง", "watch"], ["เร่งด่วน", "urgent"], ["วิกฤต", "critical"]] %></label>
       <label class="wide">รายละเอียด<%= form.text_area :description, rows: 3 %></label>
       <label>ผู้แจ้งเหตุ<%= form.text_field :reporter_name %></label><label>เบอร์ติดต่อ<%= form.text_field :reporter_contact %></label>
@@ -62,10 +63,10 @@
     </dialog>
   <% end %>
 
-  <dialog id="progress-incident-dialog" class="incident-dialog small">
+  <dialog id="progress-incident-dialog" class="incident-dialog progress-incident-dialog">
     <%= form_with url: incident_progress_path(incident), method: :post, scope: :progress, local: true do |form| %>
       <header><div><small><%= incident.reference_code %></small><h2>อัปเดตการทำงาน</h2></div><button type="button" data-close-incident-dialog>×</button></header>
-      <div class="incident-form-grid"><label>สถานะ<%= form.select :status, [["รับเรื่องแล้ว", "acknowledged"], ["กำลังประเมิน", "assessing"], ["กำลังดำเนินการ", "in_progress"], ["เสร็จสิ้น", "completed"]], selected: incident.status %></label><label>ผู้รับผิดชอบ<%= form.text_field :assigned_to, value: incident.assigned_to %></label><label class="wide">หัวข้อการอัปเดต<%= form.text_field :title, required: true %></label><label class="wide">รายละเอียดการดำเนินงาน<%= form.text_area :description, rows: 4 %></label></div>
+      <div class="incident-form-grid"><label>สถานะ<%= form.select :status, [["กำลังประเมิน", "assessing"], ["กำลังดำเนินการ", "in_progress"], ["เสร็จสิ้น", "completed"]], selected: incident.status %></label><label>ผู้รับผิดชอบ<%= form.text_field :assigned_to, value: incident.assigned_to %></label><label class="wide">หัวข้อการอัปเดต<%= form.text_field :title, required: true %></label><label class="wide">รายละเอียดการดำเนินงาน<%= form.text_area :description, rows: 4 %></label><section class="wide incident-usage-picker" data-incident-usage-picker><div class="incident-usage-heading"><div><h3>ทรัพยากรและทีมงานที่ใช้</h3><p>เลือกรายการจากฐานข้อมูลและระบุจำนวนที่ใช้ในการดำเนินงานครั้งนี้</p></div><button type="button" data-add-incident-usage <%= "disabled" if @incident_usage_options.empty? %>><span class="material-symbols-outlined">add</span>เพิ่มรายการ</button></div><div data-incident-usage-list></div><template data-incident-usage-template><div class="incident-usage-row"><label>รายการ<select name="progress[usages][][key]" required><option value="">เลือกรายการ</option><% @incident_usage_options.each do |item| %><option value="<%= item[:key] %>" data-available="<%= item[:available] %>" data-unit="<%= item[:unit] %>"><%= item[:name] %> (พร้อมใช้ <%= item[:available] %> <%= item[:unit] %>)</option><% end %></select></label><label>จำนวนที่ใช้<input type="number" name="progress[usages][][quantity]" min="1" step="1" required></label><button type="button" data-remove-incident-usage aria-label="ลบรายการ"><span class="material-symbols-outlined">delete</span></button></div></template><% if @incident_usage_options.empty? %><p class="incident-form-warning">ยังไม่มีข้อมูลทรัพยากรหรือทีมงาน กรุณาเพิ่มข้อมูลในหน้านำเข้าข้อมูลก่อน</p><% else %><p class="incident-usage-empty" data-incident-usage-empty>ยังไม่ได้เพิ่มทรัพยากรหรือทีมงาน</p><% end %></section></div>
       <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "บันทึกการทำงาน", class: "incident-primary-action" %></footer>
     <% end %>
   </dialog>

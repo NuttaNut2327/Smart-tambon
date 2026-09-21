@@ -25,6 +25,101 @@
   line-height: 1;
 }
 
+.incoming-incident-notification {
+  position: fixed;
+  top: 22px;
+  right: 22px;
+  z-index: 1200;
+  display: grid;
+  grid-template-columns: 48px minmax(190px, 1fr) auto 32px;
+  align-items: center;
+  gap: 12px;
+  width: min(560px, calc(100vw - 44px));
+  padding: 15px 14px;
+  border: 1px solid #fecaca;
+  border-left: 6px solid #dc2626;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgba(127, 29, 29, 0.25);
+  color: #7f1d1d;
+  animation: incoming-incident-pop 240ms ease-out;
+}
+
+.incoming-incident-notification[hidden] { display: none; }
+
+.incoming-incident-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  font-size: 27px;
+  font-variation-settings: "FILL" 1, "wght" 500, "GRAD" 0, "opsz" 24;
+}
+
+.incoming-incident-content {
+  min-width: 0;
+}
+
+.incoming-incident-content strong,
+.incoming-incident-content span,
+.incoming-incident-content p {
+  display: block;
+}
+
+.incoming-incident-content strong { font-size: 17px; }
+.incoming-incident-content span { margin-top: 2px; color: #dc2626; font-size: 13px; font-weight: 700; }
+.incoming-incident-content p { margin: 2px 0 0; overflow: hidden; color: #334155; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+
+.incoming-incident-open {
+  padding: 9px 13px;
+  border-radius: 9px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.incoming-incident-open:hover { background: #b91c1c; color: #fff; }
+
+.incoming-incident-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.incoming-incident-close:hover { background: #fee2e2; color: #991b1b; }
+.incoming-incident-close .material-symbols-outlined { font-size: 20px; }
+
+@keyframes incoming-incident-pop {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 680px) {
+  .incoming-incident-notification {
+    top: 10px;
+    right: 10px;
+    grid-template-columns: 42px minmax(0, 1fr) 30px;
+    width: calc(100vw - 20px);
+  }
+
+  .incoming-incident-icon { width: 42px; height: 42px; font-size: 24px; }
+  .incoming-incident-open { grid-column: 2 / 4; text-align: center; }
+  .incoming-incident-close { grid-column: 3; grid-row: 1; }
+}
+
 .dashboard-sidebar .primary-nav-item,
 .dashboard-sidebar .primary-nav-item:hover,
 .dashboard-sidebar .primary-nav-item.active {
@@ -101,6 +196,66 @@
 .incident-summary-grid strong { font-size: 26px; }
 .incident-list-title b { font-size: 16px; }
 .incident-list-title span { font-size: 13px; }
+
+.incident-status-tags {
+  display: flex;
+  gap: 6px;
+  padding: 10px 10px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.incident-status-tags::-webkit-scrollbar { display: none; }
+
+.incident-status-tags button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 1px solid #dbe5ef;
+  border-radius: 999px;
+  background: #fff;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.incident-status-tags button small {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #eef3f8;
+  color: inherit;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.incident-status-tags button:hover,
+.incident-status-tags button.active {
+  border-color: #93baf2;
+  background: #eaf3ff;
+  color: #176fe5;
+}
+
+.incident-filter-empty {
+  margin: 22px 8px;
+  color: #8192a4;
+  font-size: 12px;
+  text-align: center;
+}
+
+.incident-list-card[hidden],
+.incident-list-card.is-filtered-out {
+  display: none !important;
+}
 .incident-list-card small,
 .incident-list-card footer { font-size: 12px; }
 .incident-list-card em,
@@ -162,7 +317,15 @@
   font: inherit;
   font-size: 14px;
   font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
+}
+
+.incident-primary-action:hover,
+.incident-primary-action:focus,
+.incident-secondary-action:hover,
+.incident-secondary-action:focus {
+  text-decoration: none;
 }
 
 .incident-primary-action {
@@ -206,6 +369,7 @@
 }
 
 .incident-dialog.small { width: min(640px, calc(100vw - 32px)); }
+.incident-dialog.progress-incident-dialog{width:min(780px,calc(100vw - 32px))}.incident-usage-picker{display:grid;gap:10px;padding:14px;border:1px solid #dbe5ef;border-radius:10px;background:#f8fbfe}.incident-usage-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.incident-usage-heading h3{margin:0;color:#284761;font-size:14px}.incident-usage-heading p{margin:3px 0 0;color:#7c90a3;font-size:11px}.incident-usage-heading>button{display:flex;align-items:center;gap:4px;padding:7px 10px;border:1px solid #a9c9ef;border-radius:7px;background:#fff;color:#176fe5;font:inherit;font-size:11px;cursor:pointer}.incident-usage-heading>button:disabled{opacity:.45;cursor:not-allowed}.incident-usage-heading .material-symbols-outlined{font-size:16px}.incident-usage-row{display:grid;grid-template-columns:minmax(0,1fr) 130px 36px;gap:8px;align-items:end;margin-top:8px}.incident-usage-row>button{display:grid;place-items:center;width:36px;height:42px;border:1px solid #f0c8ce;border-radius:8px;background:#fff;color:#d33f50;cursor:pointer}.incident-usage-row>button .material-symbols-outlined{font-size:18px}.incident-usage-empty{margin:0;color:#8798a9;font-size:11px}.incident-usage-empty[hidden]{display:none}@media(max-width:620px){.incident-usage-heading{align-items:flex-start;flex-direction:column}.incident-usage-row{grid-template-columns:1fr 90px 36px}}
 .incident-dialog::backdrop { background: rgb(17 39 62 / 58%); }
 .incident-dialog form { display: grid; max-height: calc(100vh - 40px); }
 .incident-dialog header,

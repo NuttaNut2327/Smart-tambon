@@ -11,8 +11,8 @@
   <div class="sidebar-menu-label">เมนูหลัก</div>
   <nav class="primary-nav" aria-label="เมนูหลัก">
     <%= link_to root_path, class: "primary-nav-item #{'active' if active_nav == :overview}", data: { turbo: false } do %><span class="material-symbols-outlined">home</span>ภาพรวมเมือง<% end %>
-    <%= link_to area_analysis_path, class: "primary-nav-item #{'active' if active_nav == :analysis}", data: { turbo: false } do %><span class="material-symbols-outlined">map</span>แผนที่และชั้นข้อมูล<% end %>
-    <%= link_to disasters_path, class: "primary-nav-item #{'active' if active_nav == :disasters}", data: { turbo: false } do %><span class="material-symbols-outlined">warning</span>ภัยพิบัติและเหตุการณ์<% if pending_incident_count.positive? %><em class="nav-alert-count"><%= pending_incident_count %></em><% end %><% end %>
+    <%= link_to situation_assessment_path, class: "primary-nav-item #{'active' if active_nav == :city_map}", data: { turbo: false } do %><span class="material-symbols-outlined">map</span>แผนที่เมือง<% end %>
+    <%= link_to disasters_path, class: "primary-nav-item #{'active' if active_nav == :disasters}", data: { turbo: false, incident_nav: true } do %><span class="material-symbols-outlined">warning</span>ภัยพิบัติและเหตุการณ์<% if pending_incident_count.positive? %><em class="nav-alert-count" data-pending-incident-count><%= pending_incident_count %></em><% end %><% end %>
     <%= link_to resource_rules_path, class: "primary-nav-item #{'active' if active_nav == :resource_rules}", data: { turbo: false } do %><span class="material-symbols-outlined">rule</span>กฎการประเมินทรัพยากร<% end %>
     <%= link_to data_layers_path, class: "primary-nav-item #{'active' if active_nav == :data_layers}", data: { turbo: false } do %><span class="material-symbols-outlined">upload</span>นำเข้าข้อมูล<% end %>
     <% if system_admin? %><%= link_to users_path, class: "primary-nav-item" do %><span class="material-symbols-outlined">manage_accounts</span>จัดการบัญชี<% end %><% end %>
@@ -32,3 +32,16 @@
   <p class="sidebar-system-status"><i></i> ระบบทำงานปกติ <span>อัปเดต <%= Time.current.strftime("%H:%M") %> น.</span></p>
   <%= button_to "ออกจากระบบ", destroy_user_session_path, method: :delete, class: "logout" %>
 </aside>
+
+<section class="incoming-incident-notification" data-incident-notification data-notification-url="<%= incident_notification_path %>" role="alert" aria-live="assertive" hidden>
+  <span class="material-symbols-outlined incoming-incident-icon" aria-hidden="true">notification_important</span>
+  <div class="incoming-incident-content">
+    <strong>มีเหตุการณ์แจ้งเข้ามาใหม่</strong>
+    <span data-incident-notification-code></span>
+    <p data-incident-notification-title></p>
+  </div>
+  <%= link_to "เปิดดูเหตุการณ์", disasters_path, class: "incoming-incident-open", data: { incident_notification_open: true } %>
+  <button type="button" class="incoming-incident-close" data-incident-notification-close aria-label="ปิดการแจ้งเตือน">
+    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+  </button>
+</section>

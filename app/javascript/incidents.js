@@ -1,4 +1,112 @@
 document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("[data-incident-category-select]").forEach((categorySelect) => {
+    const form = categorySelect.closest("form");
+    const disasterField = form?.querySelector("[data-disaster-incident-type]");
+    const generalField = form?.querySelector("[data-general-incident-type]");
+    const disasterInput = disasterField?.querySelector("select");
+    const generalInput = generalField?.querySelector("input");
+    if (!disasterField || !generalField || !disasterInput || !generalInput) return;
+
+    const updateIncidentTypeField = () => {
+      const isDisaster = categorySelect.value === "disaster";
+      disasterField.hidden = !isDisaster;
+      disasterInput.disabled = !isDisaster;
+      generalField.hidden = isDisaster;
+      generalInput.disabled = isDisaster;
+    };
+
+    categorySelect.addEventListener("change", updateIncidentTypeField);
+    updateIncidentTypeField();
+  });
+
+  document.querySelectorAll("[data-incident-status-filters]").forEach((filters) => {
+    const list = filters.closest(".incident-list-panel")?.querySelector("[data-incident-card-list]");
+    const countLabel = filters.closest(".incident-list-panel")?.querySelector("[data-incident-visible-count]");
+    const emptyMessage = list?.querySelector("[data-incident-filter-empty]");
+    if (!list) return;
+
+    const cards = Array.from(list.querySelectorAll("[data-incident-status-group]"));
+    filters.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-incident-status-filter]");
+      if (!button) return;
+      const selectedStatus = button.dataset.incidentStatusFilter;
+      let visibleCount = 0;
+
+      filters.querySelectorAll("[data-incident-status-filter]").forEach((item) => item.classList.toggle("active", item === button));
+      cards.forEach((card) => {
+        const visible = selectedStatus === "all" || card.dataset.incidentStatusGroup === selectedStatus;
+        card.classList.toggle("is-filtered-out", !visible);
+        card.hidden = !visible;
+        if (visible) visibleCount += 1;
+      });
+      if (countLabel) countLabel.textContent = `${visibleCount} รายการ`;
+      if (emptyMessage) emptyMessage.hidden = visibleCount > 0;
+    });
+    filters.querySelector("[data-incident-status-filter].active")?.click();
+  });
+
+  const incidentNotification = document.querySelector("[data-incident-notification]");
+  if (incidentNotification) {
+    const storageKey = "smart-tambon:last-seen-incident";
+    const codeElement = incidentNotification.querySelector("[data-incident-notification-code]");
+    const titleElement = incidentNotification.querySelector("[data-incident-notification-title]");
+    const openLink = incidentNotification.querySelector("[data-incident-notification-open]");
+    let displayedIncidentId = null;
+
+    const updatePendingBadge = (count) => {
+      const navLink = document.querySelector("[data-incident-nav]");
+      if (!navLink) return;
+      let badge = navLink.querySelector("[data-pending-incident-count]");
+      if (count > 0) {
+        if (!badge) {
+          badge = document.createElement("em");
+          badge.className = "nav-alert-count";
+          badge.dataset.pendingIncidentCount = "";
+          navLink.appendChild(badge);
+        }
+        badge.textContent = count;
+      } else {
+        badge?.remove();
+      }
+    };
+
+    const hideNotification = () => {
+      if (displayedIncidentId) sessionStorage.setItem(storageKey, displayedIncidentId);
+      incidentNotification.hidden = true;
+    };
+
+    incidentNotification.querySelector("[data-incident-notification-close]")?.addEventListener("click", hideNotification);
+    openLink?.addEventListener("click", () => {
+      if (displayedIncidentId) sessionStorage.setItem(storageKey, displayedIncidentId);
+    });
+
+    const refreshIncidentNotification = async () => {
+      try {
+        const response = await fetch(incidentNotification.dataset.notificationUrl, {
+          headers: { Accept: "application/json" },
+          credentials: "same-origin"
+        });
+        if (!response.ok) return;
+        const payload = await response.json();
+        updatePendingBadge(Number(payload.pending_count) || 0);
+        const incident = payload.incident;
+        if (!incident || incident.id === sessionStorage.getItem(storageKey)) return;
+
+        displayedIncidentId = incident.id;
+        codeElement.textContent = incident.reference_code || "เหตุการณ์ใหม่";
+        titleElement.textContent = incident.title || "มีรายการแจ้งเหตุที่รอรับเรื่อง";
+        openLink.href = incident.url;
+        incidentNotification.dataset.severity = incident.severity || "watch";
+        incidentNotification.hidden = false;
+      } catch (_error) {
+        // Keep the page usable if notification polling is temporarily unavailable.
+      }
+    };
+
+    refreshIncidentNotification();
+    window.setInterval(refreshIncidentNotification, 15000);
+  }
+
   document.querySelectorAll("[data-open-incident-dialog]").forEach((button) => {
     button.addEventListener("click", () => document.getElementById(button.dataset.openIncidentDialog)?.showModal());
   });
@@ -7,6 +115,32 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.querySelectorAll("dialog.incident-dialog").forEach((dialog) => {
     dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
+  });
+  document.querySelectorAll("[data-incident-usage-picker]").forEach((picker) => {
+    const list = picker.querySelector("[data-incident-usage-list]");
+    const template = picker.querySelector("[data-incident-usage-template]");
+    const empty = picker.querySelector("[data-incident-usage-empty]");
+    const updateEmpty = () => { if (empty) empty.hidden = list.children.length > 0; };
+    picker.querySelector("[data-add-incident-usage]")?.addEventListener("click", () => {
+      list.appendChild(template.content.cloneNode(true));
+      updateEmpty();
+    });
+    list.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-incident-usage]");
+      if (!removeButton) return;
+      removeButton.closest(".incident-usage-row")?.remove();
+      updateEmpty();
+    });
+    list.addEventListener("change", (event) => {
+      const select = event.target.closest('select[name="progress[usages][][key]"]');
+      if (!select) return;
+      const quantity = select.closest(".incident-usage-row")?.querySelector('input[name="progress[usages][][quantity]"]');
+      const option = select.selectedOptions[0];
+      if (!quantity) return;
+      quantity.max = option?.dataset.available || "";
+      quantity.placeholder = option?.dataset.unit ? `สูงสุด ${option.dataset.available} ${option.dataset.unit}` : "";
+      if (quantity.value && Number(quantity.value) > Number(quantity.max)) quantity.value = quantity.max;
+    });
   });
 
   if (window.ol) {

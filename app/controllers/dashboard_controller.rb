@@ -22,18 +22,26 @@ class DashboardController < ApplicationController
     @incident_summary = {
       total: all_incidents.size,
       pending: all_incidents.count { |incident| incident.status == "pending" },
-      in_progress: all_incidents.count { |incident| %w[acknowledged assessing in_progress].include?(incident.status) },
+      in_progress: all_incidents.count { |incident| %w[assessing in_progress].include?(incident.status) },
       completed: all_incidents.count { |incident| incident.status == "completed" }
     }
-    @incidents = if @incident_category
+    category_incidents = if @incident_category
       all_incidents.select { |incident| incident.category == @incident_category }
     else
       all_incidents
     end
+    @incident_status_counts = {
+      all: category_incidents.size,
+      pending: category_incidents.count { |incident| incident.status == "pending" },
+      in_progress: category_incidents.count { |incident| %w[assessing in_progress].include?(incident.status) },
+      completed: category_incidents.count { |incident| incident.status == "completed" }
+    }
+    @incidents = category_incidents
     workforce_datasets = ImportedDataset.visible_to(current_user).where(data_type: "workforce").to_a
     @incident_team_options = workforce_datasets.flat_map do |dataset|
       Array(dataset.current_version&.records).filter_map { |record| record["team_name"].presence || record["name"].presence }
     end.uniq.sort
+    @incident_usage_options = IncidentUsageCatalog.for(current_user)
     @selected_incident = @incidents.find { |incident| incident.id.to_s == params[:incident_id] } || @incidents.first
     requested_version = params[:plan_version].to_i
     @selected_plan = if @selected_incident

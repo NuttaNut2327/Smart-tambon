@@ -6,8 +6,13 @@ Rails.application.routes.draw do
   get "map", to: "dashboard#map", as: :map
   get "area_analysis", to: "dashboard#area_analysis", as: :area_analysis
   get "disasters", to: "dashboard#disasters", as: :disasters
+  get "incidents/notification", to: "incidents#notification", as: :incident_notification
   post "incidents", to: "incidents#create", as: :incidents
   patch "incidents/:id", to: "incidents#update", as: :incident
+  get "incidents/:id/assessment", to: "incidents#assessment", as: :assessment_incident
+  post "incidents/:id/calculate_assessment", to: "incidents#calculate_assessment", as: :calculate_incident_assessment
+  get "situation_assessment", to: "incidents#standalone_assessment", as: :situation_assessment
+  post "situation_assessment/calculate", to: "incidents#calculate_assessment", as: :calculate_situation_assessment
   post "incidents/:id/progress", to: "incidents#add_progress", as: :incident_progress
   post "incidents/:id/assessments", to: "incidents#assess", as: :incident_assessments
   patch "incidents/:id/activate_plan", to: "incidents#activate_plan", as: :activate_incident_plan

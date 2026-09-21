@@ -145,19 +145,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   const overviewPage=document.querySelector(".page-overview");
   if(overviewPage){
-    const overviewKpis=[
-      {count:"8",title:"เหตุการณ์ทั้งหมดที่ได้รับแจ้ง",note:"ย้อนหลัง 24 ชั่วโมง",tone:"blue"},
-      {count:"6",title:"แจ้งเตือนเข้าวันนี้",note:"9 ก.ย. 2569",tone:"amber"},
-      {count:"6",title:"ยังไม่ได้รับการแก้ไข",note:"ต้องเร่งดำเนินการ",tone:"red"},
-      {count:"2",title:"แก้ไขเรียบร้อยแล้ว",note:"ปิดงานสำเร็จ",tone:"green"}
-    ];
-    overviewPage.querySelectorAll(".city-kpi-grid article").forEach((card,index)=>{
-      const data=overviewKpis[index];
-      if(!data) return;
-      card.querySelector("p").textContent=data.title;
-      card.querySelector("strong").textContent=data.count;
-      card.querySelector("small").textContent=data.note;
-    });
     const taskItems=[
       {level:"urgent",title:"น้ำท่วมขังในซอยหมู่ที่ 5",place:"ม.5 บ้านเนิน · ซอยโพธิ์",time:"แจ้งเมื่อ 15:45 น.",reporter:"นายสมชาย ใจดี · 08X-XXX-2481",team:"ทีมป้องกันและบรรเทาสาธารณภัย ชุด A",impact:"ประชาชนประมาณ 86 คน · 24 ครัวเรือน · ถนนชุมชน 1 สาย",detail:"พบปัญหาน้ำขังในพื้นที่ ส่งผลต่อการเดินทางและบ้านเรือนใกล้เคียง ต้องส่งเจ้าหน้าที่เข้าตรวจสอบและกั้นพื้นที่โดยเร็ว",next:"ตรวจสอบระดับน้ำของเขตต้นเหตุ, ช่วยเหลือประชาชนกลุ่มเปราะบางก่อน, จัดรถสูบน้ำและวางแนวกั้นน้ำ"},
       {level:"urgent",title:"ต้นไม้ใหญ่โค่นขวางทางสัญจร",place:"ม.7 บ้านโคก · ถนนสายเก่า",time:"แจ้งเมื่อ 09:20 น.",reporter:"นางสาวจิราภา แก้วคำ · 08X-XXX-5762",team:"ทีมช่างโยธาและงานป้องกันฯ",impact:"ประชาชน 42 คน · ถนนชุมชน 1 สาย",detail:"ต้นไม้โค่นกีดขวางเส้นทางหลักของชุมชน ต้องตัดกิ่งและเปิดเส้นทางเพื่อให้รถฉุกเฉินผ่านได้",next:"กั้นจุดเสี่ยง, ประสานรถกระเช้า, ตรวจสอบสายไฟบริเวณใกล้เคียง"},
@@ -830,7 +817,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const geometry=floodTab ? lastFloodAnalysis.geometry : new ol.format.GeoJSON().writeGeometryObject(areaSelectionGeometry,{featureProjection:"EPSG:3857",dataProjection:"EPSG:4326"});
     analysisSaveButton.disabled=true; analysisSaveButton.textContent="กำลังบันทึก…";
     try{
-      const response=await fetch("/api/analysis_records",{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":document.querySelector('meta[name="csrf-token"]')?.content,Accept:"application/json"},body:JSON.stringify({analysis_record:{name:`${floodTab ? "จำลองน้ำท่วม" : "วิเคราะห์พื้นที่"} ${new Date().toLocaleString("th-TH")}`,selection_type:floodTab ? "flood" : (areaSelectionMode||"point"),geometry,summary,places:places.map(({id,name,category,lon,lat,address})=>({id,name,category,lon,lat,address}))}})});
+      const response=await fetch("/api/analysis_records",{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":document.querySelector('meta[name="csrf-token"]')?.content,Accept:"application/json"},body:JSON.stringify({analysis_record:{name:`${floodTab ? "จำลองน้ำท่วม" : "วิเคราะห์พื้นที่"} ${new Date().toLocaleString("th-TH",{timeZone:"Asia/Bangkok"})}`,selection_type:floodTab ? "flood" : (areaSelectionMode||"point"),geometry,summary,places:places.map(({id,name,category,lon,lat,address})=>({id,name,category,lon,lat,address}))}})});
       if(!response.ok) throw new Error("ไม่สามารถบันทึกข้อมูลได้");
       analysisSaveButton.textContent="บันทึกแล้ว";
       window.setTimeout(updateAnalysisSaveAction,1500);

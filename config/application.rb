@@ -6,6 +6,7 @@ module SmartCity
   class Application < Rails::Application
     config.load_defaults 7.2
     config.autoload_lib(ignore: %w[assets tasks])
+    config.time_zone = "Asia/Bangkok"
+    config.active_record.default_timezone = :utc
   end
 end
-
