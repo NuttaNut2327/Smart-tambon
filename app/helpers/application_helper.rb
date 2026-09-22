@@ -8,6 +8,23 @@ module ApplicationHelper
     "#{time.day} #{THAI_SHORT_MONTHS[time.month - 1]} #{time.year + 543} #{time.strftime('%H:%M')} น."
   end
 
+  def thai_short_date(value)
+    return "—" if value.blank?
+
+    date = if value.is_a?(Date) && !value.is_a?(DateTime)
+      value
+    else
+      value.in_time_zone("Asia/Bangkok").to_date
+    end
+    "#{date.day} #{THAI_SHORT_MONTHS[date.month - 1]} #{date.year + 543}"
+  end
+
+  def thai_short_time(value)
+    return "—" if value.blank?
+
+    value.in_time_zone("Asia/Bangkok").strftime("%H:%M น.")
+  end
+
   def thai_numeric_datetime(value)
     return "—" if value.blank?
 

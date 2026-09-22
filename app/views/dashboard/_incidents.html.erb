@@ -1,5 +1,5 @@
 <% status_labels = { "pending" => "รอรับเรื่อง", "assessing" => "กำลังประเมิน", "in_progress" => "กำลังดำเนินการ", "completed" => "เสร็จสิ้น" } %>
-<% severity_labels = { "watch" => "เฝ้าระวัง", "urgent" => "เร่งด่วน", "critical" => "วิกฤต" } %>
+<% severity_labels = { "waiting" => "รอได้", "watch" => "เฝ้าระวัง", "urgent" => "เร่งด่วน", "critical" => "วิกฤต" } %>
 <% total_count = @incidents.size %>
 
 <section class="incident-page" data-incident-page>
@@ -20,8 +20,8 @@
 
   <nav class="incident-category-tabs" aria-label="ประเภทการแจ้งเหตุ">
     <%= link_to disasters_path, class: ("active" if @incident_category.blank?) do %><span class="material-symbols-outlined">layers</span><b>เหตุการณ์ทั้งหมด</b><small><%= total_count %></small><% end %>
-    <%= link_to disasters_path(category: "disaster"), class: ("active" if @incident_category == "disaster") do %><span class="material-symbols-outlined">warning</span><b>แจ้งเตือนภัยพิบัติ</b><% end %>
     <%= link_to disasters_path(category: "general"), class: ("active" if @incident_category == "general") do %><span class="material-symbols-outlined">campaign</span><b>เหตุการณ์ทั่วไป</b><% end %>
+    <%= link_to disasters_path(category: "disaster"), class: ("active" if @incident_category == "disaster") do %><span class="material-symbols-outlined">warning</span><b>แจ้งเตือนภัยพิบัติ</b><% end %>
   </nav>
 
   <% if @incidents.empty? %>
@@ -72,7 +72,8 @@
           <section class="incident-card">
             <h3>รายละเอียดเหตุการณ์</h3>
             <p><%= incident.description.presence || "ไม่มีรายละเอียดเพิ่มเติม" %></p>
-            <dl><div><dt>ผู้แจ้งเหตุ</dt><dd><%= incident.reporter_name.presence || "ไม่ระบุ" %></dd></div><div><dt>เบอร์ติดต่อ</dt><dd><%= incident.reporter_contact.presence || "ไม่ระบุ" %></dd></div><div><dt>ผลกระทบเบื้องต้น</dt><dd><%= incident.initial_impact.presence || (incident.affected_people.to_i.positive? || incident.affected_households.to_i.positive? ? "ประชาชน #{incident.affected_people} คน · #{incident.affected_households} ครัวเรือน" : "ยังไม่มีข้อมูล") %></dd></div></dl>
+            <% event_time = incident.backdated? && incident.occurred_at.present? ? incident.occurred_at : incident.created_at %>
+            <dl><div><dt>วันที่เกิดเหตุ</dt><dd><%= thai_short_date(event_time) %></dd></div><div><dt>เวลาที่เกิดเหตุ</dt><dd><%= thai_short_time(event_time) %></dd></div><div><dt>ผู้แจ้งเหตุ</dt><dd><%= incident.reporter_name.presence || "ไม่ระบุ" %></dd></div><div><dt>เบอร์ติดต่อ</dt><dd><%= incident.reporter_contact.presence || "ไม่ระบุ" %></dd></div><div><dt>ผลกระทบเบื้องต้น</dt><dd><%= incident.initial_impact.presence || (incident.affected_people.to_i.positive? || incident.affected_households.to_i.positive? ? "ประชาชน #{incident.affected_people} คน · #{incident.affected_households} ครัวเรือน" : "ยังไม่มีข้อมูล") %></dd></div></dl>
           </section>
           <section class="incident-card incident-location-card">
             <h3>ตำแหน่งเหตุการณ์</h3>

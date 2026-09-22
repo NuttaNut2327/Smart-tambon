@@ -1,4 +1,102 @@
 document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("[data-incident-backdated-toggle]").forEach((toggle) => {
+    const form = toggle.closest("form");
+    const dateField = form?.querySelector("[data-incident-occurred-on]");
+    const dateInput = form?.querySelector("[data-incident-occurred-on-input]");
+    const storedDateInput = form?.querySelector("[data-incident-occurred-on-value]");
+    const datePicker = form?.querySelector("[data-incident-date-picker]");
+    const datePickerButton = form?.querySelector("[data-incident-date-picker-button]");
+    const timeField = form?.querySelector("[data-incident-occurred-time]");
+    const occurredAtInput = form?.querySelector("[data-incident-occurred-at-value]");
+    const timeHour = form?.querySelector("[data-incident-time-hour]");
+    const timeMinute = form?.querySelector("[data-incident-time-minute]");
+    if (!dateField || !dateInput || !storedDateInput || !datePicker || !datePickerButton || !timeField || !occurredAtInput || !timeHour || !timeMinute) return;
+
+    const syncOccurredAt = () => {
+      const hour = Number(timeHour.value);
+      const minute = Number(timeMinute.value);
+      const hourValid = /^\d{1,2}$/.test(timeHour.value) && hour >= 0 && hour <= 23;
+      const minuteValid = /^\d{1,2}$/.test(timeMinute.value) && minute >= 0 && minute <= 59;
+      occurredAtInput.value = storedDateInput.value && hourValid && minuteValid
+        ? `${storedDateInput.value}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00+07:00`
+        : "";
+    };
+
+    const syncStoredDate = () => {
+      const match = dateInput.value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!match) {
+        storedDateInput.value = "";
+        dateInput.setCustomValidity(dateInput.value ? "กรุณาระบุวันที่ในรูปแบบ วว/ดด/ปปปป" : "");
+        syncOccurredAt();
+        return;
+      }
+      const [, day, month, year] = match;
+      const candidate = new Date(`${year}-${month}-${day}T00:00:00`);
+      const valid = candidate.getFullYear() === Number(year) && candidate.getMonth() + 1 === Number(month) && candidate.getDate() === Number(day);
+      storedDateInput.value = valid ? `${year}-${month}-${day}` : "";
+      datePicker.value = valid ? `${year}-${month}-${day}` : "";
+      dateInput.setCustomValidity(valid ? "" : "วันที่ไม่ถูกต้อง");
+      syncOccurredAt();
+    };
+
+    const syncFromDatePicker = () => {
+      if (!datePicker.value) return;
+      const [year, month, day] = datePicker.value.split("-");
+      dateInput.value = `${day}/${month}/${year}`;
+      storedDateInput.value = datePicker.value;
+      dateInput.setCustomValidity("");
+      syncOccurredAt();
+    };
+
+    const syncOccurredTime = () => {
+      const hour = Number(timeHour.value);
+      const minute = Number(timeMinute.value);
+      const hourValid = /^\d{1,2}$/.test(timeHour.value) && hour >= 0 && hour <= 23;
+      const minuteValid = /^\d{1,2}$/.test(timeMinute.value) && minute >= 0 && minute <= 59;
+      timeHour.setCustomValidity(timeHour.value && !hourValid ? "กรุณาระบุชั่วโมงระหว่าง 0–23" : "");
+      timeMinute.setCustomValidity(timeMinute.value && !minuteValid ? "กรุณาระบุนาทีระหว่าง 0–59" : "");
+      syncOccurredAt();
+    };
+
+    const updateBackdatedField = () => {
+      dateField.hidden = !toggle.checked;
+      timeField.hidden = !toggle.checked;
+      dateInput.disabled = !toggle.checked;
+      storedDateInput.disabled = !toggle.checked;
+      datePicker.disabled = !toggle.checked;
+      datePickerButton.disabled = !toggle.checked;
+      occurredAtInput.disabled = !toggle.checked;
+      timeHour.disabled = !toggle.checked;
+      timeMinute.disabled = !toggle.checked;
+      dateInput.required = toggle.checked;
+      timeHour.required = toggle.checked;
+      timeMinute.required = toggle.checked;
+      if (!toggle.checked) {
+        dateInput.value = "";
+        storedDateInput.value = "";
+        datePicker.value = "";
+        occurredAtInput.value = "";
+        timeHour.value = "";
+        timeMinute.value = "";
+        dateInput.setCustomValidity("");
+        timeHour.setCustomValidity("");
+        timeMinute.setCustomValidity("");
+      }
+    };
+
+    dateInput.addEventListener("input", syncStoredDate);
+    dateInput.addEventListener("blur", syncStoredDate);
+    datePicker.addEventListener("change", syncFromDatePicker);
+    timeHour.addEventListener("input", syncOccurredTime);
+    timeMinute.addEventListener("input", syncOccurredTime);
+    datePickerButton.addEventListener("click", () => {
+      if (typeof datePicker.showPicker === "function") datePicker.showPicker();
+      else datePicker.click();
+    });
+    toggle.addEventListener("change", updateBackdatedField);
+    updateBackdatedField();
+  });
+
   document.querySelectorAll("[data-incident-category-select]").forEach((categorySelect) => {
     const form = categorySelect.closest("form");
     const disasterField = form?.querySelector("[data-disaster-incident-type]");
@@ -20,6 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   document.querySelectorAll("[data-incident-status-filters]").forEach((filters) => {
+    const filterStorageKey = "smart-tambon:incident-status-filter";
     const list = filters.closest(".incident-list-panel")?.querySelector("[data-incident-card-list]");
     const countLabel = filters.closest(".incident-list-panel")?.querySelector("[data-incident-visible-count]");
     const emptyMessage = list?.querySelector("[data-incident-filter-empty]");
@@ -30,6 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const button = event.target.closest("[data-incident-status-filter]");
       if (!button) return;
       const selectedStatus = button.dataset.incidentStatusFilter;
+      sessionStorage.setItem(filterStorageKey, selectedStatus);
       let visibleCount = 0;
 
       filters.querySelectorAll("[data-incident-status-filter]").forEach((item) => item.classList.toggle("active", item === button));
@@ -42,7 +142,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (countLabel) countLabel.textContent = `${visibleCount} รายการ`;
       if (emptyMessage) emptyMessage.hidden = visibleCount > 0;
     });
-    filters.querySelector("[data-incident-status-filter].active")?.click();
+    const savedStatus = sessionStorage.getItem(filterStorageKey);
+    const initialFilter = savedStatus && filters.querySelector(`[data-incident-status-filter="${savedStatus}"]`);
+    (initialFilter || filters.querySelector("[data-incident-status-filter].active"))?.click();
   });
 
   const incidentNotification = document.querySelector("[data-incident-notification]");

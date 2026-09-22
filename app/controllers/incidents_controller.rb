@@ -302,7 +302,7 @@ class IncidentsController < ApplicationController
 
   def incident_attributes
     params.require(:incident).permit(
-      :category, :incident_type, :title, :description, :severity, :status,
+      :category, :incident_type, :title, :description, :backdated, :occurred_at, :severity, :status,
       :reporter_name, :reporter_contact, :location_name, :longitude, :latitude,
       :affected_people, :affected_households, :initial_impact, :assigned_to
     )

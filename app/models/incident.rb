@@ -5,7 +5,7 @@ class Incident
   CATEGORIES = %w[disaster general].freeze
   DISASTER_INCIDENT_TYPES = ["น้ำท่วม", "ไฟป่า", "วาตภัย", "ภัยแล้ง", "อื่น ๆ"].freeze
   STATUSES = %w[pending assessing in_progress completed].freeze
-  SEVERITIES = %w[watch urgent critical].freeze
+  SEVERITIES = %w[waiting watch urgent critical].freeze
 
   field :user_id, type: Integer
   field :subdistrict_id, type: Integer
@@ -14,6 +14,8 @@ class Incident
   field :incident_type, type: String
   field :title, type: String
   field :description, type: String
+  field :backdated, type: Boolean, default: false
+  field :occurred_at, type: Time
   field :severity, type: String, default: "watch"
   field :status, type: String, default: "pending"
   field :reporter_name, type: String
@@ -41,8 +43,10 @@ class Incident
   validates :category, inclusion: { in: CATEGORIES }
   validates :status, inclusion: { in: STATUSES }
   validates :severity, inclusion: { in: SEVERITIES }
+  validates :occurred_at, presence: true, if: :backdated?
 
   before_validation :assign_reference_code, on: :create
+  before_validation :clear_occurred_at_unless_backdated
 
   scope :visible_to, lambda { |user|
     user.system_admin? ? all : where(:subdistrict_id.in => user.accessible_subdistrict_ids)
@@ -60,5 +64,11 @@ class Incident
 
   def assign_reference_code
     self.reference_code ||= "INC-#{Time.current.year + 543}-#{SecureRandom.hex(3).upcase}"
+  end
+
+  def clear_occurred_at_unless_backdated
+    return if backdated?
+
+    self.occurred_at = nil
   end
 end

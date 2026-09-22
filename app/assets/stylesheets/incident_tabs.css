@@ -390,6 +390,89 @@
 .incident-form-grid label > small { color: #8395a7; font-size: 11px; font-weight: 400; }
 .incident-form-grid label.checkbox { display: flex; grid-template-columns: none; flex-direction: row; align-items: center; }
 .incident-form-grid label.checkbox input { width: 18px; min-height: 18px; }
+.incident-form-grid .incident-backdated-option > span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: fit-content;
+  color: #294966;
+  cursor: pointer;
+}
+.incident-form-grid .incident-backdated-option input {
+  width: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+}
+.incident-form-grid [data-incident-occurred-on][hidden] {
+  display: none !important;
+}
+.incident-form-grid [data-incident-occurred-time][hidden] {
+  display: none !important;
+}
+.incident-form-grid [data-disaster-incident-type][hidden],
+.incident-form-grid [data-general-incident-type][hidden] {
+  display: none !important;
+}
+.incident-date-control {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  align-items: stretch;
+}
+.incident-date-control > input[data-incident-occurred-on-input] {
+  padding-right: 11px;
+  border-radius: 8px 0 0 8px;
+}
+.incident-date-control > button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #cad8e5;
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+  background: #f8fafc;
+  color: #3972ad;
+  cursor: pointer;
+}
+.incident-date-control > button:hover { background: #eaf3ff; }
+.incident-date-control > button .material-symbols-outlined { font-size: 20px; }
+.incident-native-date-picker {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1px !important;
+  min-height: 1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+}
+.incident-time-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 42px;
+  align-items: stretch;
+}
+.incident-time-control > input:first-child {
+  border-radius: 8px 0 0 8px !important;
+}
+.incident-time-control > input {
+  border-radius: 0 !important;
+}
+.incident-time-control > input:nth-of-type(2) {
+  border-left: 0;
+}
+.incident-time-control > b {
+  display: grid;
+  place-items: center;
+  border: 1px solid #cad8e5;
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+  background: #f8fafc;
+  color: #48627b;
+  font-size: 13px;
+  font-weight: 500;
+}
 .incident-location-picker { display: grid; gap: 8px; }
 .incident-location-picker > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .incident-location-picker b { color: #48627b; font-size: 13px; font-weight: 500; }
@@ -605,6 +688,18 @@
 }
 
 /* Incident cards use the severity reported with each incident. */
+.severity-waiting {
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+.incident-list-card.incident-severity-waiting,
+.incident-list-card.incident-severity-waiting:hover,
+.incident-list-card.incident-severity-waiting.active {
+  border-color: transparent;
+  background: #eef1f4;
+}
+
 .incident-list-card.incident-severity-watch,
 .incident-list-card.incident-severity-watch:hover,
 .incident-list-card.incident-severity-watch.active {
