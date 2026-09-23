@@ -29,7 +29,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const street = new ol.layer.Tile({ source: new ol.source.OSM() });
   const satellite = new ol.layer.Tile({ visible: false, source: new ol.source.XYZ({
     url: key ? `https://api.maptiler.com/tiles/satellite/{z}/{x}/{y}.jpg?key=${key}` : "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attributions: key ? "© MapTiler © OpenStreetMap contributors" : "© OpenStreetMap contributors"
+    attributions: key ? "© MapTiler © OpenStreetMap contributors" : "© OpenStreetMap contributors",
+    maxZoom: key ? 19 : 18,
+    wrapX: false
   })});
   const highlight = new ol.layer.Vector({ source: new ol.source.Vector(), style: new ol.style.Style({
     stroke: new ol.style.Stroke({color:"#5ac5a9",width:5}), fill:new ol.style.Fill({color:"rgba(0,0,0,0)"}),
@@ -121,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     source:new ol.source.Vector(),
     style:new ol.style.Style({image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#237d69"}),stroke:new ol.style.Stroke({color:"white",width:3})})})
   });
-  const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,...Object.values(placeLayers),importedPlacesLayer,importedDatasetLayer,waterStationLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5}) });
+  const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,...Object.values(placeLayers),importedPlacesLayer,importedDatasetLayer,waterStationLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5,maxZoom:19,extent:ol.proj.get("EPSG:3857").getExtent()}) });
   window.smartCityMap=map;
   fetch("/api/imported_datasets",{headers:{Accept:"application/json"}}).then(response=>response.ok?response.json():null).then(data=>{
     if(!data)return;
@@ -314,6 +316,8 @@ document.addEventListener("DOMContentLoaded", () => {
     cesiumViewer.scene.screenSpaceCameraController.enableCollisionDetection=true;
     cesiumViewer.scene.screenSpaceCameraController.minimumZoomDistance=1_200;
     cesiumViewer.scene.screenSpaceCameraController.maximumZoomDistance=4_000_000;
+    cesiumViewer.scene.globe.baseColor=Cesium.Color.fromCssColorString("#d9e2e8");
+    cesiumViewer.scene.backgroundColor=Cesium.Color.fromCssColorString("#d9e2e8");
     const terrainColorProvider=new Cesium.UrlTemplateImageryProvider({url:"/api/terrain_color_tiles/{z}/{x}/{y}?palette=green-v7",tilingScheme:new Cesium.WebMercatorTilingScheme(),maximumLevel:12,credit:new Cesium.Credit("Elevation colors: AWS Open Data Terrain Tiles")});
     terrainColorLayer=new Cesium.ImageryLayer(terrainColorProvider,{alpha:0.58,show:terrainColorEnabled});
     cesiumViewer.imageryLayers.add(terrainColorLayer);

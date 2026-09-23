@@ -3,10 +3,8 @@
     <header><div><small>จัดการเหตุการณ์</small><h2>บันทึกเหตุการณ์ใหม่</h2></div><button type="button" data-close-incident-dialog aria-label="ปิด">×</button></header>
     <div class="incident-form-grid">
       <label>ชื่อเหตุการณ์<%= form.text_field :title, required: true %></label>
-      <label>หมวดเหตุการณ์<%= form.select :category, [["แจ้งเตือนภัยพิบัติ", "disaster"], ["เหตุการณ์ทั่วไป", "general"]], {}, data: { incident_category_select: true } %></label>
-      <label data-disaster-incident-type>ประเภทภัย *<%= select_tag "incident[incident_type]", options_for_select(Incident::DISASTER_INCIDENT_TYPES), id: "new-incident-disaster-type", required: true %></label>
-      <label data-general-incident-type hidden>ประเภทเหตุการณ์<%= text_field_tag "incident[incident_type]", nil, id: "new-incident-general-type", placeholder: "เช่น ถนนชำรุด ไฟฟ้าขัดข้อง", disabled: true %></label>
-      <label>ระดับความรุนแรง<%= form.select :severity, [["รอได้", "waiting"], ["เฝ้าระวัง", "watch"], ["เร่งด่วน", "urgent"], ["วิกฤต", "critical"]], selected: "watch" %></label>
+      <label>ประเภทเหตุการณ์<%= form.text_field :incident_type, placeholder: "เช่น ถนนชำรุด ไฟฟ้าขัดข้อง" %></label>
+      <label>ระดับความเร่งด่วน<%= form.select :severity, [["วิกฤต", "critical"], ["เร่งด่วนมาก", "very_urgent"], ["เร่งด่วน", "urgent"], ["ไม่เร่งด่วน", "non_urgent"], ["ทั่วไป", "general"]], selected: "general" %></label>
       <label class="wide incident-backdated-option"><span><%= form.check_box :backdated, data: { incident_backdated_toggle: true } %> เป็นการบันทึกเหตุการณ์ย้อนหลัง</span></label>
       <label class="wide" data-incident-occurred-on hidden>วันที่เกิดเหตุ *<span class="incident-date-control"><%= text_field_tag nil, nil, placeholder: "วว/ดด/ปปปป", inputmode: "numeric", pattern: "\\d{2}/\\d{2}/\\d{4}", disabled: true, data: { incident_occurred_on_input: true } %><button type="button" data-incident-date-picker-button aria-label="เลือกวันที่จากปฏิทิน"><span class="material-symbols-outlined">calendar_month</span></button><%= date_field_tag nil, nil, class: "incident-native-date-picker", tabindex: -1, disabled: true, data: { incident_date_picker: true } %></span><%= hidden_field_tag nil, nil, disabled: true, data: { incident_occurred_on_value: true } %></label>
       <label class="wide" data-incident-occurred-time hidden>เวลาที่เกิดเหตุ *<span class="incident-time-control"><%= text_field_tag nil, nil, list: "new-incident-hour-options", inputmode: "numeric", maxlength: 2, autocomplete: "off", placeholder: "ชั่วโมง", disabled: true, data: { incident_time_hour: true } %><datalist id="new-incident-hour-options"><% (0..23).each do |hour| %><option value="<%= format('%02d', hour) %>"></option><% end %></datalist><%= text_field_tag nil, nil, list: "new-incident-minute-options", inputmode: "numeric", maxlength: 2, autocomplete: "off", placeholder: "นาที", disabled: true, data: { incident_time_minute: true } %><datalist id="new-incident-minute-options"><% (0..59).each do |minute| %><option value="<%= format('%02d', minute) %>"></option><% end %></datalist><b>น.</b></span><%= form.hidden_field :occurred_at, disabled: true, data: { incident_occurred_at_value: true } %></label>
@@ -26,15 +24,20 @@
   <% end %>
 </dialog>
 
+<% if current_user.subdistrict_id.present? || current_user.access_area.present? %><dialog id="share-incident-form-dialog" class="incident-dialog small">
+  <header><div><small>PUBLIC FORM</small><h2>แชร์แบบฟอร์มแจ้งเหตุ</h2></div><button type="button" data-close-incident-dialog>×</button></header>
+  <% share_sources = public_report_sources %><div class="incident-share-form"><span class="material-symbols-outlined">link</span><div><strong>เลือกว่าแชร์แบบฟอร์มสำหรับผู้แจ้งกลุ่มใด</strong><p>แต่ละแหล่งที่มามีลิงก์ประจำของตัวเอง ผู้กรอกไม่สามารถเปลี่ยนชื่อแหล่งที่มาได้</p></div><label>แหล่งที่มา<select data-public-report-share-source><% share_sources.each do |source| %><option value="<%= public_incident_report_link(source_type: source[:type], source_name: source[:name]) %>"><%= source[:label] %></option><% end %></select></label><label>ลิงก์แบบฟอร์ม<input type="text" readonly value="<%= public_incident_report_link(source_type: share_sources.first[:type], source_name: share_sources.first[:name]) %>" data-public-report-share-url></label><p data-public-share-status></p></div>
+  <footer><button type="button" class="incident-secondary-action" data-native-share-public-form><span class="material-symbols-outlined">ios_share</span>แชร์</button><button type="button" class="incident-primary-action" data-copy-public-form-link><span class="material-symbols-outlined">content_copy</span>คัดลอกลิงก์</button></footer>
+</dialog><% end %>
+
 <% if incident %>
   <dialog id="edit-incident-dialog" class="incident-dialog">
     <%= form_with url: incident_path(incident), method: :patch, scope: :incident, local: true do |form| %>
       <header><div><small><%= incident.reference_code %></small><h2>แก้ไขข้อมูลเหตุการณ์</h2></div><button type="button" data-close-incident-dialog>×</button></header>
       <div class="incident-form-grid">
         <label>ชื่อเหตุการณ์<%= form.text_field :title, value: incident.title, required: true %></label>
-        <label>หมวดเหตุการณ์<%= form.select :category, [["แจ้งเตือนภัยพิบัติ", "disaster"], ["เหตุการณ์ทั่วไป", "general"]], selected: incident.category %></label>
         <label>ประเภทเหตุการณ์<%= form.text_field :incident_type, value: incident.incident_type %></label>
-        <label>ระดับความรุนแรง<%= form.select :severity, [["รอได้", "waiting"], ["เฝ้าระวัง", "watch"], ["เร่งด่วน", "urgent"], ["วิกฤต", "critical"]], selected: incident.severity %></label>
+        <% selected_severity = { "waiting" => "non_urgent", "watch" => "urgent" }.fetch(incident.severity, incident.severity) %><label>ระดับความเร่งด่วน<%= form.select :severity, [["วิกฤต", "critical"], ["เร่งด่วนมาก", "very_urgent"], ["เร่งด่วน", "urgent"], ["ไม่เร่งด่วน", "non_urgent"], ["ทั่วไป", "general"]], selected: selected_severity %></label>
         <label class="wide incident-backdated-option"><span><%= form.check_box :backdated, { checked: incident.backdated?, data: { incident_backdated_toggle: true } }, "1", "0" %> เป็นการบันทึกเหตุการณ์ย้อนหลัง</span></label>
         <% occurred_at_th = incident.occurred_at&.in_time_zone("Asia/Bangkok") %>
         <label class="wide" data-incident-occurred-on <%= "hidden" unless incident.backdated? %>>วันที่เกิดเหตุ *<span class="incident-date-control"><%= text_field_tag nil, occurred_at_th&.strftime("%d/%m/%Y"), placeholder: "วว/ดด/ปปปป", inputmode: "numeric", pattern: "\\d{2}/\\d{2}/\\d{4}", disabled: !incident.backdated?, required: incident.backdated?, data: { incident_occurred_on_input: true } %><button type="button" data-incident-date-picker-button aria-label="เลือกวันที่จากปฏิทิน"><span class="material-symbols-outlined">calendar_month</span></button><%= date_field_tag nil, occurred_at_th&.strftime("%Y-%m-%d"), class: "incident-native-date-picker", tabindex: -1, disabled: !incident.backdated?, data: { incident_date_picker: true } %></span><%= hidden_field_tag nil, occurred_at_th&.strftime("%Y-%m-%d"), disabled: !incident.backdated?, data: { incident_occurred_on_value: true } %></label>
@@ -54,6 +57,12 @@
       </div>
       <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "บันทึกการแก้ไข", class: "incident-primary-action" %></footer>
     <% end %>
+  </dialog>
+
+  <dialog id="delete-incident-dialog" class="incident-dialog small">
+    <header><div><small><%= incident.reference_code %></small><h2>ยืนยันการลบข้อมูล</h2></div><button type="button" data-close-incident-dialog>×</button></header>
+    <div class="incident-delete-confirmation"><span class="material-symbols-outlined">warning</span><div><strong>ต้องการลบ “<%= incident.title %>” หรือไม่?</strong><p>รายการนี้จะถูกซ่อนออกจากหน้าระบบ แต่ข้อมูลเดิมจะยังถูกเก็บไว้ในฐานข้อมูล</p></div></div>
+    <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= button_to "ยืนยันลบข้อมูล", incident_path(incident), method: :delete, class: "incident-delete-action" %></footer>
   </dialog>
 
   <% if incident.status == "pending" %>

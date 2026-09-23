@@ -117,34 +117,53 @@ document.addEventListener("DOMContentLoaded", () => {
     updateIncidentTypeField();
   });
 
-  document.querySelectorAll("[data-incident-status-filters]").forEach((filters) => {
+  document.querySelectorAll(".incident-list-panel").forEach((panel) => {
+    const filters = panel.querySelector("[data-incident-status-filters]");
+    const sourceFilters = panel.querySelector("[data-incident-source-filters]");
+    if (!filters) return;
     const filterStorageKey = "smart-tambon:incident-status-filter";
-    const list = filters.closest(".incident-list-panel")?.querySelector("[data-incident-card-list]");
-    const countLabel = filters.closest(".incident-list-panel")?.querySelector("[data-incident-visible-count]");
+    const list = panel.querySelector("[data-incident-card-list]");
+    const countLabel = panel.querySelector("[data-incident-visible-count]");
     const emptyMessage = list?.querySelector("[data-incident-filter-empty]");
     if (!list) return;
 
     const cards = Array.from(list.querySelectorAll("[data-incident-status-group]"));
-    filters.addEventListener("click", (event) => {
-      const button = event.target.closest("[data-incident-status-filter]");
-      if (!button) return;
-      const selectedStatus = button.dataset.incidentStatusFilter;
-      sessionStorage.setItem(filterStorageKey, selectedStatus);
+    let selectedStatus = "all";
+    let selectedSource = "all";
+    const applyFilters = () => {
       let visibleCount = 0;
-
-      filters.querySelectorAll("[data-incident-status-filter]").forEach((item) => item.classList.toggle("active", item === button));
       cards.forEach((card) => {
-        const visible = selectedStatus === "all" || card.dataset.incidentStatusGroup === selectedStatus;
+        const statusMatches = selectedStatus === "all" || card.dataset.incidentStatusGroup === selectedStatus;
+        const sourceMatches = selectedSource === "all" || card.dataset.incidentSource === selectedSource;
+        const visible = statusMatches && sourceMatches;
         card.classList.toggle("is-filtered-out", !visible);
         card.hidden = !visible;
         if (visible) visibleCount += 1;
       });
       if (countLabel) countLabel.textContent = `${visibleCount} รายการ`;
       if (emptyMessage) emptyMessage.hidden = visibleCount > 0;
+    };
+    filters.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-incident-status-filter]");
+      if (!button) return;
+      selectedStatus = button.dataset.incidentStatusFilter;
+      sessionStorage.setItem(filterStorageKey, selectedStatus);
+      filters.querySelectorAll("[data-incident-status-filter]").forEach((item) => item.classList.toggle("active", item === button));
+      applyFilters();
     });
+    sourceFilters?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-incident-source-filter]");
+      if (!button) return;
+      selectedSource = button.dataset.incidentSourceFilter;
+      sourceFilters.querySelectorAll("[data-incident-source-filter]").forEach((item) => item.classList.toggle("active", item === button));
+      applyFilters();
+    });
+    const activeCardStatus = list.querySelector(".incident-list-card.active")?.dataset.incidentStatusGroup;
+    const activeCardFilter = activeCardStatus && filters.querySelector(`[data-incident-status-filter="${activeCardStatus}"]`);
     const savedStatus = sessionStorage.getItem(filterStorageKey);
-    const initialFilter = savedStatus && filters.querySelector(`[data-incident-status-filter="${savedStatus}"]`);
-    (initialFilter || filters.querySelector("[data-incident-status-filter].active"))?.click();
+    const savedFilter = savedStatus && filters.querySelector(`[data-incident-status-filter="${savedStatus}"]`);
+    (activeCardFilter || savedFilter || filters.querySelector("[data-incident-status-filter].active"))?.click();
+    sourceFilters?.querySelector("[data-incident-source-filter].active")?.click();
   });
 
   const incidentNotification = document.querySelector("[data-incident-notification]");
@@ -198,7 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
         codeElement.textContent = incident.reference_code || "เหตุการณ์ใหม่";
         titleElement.textContent = incident.title || "มีรายการแจ้งเหตุที่รอรับเรื่อง";
         openLink.href = incident.url;
-        incidentNotification.dataset.severity = incident.severity || "watch";
+        incidentNotification.dataset.severity = incident.severity || "general";
         incidentNotification.hidden = false;
       } catch (_error) {
         // Keep the page usable if notification polling is temporarily unavailable.
@@ -210,13 +229,61 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   document.querySelectorAll("[data-open-incident-dialog]").forEach((button) => {
-    button.addEventListener("click", () => document.getElementById(button.dataset.openIncidentDialog)?.showModal());
+    button.addEventListener("click", () => {
+      document.getElementById(button.dataset.openIncidentDialog)?.showModal();
+      const menu = button.closest("[data-incident-settings-menu]");
+      const options = menu?.querySelector("[data-incident-settings-options]");
+      const trigger = menu?.querySelector("[data-incident-settings-trigger]");
+      if (options) options.hidden = true;
+      trigger?.setAttribute("aria-expanded", "false");
+    });
+  });
+  document.querySelectorAll("[data-incident-settings-menu]").forEach((menu) => {
+    const trigger = menu.querySelector("[data-incident-settings-trigger]");
+    const options = menu.querySelector("[data-incident-settings-options]");
+    trigger?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const opening = options.hidden;
+      document.querySelectorAll("[data-incident-settings-options]").forEach((other) => { other.hidden = true; });
+      document.querySelectorAll("[data-incident-settings-trigger]").forEach((other) => other.setAttribute("aria-expanded", "false"));
+      options.hidden = !opening;
+      trigger.setAttribute("aria-expanded", String(opening));
+    });
+  });
+  document.addEventListener("click", (event) => {
+    if (event.target.closest("[data-incident-settings-menu]")) return;
+    document.querySelectorAll("[data-incident-settings-options]").forEach((options) => { options.hidden = true; });
+    document.querySelectorAll("[data-incident-settings-trigger]").forEach((trigger) => trigger.setAttribute("aria-expanded", "false"));
   });
   document.querySelectorAll("[data-close-incident-dialog]").forEach((button) => {
     button.addEventListener("click", () => button.closest("dialog")?.close());
   });
   document.querySelectorAll("dialog.incident-dialog").forEach((dialog) => {
     dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
+  });
+  const shareUrlInput = document.querySelector("[data-public-report-share-url]");
+  const shareSourceSelect = document.querySelector("[data-public-report-share-source]");
+  const shareStatus = document.querySelector("[data-public-share-status]");
+  shareSourceSelect?.addEventListener("change", () => {
+    shareUrlInput.value = shareSourceSelect.value;
+    if (shareStatus) shareStatus.textContent = "";
+  });
+  document.querySelector("[data-copy-public-form-link]")?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrlInput.value);
+      shareStatus.textContent = "คัดลอกลิงก์แล้ว";
+    } catch (_error) {
+      shareUrlInput.select();
+      document.execCommand("copy");
+      shareStatus.textContent = "คัดลอกลิงก์แล้ว";
+    }
+  });
+  document.querySelector("[data-native-share-public-form]")?.addEventListener("click", async () => {
+    if (navigator.share) await navigator.share({ title: "แบบฟอร์มแจ้งเหตุ Smart Tambon", url: shareUrlInput.value });
+    else {
+      await navigator.clipboard.writeText(shareUrlInput.value);
+      shareStatus.textContent = "อุปกรณ์นี้ไม่รองรับเมนูแชร์ จึงคัดลอกลิงก์ให้แล้ว";
+    }
   });
   document.querySelectorAll("[data-incident-usage-picker]").forEach((picker) => {
     const list = picker.querySelector("[data-incident-usage-list]");

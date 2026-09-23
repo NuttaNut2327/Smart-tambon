@@ -1,6 +1,6 @@
 class IncidentsController < ApplicationController
   def notification
-    pending_incidents = Incident.visible_to(current_user).where(status: "pending").desc(:created_at)
+    pending_incidents = Incident.visible_to(current_user).where(category: "general", status: "pending").desc(:created_at)
     latest_incident = pending_incidents.first
 
     render json: {
@@ -10,7 +10,7 @@ class IncidentsController < ApplicationController
         reference_code: latest_incident.reference_code,
         title: latest_incident.title,
         severity: latest_incident.severity,
-        url: disasters_path(incident_id: latest_incident.id)
+        url: general_incidents_path(incident_id: latest_incident.id)
       }
     }
   end
@@ -32,6 +32,17 @@ class IncidentsController < ApplicationController
     @page_mode = :city_map
     @assigned_subdistrict = current_user.subdistrict unless current_user.system_admin?
     @provinces = current_user.system_admin? ? Province.alphabetical : [@assigned_subdistrict&.province].compact
+    @map_incidents = Incident.visible_to(current_user).where(category: "general").to_a.filter_map do |incident|
+      next unless incident.longitude.present? && incident.latitude.present?
+
+      {
+        id: incident.id.to_s, reference_code: incident.reference_code, title: incident.title,
+        source: incident.report_source_label, longitude: incident.longitude, latitude: incident.latitude,
+        severity: incident.severity, description: incident.description.to_s.truncate(180),
+        status: incident.status, url: general_incidents_path(incident_id: incident.id)
+      }
+    end
+    @map_incident_sources = @map_incidents.group_by { |incident| incident[:source] }
     render :assessment
   end
 
@@ -148,29 +159,41 @@ class IncidentsController < ApplicationController
 
   def create
     incident = Incident.new(incident_attributes)
+    incident.category = "general"
+    incident.status = "pending"
     incident.user_id = current_user.id
+    incident.owner_user_id = current_user.id
+    incident.access_area_id = current_user.access_area&.id
+    incident.report_source_type = "staff"
+    incident.report_source_name = "เจ้าหน้าที่"
     incident.subdistrict_id = current_user.subdistrict_id || params.dig(:incident, :subdistrict_id)
     if incident.subdistrict_id.blank?
-      return redirect_to disasters_path, alert: "กรุณาเลือกบัญชีประจำพื้นที่ก่อนบันทึกเหตุการณ์"
-    end
-    if incident.category == "disaster" && !Incident::DISASTER_INCIDENT_TYPES.include?(incident.incident_type)
-      return redirect_to disasters_path, alert: "กรุณาเลือกประเภทภัยจากรายการที่กำหนด"
+      return redirect_to general_incidents_path, alert: "กรุณาเลือกบัญชีประจำพื้นที่ก่อนบันทึกเหตุการณ์"
     end
 
     incident.save!
-    redirect_to disasters_path(incident_id: incident.id), notice: "บันทึกเหตุการณ์ใหม่เรียบร้อยแล้ว"
+    redirect_to general_incidents_path(incident_id: incident.id), notice: "บันทึกเหตุการณ์ใหม่เรียบร้อยแล้ว"
   rescue Mongoid::Errors::Validations => error
-    redirect_to disasters_path, alert: error.document.errors.full_messages.join(" · ")
+    redirect_to general_incidents_path, alert: error.document.errors.full_messages.join(" · ")
   end
 
   def update
     incident = find_incident
     incident.update!(incident_attributes)
-    redirect_to disasters_path(incident_id: incident.id), notice: "แก้ไขข้อมูลเหตุการณ์เรียบร้อยแล้ว"
+    redirect_to incident_page_path(incident, incident_id: incident.id), notice: "แก้ไขข้อมูลเหตุการณ์เรียบร้อยแล้ว"
   rescue Mongoid::Errors::DocumentNotFound
-    redirect_to disasters_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
+    redirect_to general_incidents_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
   rescue Mongoid::Errors::Validations => error
-    redirect_to disasters_path(incident_id: params[:id]), alert: error.document.errors.full_messages.join(" · ")
+    redirect_to incident_page_path(error.document, incident_id: params[:id]), alert: error.document.errors.full_messages.join(" · ")
+  end
+
+  def destroy
+    incident = find_incident
+    redirect_path = incident.category == "disaster" ? disasters_path : general_incidents_path
+    incident.set(deleted_at: Time.current, deleted_by: current_user.username)
+    redirect_to redirect_path, notice: "ลบข้อมูลเหตุการณ์ออกจากหน้าระบบแล้ว"
+  rescue Mongoid::Errors::DocumentNotFound
+    redirect_to general_incidents_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
   end
 
   def add_progress
@@ -186,7 +209,7 @@ class IncidentsController < ApplicationController
       next if item.blank? || quantity <= 0
 
       if quantity > item[:available]
-        return redirect_to disasters_path(incident_id: incident.id), alert: "จำนวนที่ใช้ของ #{item[:name]} มากกว่าจำนวนพร้อมใช้ #{item[:available]} #{item[:unit]}"
+        return redirect_to incident_page_path(incident, incident_id: incident.id), alert: "จำนวนที่ใช้ของ #{item[:name]} มากกว่าจำนวนพร้อมใช้ #{item[:available]} #{item[:unit]}"
       end
 
       { "kind" => item[:kind], "name" => item[:name], "quantity" => quantity, "unit" => item[:unit] }
@@ -225,14 +248,14 @@ class IncidentsController < ApplicationController
     end
     incident.resources_used = accumulated_resources
     incident.save!
-    redirect_to disasters_path(incident_id: incident.id), notice: "อัปเดตการทำงานเรียบร้อยแล้ว"
+    redirect_to incident_page_path(incident, incident_id: incident.id), notice: "อัปเดตการทำงานเรียบร้อยแล้ว"
   rescue Mongoid::Errors::DocumentNotFound
-    redirect_to disasters_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
+    redirect_to general_incidents_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
   end
 
   def assess
     incident = find_incident
-    assessment = params.require(:assessment).permit(:title, :affected_people, :budget, :resource_lines, :activate)
+    assessment = params.require(:assessment).permit(:title, :area_sq_km, :affected_people, :affected_households, :budget, :resource_lines, :activate)
     next_version = incident.response_plan_versions.map { |item| item["version"].to_i }.max.to_i + 1
     resources = assessment[:resource_lines].to_s.lines.filter_map do |line|
       name, required, available, unit = line.strip.split("|").map(&:strip)
@@ -240,13 +263,24 @@ class IncidentsController < ApplicationController
 
       { "name" => name, "required" => required.to_f, "available" => available.to_f, "unit" => unit.presence || "รายการ" }
     end
+    assessed_at = Time.current.utc.iso8601
+    assessment_title = assessment[:title].presence || "ประเมินสถานการณ์ครั้งที่ #{next_version}"
     incident.response_plan_versions << {
       "version" => next_version,
-      "title" => assessment[:title].presence || "ประเมินสถานการณ์ครั้งที่ #{next_version}",
+      "title" => assessment_title,
+      "area_sq_km" => assessment[:area_sq_km].to_f,
       "affected_people" => assessment[:affected_people].to_i,
+      "affected_households" => assessment[:affected_households].to_i,
       "budget" => assessment[:budget].to_i,
-      "assessed_at" => Time.current.utc.iso8601,
+      "assessed_at" => assessed_at,
       "resources" => resources
+    }
+    incident.histories << {
+      "title" => "ประเมินสถานการณ์ Version #{next_version}",
+      "description" => "#{assessment_title} · พื้นที่ #{assessment[:area_sq_km].to_f.round(3)} ตร.กม. · ประชากร #{assessment[:affected_people].to_i} คน · #{assessment[:affected_households].to_i} ครัวเรือน",
+      "occurred_at" => assessed_at,
+      "actor" => current_user.username,
+      "resources" => []
     }
     incident.active_plan_version = next_version if assessment[:activate] == "1"
     incident.status = "assessing" if incident.status == "pending"
@@ -258,7 +292,7 @@ class IncidentsController < ApplicationController
 
   def acknowledge
     incident = Incident.visible_to(current_user).find(params[:id])
-    return redirect_to disasters_path(incident_id: incident.id), notice: "เหตุการณ์นี้ถูกรับเรื่องแล้ว" unless incident.status == "pending"
+    return redirect_to incident_page_path(incident, incident_id: incident.id), notice: "เหตุการณ์นี้ถูกรับเรื่องแล้ว" unless incident.status == "pending"
 
     assigned_to = params.require(:incident).require(:assigned_to)
 
@@ -276,7 +310,7 @@ class IncidentsController < ApplicationController
     incident.received_at = Time.current
     incident.save!
 
-    redirect_to disasters_path(incident_id: incident.id), notice: "รับเรื่องเรียบร้อยแล้ว"
+    redirect_to incident_page_path(incident, incident_id: incident.id), notice: "รับเรื่องเรียบร้อยแล้ว"
   rescue Mongoid::Errors::DocumentNotFound
     redirect_to disasters_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
   end
@@ -294,6 +328,30 @@ class IncidentsController < ApplicationController
     redirect_to disasters_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
   end
 
+  def promote_to_disaster
+    incident = find_incident
+    unless current_user.system_admin? || current_user.subdistrict_admin?
+      return redirect_to general_incidents_path(incident_id: incident.id), alert: "บัญชีนี้ไม่มีสิทธิ์เปิดเหตุการณ์ภัยพิบัติ"
+    end
+    return redirect_to disasters_path(incident_id: incident.id), notice: "เหตุการณ์นี้เป็นภัยพิบัติอยู่แล้ว" if incident.category == "disaster"
+    unless %w[assessing in_progress].include?(incident.status)
+      return redirect_to general_incidents_path(incident_id: incident.id), alert: "กรุณารับเรื่องก่อนเปิดเป็นภัยพิบัติ"
+    end
+
+    incident.category = "disaster"
+    incident.histories << {
+      "title" => "เปิดเป็นเหตุการณ์ภัยพิบัติ",
+      "description" => "ผู้ดูแลระบบยกระดับเหตุการณ์ทั่วไปเป็นเหตุการณ์ภัยพิบัติ",
+      "occurred_at" => Time.current.utc.iso8601,
+      "actor" => current_user.username,
+      "resources" => []
+    }
+    incident.save!
+    redirect_to disasters_path(incident_id: incident.id), notice: "เปิดเหตุการณ์เป็นภัยพิบัติเรียบร้อยแล้ว สามารถประเมินสถานการณ์ได้"
+  rescue Mongoid::Errors::DocumentNotFound
+    redirect_to general_incidents_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
+  end
+
   private
 
   def find_incident
@@ -302,10 +360,14 @@ class IncidentsController < ApplicationController
 
   def incident_attributes
     params.require(:incident).permit(
-      :category, :incident_type, :title, :description, :backdated, :occurred_at, :severity, :status,
+      :incident_type, :title, :description, :backdated, :occurred_at, :severity,
       :reporter_name, :reporter_contact, :location_name, :longitude, :latitude,
       :affected_people, :affected_households, :initial_impact, :assigned_to
     )
+  end
+
+  def incident_page_path(incident, options = {})
+    incident.category == "disaster" ? disasters_path(options) : general_incidents_path(options)
   end
 
   def incident_disaster_type(incident)

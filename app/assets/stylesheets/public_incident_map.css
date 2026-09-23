@@ -1,0 +1,10 @@
+.public-report-map-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 9px; color: #60778d; font-size: 11px; }
+.public-report-map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.public-report-map-legend i { display: inline-block; width: 11px; height: 11px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #cad7e3; }
+.public-report-map-legend i.boundary { border: 2px solid #176fe5; border-radius: 2px; background: transparent; box-shadow: none; }
+.public-report-map-legend i.place { background: #2563eb; }
+.public-report-coordinate.error { color: #c83242; font-weight: 700; }
+.public-required-label b { color: #dc2635; }
+.public-report-success .public-report-again { margin-top: 18px; }
+.public-report-success > p:first-of-type { font-size: 18px; }
+.public-report-success > p:last-of-type { font-size: 14px; }

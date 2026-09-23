@@ -5,10 +5,14 @@ class Incident
   CATEGORIES = %w[disaster general].freeze
   DISASTER_INCIDENT_TYPES = ["น้ำท่วม", "ไฟป่า", "วาตภัย", "ภัยแล้ง", "อื่น ๆ"].freeze
   STATUSES = %w[pending assessing in_progress completed].freeze
-  SEVERITIES = %w[waiting watch urgent critical].freeze
+  SEVERITIES = %w[general non_urgent urgent very_urgent critical waiting watch].freeze
 
   field :user_id, type: Integer
+  field :owner_user_id, type: Integer
+  field :access_area_id, type: Integer
   field :subdistrict_id, type: Integer
+  field :report_source_type, type: String, default: "staff"
+  field :report_source_name, type: String, default: "เจ้าหน้าที่"
   field :reference_code, type: String
   field :category, type: String, default: "general"
   field :incident_type, type: String
@@ -16,7 +20,7 @@ class Incident
   field :description, type: String
   field :backdated, type: Boolean, default: false
   field :occurred_at, type: Time
-  field :severity, type: String, default: "watch"
+  field :severity, type: String, default: "general"
   field :status, type: String, default: "pending"
   field :reporter_name, type: String
   field :reporter_contact, type: String
@@ -34,8 +38,11 @@ class Incident
   field :resources_used, type: Array, default: []
   field :response_plan_versions, type: Array, default: []
   field :active_plan_version, type: Integer
+  field :deleted_at, type: Time
+  field :deleted_by, type: String
 
   index({ subdistrict_id: 1, created_at: -1 })
+  index({ owner_user_id: 1, report_source_name: 1, created_at: -1 })
   index({ category: 1, status: 1 })
   index({ reference_code: 1 }, { unique: true, sparse: true })
 
@@ -49,8 +56,16 @@ class Incident
   before_validation :clear_occurred_at_unless_backdated
 
   scope :visible_to, lambda { |user|
-    user.system_admin? ? all : where(:subdistrict_id.in => user.accessible_subdistrict_ids)
+    visible = where(deleted_at: nil)
+    user.system_admin? ? visible : visible.any_of(
+      { owner_user_id: user.id },
+      { owner_user_id: nil, :subdistrict_id.in => user.accessible_subdistrict_ids }
+    )
   }
+
+  def report_source_label
+    report_source_name.presence || (report_source_type == "citizen" ? "ประชาชน" : "เจ้าหน้าที่")
+  end
 
   def active_plan
     response_plan_versions.find { |version| version["version"].to_i == active_plan_version.to_i }
