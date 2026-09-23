@@ -65,7 +65,7 @@
           <div><small>ผู้รับผิดชอบ</small><b><%= incident.assigned_to.presence || "ยังไม่ได้มอบหมาย" %></b></div>
           <div><small>ผู้รับเรื่อง</small><b><%= incident.received_by.presence || "ยังไม่มีผู้รับเรื่อง" %></b></div>
           <div><small>อัปเดตล่าสุด</small><b><%= thai_short_datetime(incident.updated_at) %></b></div>
-          <div class="incident-work-actions"><% unless incident.status == "completed" %><button type="button" class="incident-primary-action compact" data-open-incident-dialog="progress-incident-dialog">อัปเดตการทำงาน</button><% end %><% if incident.category == "disaster" %><%= link_to "ประเมินสถานการณ์", assessment_incident_path(incident), class: "incident-secondary-action compact" %><% end %></div>
+          <div class="incident-work-actions"><% unless incident.status == "completed" %><button type="button" class="incident-primary-action compact" data-open-incident-dialog="progress-incident-dialog">อัปเดตการทำงาน</button><% end %><%= link_to "ประเมินสถานการณ์", assessment_incident_path(incident), class: "incident-secondary-action compact" %></div>
         </section>
 
         <div class="incident-information-grid">

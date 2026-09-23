@@ -28,9 +28,35 @@ class ImportedDataset
       { "key" => "ready_count", "label" => "พร้อมปฏิบัติงาน", "type" => "integer", "required" => true },
       { "key" => "responsible_area", "label" => "พื้นที่รับผิดชอบ", "type" => "text", "required" => true },
       { "key" => "team_leader", "label" => "หัวหน้าทีม", "type" => "text", "required" => true }
+    ],
+    "agencies" => [
+      { "key" => "agency_code", "label" => "รหัสหน่วยงาน", "type" => "text", "required" => false },
+      { "key" => "agency_name", "label" => "ชื่อหน่วยงาน", "type" => "text", "required" => true },
+      { "key" => "agency_type", "label" => "ประเภทหน่วยงาน", "type" => "text", "required" => true },
+      { "key" => "contact_person", "label" => "ผู้ประสานงาน", "type" => "text", "required" => false },
+      { "key" => "phone", "label" => "เบอร์ติดต่อ", "type" => "text", "required" => false },
+      { "key" => "email", "label" => "อีเมล", "type" => "text", "required" => false },
+      { "key" => "address", "label" => "ที่อยู่", "type" => "text", "required" => false },
+      { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => true },
+      { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true }
+    ],
+    "incidents" => [
+      { "key" => "reference_code", "label" => "รหัสเหตุการณ์", "type" => "text", "required" => false, "generated" => true },
+      { "key" => "title", "label" => "ชื่อเหตุการณ์", "type" => "text", "required" => true },
+      { "key" => "incident_type", "label" => "ประเภทเหตุการณ์", "type" => "text", "required" => true },
+      { "key" => "severity", "label" => "ระดับความรุนแรง", "type" => "text", "required" => true },
+      { "key" => "status", "label" => "สถานะ", "type" => "text", "required" => false, "generated" => true },
+      { "key" => "occurred_at", "label" => "วันและเวลาเกิดเหตุ", "type" => "text", "required" => true },
+      { "key" => "description", "label" => "รายละเอียด", "type" => "text", "required" => false },
+      { "key" => "reporter_name", "label" => "ผู้แจ้งเหตุ", "type" => "text", "required" => false },
+      { "key" => "reporter_contact", "label" => "เบอร์ติดต่อ", "type" => "text", "required" => false },
+      { "key" => "location_name", "label" => "ชื่อสถานที่เกิดเหตุ", "type" => "text", "required" => false },
+      { "key" => "initial_impact", "label" => "ผลกระทบเบื้องต้น", "type" => "text", "required" => false },
+      { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => true },
+      { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true }
     ]
   }.freeze
-  TYPE_LABELS = { "population" => "ข้อมูลประชากร", "resources" => "ข้อมูลทรัพยากรและอุปกรณ์", "workforce" => "ข้อมูลทีมงานและกำลังคน", "custom" => "ชุดข้อมูลแบบกำหนดเอง" }.freeze
+  TYPE_LABELS = { "population" => "ข้อมูลประชากร", "resources" => "ข้อมูลทรัพยากรและอุปกรณ์", "workforce" => "ข้อมูลทีมงานและกำลังคน", "agencies" => "หน่วยงาน", "incidents" => "แจ้งเหตุการณ์", "custom" => "ชุดข้อมูลแบบกำหนดเอง" }.freeze
   CUSTOM_CATEGORY_LABELS = { "population" => "ข้อมูลประชากร", "resources" => "ข้อมูลทรัพยากรและอุปกรณ์",
     "workforce" => "ข้อมูลทีมงานและกำลังคน", "area" => "ข้อมูลพื้นที่" }.freeze
   GEOMETRY_TYPES = %w[none point line polygon].freeze

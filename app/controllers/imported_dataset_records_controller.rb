@@ -4,7 +4,12 @@ class ImportedDatasetRecordsController < ApplicationController
   def update
     records = current_records
     records.fetch(position)
-    records[position] = record_params
+    updated_record = record_params
+    if @dataset.data_type == "incidents"
+      updated_record["reference_code"] = records[position]["reference_code"]
+      updated_record["status"] = records[position]["status"]
+    end
+    records[position] = updated_record
     version = create_version(records, "แก้ไข#{@dataset.type_label}")
     render json: success_payload(version)
   rescue IndexError
@@ -28,7 +33,7 @@ class ImportedDatasetRecordsController < ApplicationController
 
   def set_dataset
     scope = current_user.system_admin? ? ImportedDataset.all : ImportedDataset.where(user_id: current_user.id)
-    @dataset = scope.where(id: params[:imported_dataset_id], data_type: { "$in" => %w[population resources workforce custom] }).first
+    @dataset = scope.where(id: params[:imported_dataset_id], data_type: { "$in" => ImportedDataset::TYPE_LABELS.keys }).first
     return if @dataset
     render json: { error: "ไม่พบชุดข้อมูล หรือคุณไม่มีสิทธิ์แก้ไข" }, status: :not_found
   end
@@ -44,7 +49,9 @@ class ImportedDatasetRecordsController < ApplicationController
   end
 
   def record_params
-    keys = @dataset.effective_schema_definition.map { |field| field["key"] }
+    keys = @dataset.effective_schema_definition.reject do |field|
+      field["generated"] || (@dataset.data_type == "incidents" && %w[reference_code status].include?(field["key"]))
+    end.map { |field| field["key"] }
     params.require(:record).permit(*keys).to_h
   end
 

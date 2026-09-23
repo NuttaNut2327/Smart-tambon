@@ -17,7 +17,6 @@ class IncidentsController < ApplicationController
 
   def assessment
     @incident = find_incident
-    return redirect_to disasters_path(incident_id: @incident.id), alert: "การประเมินสถานการณ์ใช้สำหรับเหตุการณ์ภัยพิบัติเท่านั้น" unless @incident.category == "disaster"
 
     @page_mode = :disasters
     @assigned_subdistrict = current_user.subdistrict unless current_user.system_admin?
@@ -37,7 +36,6 @@ class IncidentsController < ApplicationController
 
   def calculate_assessment
     incident = params[:id].present? ? find_incident : nil
-    return render json: { error: "การประเมินสถานการณ์ใช้สำหรับเหตุการณ์ภัยพิบัติเท่านั้น" }, status: :unprocessable_entity if incident && incident.category != "disaster"
 
     area_sq_km = [params[:area_sq_km].to_f, 0].max
     coverage_ratio = params[:coverage_ratio].to_f.clamp(0, 1)

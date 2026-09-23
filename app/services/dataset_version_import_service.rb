@@ -22,12 +22,14 @@ class DatasetVersionImportService
   end
 
   def import!
+    previous_current_version_id = @dataset.current_version_id
     rows = @upload.present? ? rows_from_upload : rows_from_manual
     rows = current_records + rows if @append_records
     raise ArgumentError, "นำเข้าได้ไม่เกิน #{MAX_RECORDS.to_fs(:delimited)} รายการต่อ Version" if rows.size > MAX_RECORDS
     records, errors = normalize(rows)
     raise ArgumentError, errors.first(20).join(" · ") if errors.any?
     raise ArgumentError, "ไม่พบข้อมูลสำหรับนำเข้า" if records.empty? && !@allow_empty
+    records = prepare_incident_records(records) if @dataset.data_type == "incidents"
 
     version = @dataset.versions.create!(
         user_id: @user.id,
@@ -48,8 +50,10 @@ class DatasetVersionImportService
     version.update!(source_file_id: DatasetGridFileStore.upload(version.source_filename, content,
       content_type: version.source_content_type)) if content.present?
     @dataset.update!(current_version_id: version.id)
+    ImportedIncidentSyncService.new(dataset: @dataset, user: @user, records: records).sync! if @dataset.data_type == "incidents"
     version
   rescue StandardError
+    @dataset.set(current_version_id: previous_current_version_id) if version && @dataset.persisted?
     version&.destroy
     raise
   end
@@ -82,6 +86,8 @@ class DatasetVersionImportService
       raw = raw.to_h.stringify_keys
       normalized = {}
       @dataset.effective_schema_definition.each do |field|
+        next if field["generated"] || (@dataset.data_type == "incidents" && %w[reference_code status].include?(field["key"]))
+
         source_value = raw[field["key"]]
         source_value = raw[field["label"]] if source_value.blank?
         if field["required"] && source_value.blank?
@@ -91,10 +97,39 @@ class DatasetVersionImportService
       rescue ArgumentError
         errors << "แถว #{index + 2}: #{field['label']} มีชนิดข้อมูลไม่ถูกต้อง"
       end
+      normalized["reference_code"] = raw["reference_code"] if @dataset.data_type == "incidents" && raw["reference_code"].present?
       validate_location(normalized, index, errors)
       normalized unless normalized.values.all?(&:blank?)
     end
     [records, errors]
+  end
+
+  def prepare_incident_records(records)
+    used_codes = []
+    records.map do |source_record|
+      record = source_record.deep_dup
+      code = record["reference_code"].presence || next_incident_reference_code(used_codes)
+      existing = Incident.where(reference_code: code).first
+      if existing && existing.imported_dataset_id != @dataset.id.to_s
+        raise ArgumentError, "รหัสเหตุการณ์ #{code} ถูกใช้งานแล้ว"
+      end
+      raise ArgumentError, "รหัสเหตุการณ์ #{code} ซ้ำกันในไฟล์" if used_codes.include?(code)
+
+      ImportedIncidentSyncService.parse_occurred_at(record["occurred_at"])
+      ImportedIncidentSyncService.normalize_severity(record["severity"])
+      record["status"] = existing&.status.presence || "pending"
+      ImportedIncidentSyncService.normalize_status(record["status"])
+      record["reference_code"] = code
+      used_codes << code
+      record
+    end
+  end
+
+  def next_incident_reference_code(used_codes)
+    loop do
+      code = "INC-#{Time.current.year + 543}-#{SecureRandom.hex(3).upcase}"
+      return code unless used_codes.include?(code) || Incident.where(reference_code: code).exists?
+    end
   end
 
   def cast(value, type)

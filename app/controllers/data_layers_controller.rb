@@ -4,7 +4,8 @@ class DataLayersController < ApplicationController
   def show
     @can_upload = current_user.system_admin? || current_user.subdistrict_admin?
     @imported_datasets = ImportedDataset.visible_to(current_user).order_by(updated_at: :desc).to_a
-    @selected_type = ImportedDataset::STANDARD_SCHEMAS.key?(params[:data_type]) ? params[:data_type] : "population"
+    visible_system_types = %w[population resources workforce agencies]
+    @selected_type = visible_system_types.include?(params[:data_type]) ? params[:data_type] : "population"
     @selected_schema = ImportedDataset.schema_for(@selected_type)
     @selected_datasets = @imported_datasets.select { |dataset| dataset.data_type == @selected_type }
     all_fixed_records = @selected_datasets.flat_map do |dataset|
@@ -59,7 +60,8 @@ class DataLayersController < ApplicationController
     schema = ImportedDataset.schema_for(type)
     return head :not_found unless schema
 
-    csv = CSV.generate(write_headers: true, headers: schema.map { |field| field["label"] }) { |output| output << schema.map { nil } }
+    input_schema = schema.reject { |field| field["generated"] }
+    csv = CSV.generate(write_headers: true, headers: input_schema.map { |field| field["label"] }) { |output| output << input_schema.map { nil } }
     send_data "\uFEFF#{csv}", filename: "#{type}_template.csv", type: "text/csv; charset=utf-8"
   end
 end

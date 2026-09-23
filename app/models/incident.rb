@@ -9,6 +9,7 @@ class Incident
 
   field :user_id, type: Integer
   field :subdistrict_id, type: Integer
+  field :imported_dataset_id, type: String
   field :reference_code, type: String
   field :category, type: String, default: "general"
   field :incident_type, type: String
@@ -38,6 +39,7 @@ class Incident
   index({ subdistrict_id: 1, created_at: -1 })
   index({ category: 1, status: 1 })
   index({ reference_code: 1 }, { unique: true, sparse: true })
+  index({ imported_dataset_id: 1 })
 
   validates :title, :category, :status, presence: true
   validates :category, inclusion: { in: CATEGORIES }

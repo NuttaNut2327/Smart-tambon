@@ -104,7 +104,10 @@ class DatasetImportDraftsController < ApplicationController
   end
 
   def draft_context
-    return [normalized_type, ImportedDataset.schema_for(normalized_type), nil] if params[:target_dataset_id].blank?
+    if params[:target_dataset_id].blank?
+      schema = ImportedDataset.schema_for(normalized_type).reject { |field| field["generated"] }
+      return [normalized_type, schema, nil]
+    end
 
     dataset = editable_dataset_scope.find(params[:target_dataset_id])
     raise ArgumentError, "รองรับ Mapping แบบกำหนดเองเฉพาะชุดข้อมูลที่ผู้ใช้แก้ไขได้" unless dataset.data_type == "custom"
@@ -137,7 +140,7 @@ class DatasetImportDraftsController < ApplicationController
   end
 
   def suggested_mapping(headers, schema)
-    schema.to_h do |field|
+    schema.reject { |field| field["generated"] }.to_h do |field|
       match = headers.find { |header| header.to_s.casecmp?(field["key"]) || header.to_s.casecmp?(field["label"]) }
       [field["key"], match]
     end
