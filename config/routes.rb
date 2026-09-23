@@ -5,10 +5,14 @@ Rails.application.routes.draw do
   resource :data_layers, only: :show
   get "map", to: "dashboard#map", as: :map
   get "area_analysis", to: "dashboard#area_analysis", as: :area_analysis
+  get "general_incidents", to: "dashboard#general_incidents", as: :general_incidents
   get "disasters", to: "dashboard#disasters", as: :disasters
+  get "report/:token", to: "public_incident_reports#show", as: :public_incident_report
+  post "report/:token", to: "public_incident_reports#create"
   get "incidents/notification", to: "incidents#notification", as: :incident_notification
   post "incidents", to: "incidents#create", as: :incidents
   patch "incidents/:id", to: "incidents#update", as: :incident
+  delete "incidents/:id", to: "incidents#destroy"
   get "incidents/:id/assessment", to: "incidents#assessment", as: :assessment_incident
   post "incidents/:id/calculate_assessment", to: "incidents#calculate_assessment", as: :calculate_incident_assessment
   get "situation_assessment", to: "incidents#standalone_assessment", as: :situation_assessment
@@ -17,6 +21,7 @@ Rails.application.routes.draw do
   post "incidents/:id/assessments", to: "incidents#assess", as: :incident_assessments
   patch "incidents/:id/activate_plan", to: "incidents#activate_plan", as: :activate_incident_plan
   patch "incidents/:id/acknowledge", to: "incidents#acknowledge", as: :acknowledge_incident
+  patch "incidents/:id/promote_to_disaster", to: "incidents#promote_to_disaster", as: :promote_incident_to_disaster
   get "resource_rules", to: "dashboard#resource_rules", as: :resource_rules
   post "resource_rules", to: "resource_rules#create"
   patch "resource_rules/:id", to: "resource_rules#update", as: :resource_rule

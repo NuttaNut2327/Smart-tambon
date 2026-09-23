@@ -33,11 +33,15 @@
     <%= stylesheet_link_tag "incidents", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "incident_tabs", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "incident_assessment", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "incident_sources", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "public_incident_report", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "public_incident_map", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "typography", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", defer: true, "data-turbo-track": "reload" %>
     <%= javascript_include_tag "resource_rules", defer: true, "data-turbo-track": "reload" %>
     <%= javascript_include_tag "incidents", defer: true, "data-turbo-track": "reload" %>
     <%= javascript_include_tag "incident_assessment", defer: true, "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "public_incident_report", defer: true, "data-turbo-track": "reload" %>
   </head>
   <body class="<%= 'auth-page' if devise_controller? %>"><%= yield %></body>
 </html>

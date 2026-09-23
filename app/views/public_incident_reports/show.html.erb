@@ -1,0 +1,52 @@
+<main class="public-report-page" data-public-report-page>
+  <script type="application/json" data-public-boundary><%= raw json_escape(@report_boundary_feature.to_json) %></script>
+  <script type="application/json" data-public-important-places><%= raw json_escape(@important_places.to_json) %></script>
+  <header class="public-report-header">
+    <div class="public-report-brand"><span class="material-symbols-outlined">campaign</span><div><strong>SMART TAMBON</strong><small>ระบบรับแจ้งเหตุประชาชน</small></div></div>
+    <span class="public-report-secure"><span class="material-symbols-outlined">lock</span>แบบฟอร์มสาธารณะ</span>
+  </header>
+
+  <div class="public-report-container">
+    <section class="public-report-intro"><span class="material-symbols-outlined">notification_important</span><div><p>แจ้งเหตุในพื้นที่</p><h1>แบบฟอร์มแจ้งเหตุภายในพื้นที่ <%= @report_area_name %></h1><p>กรอกข้อมูลและปักตำแหน่งภายในขอบเขตพื้นที่ <%= @report_area_name %> เจ้าหน้าที่จะตรวจสอบและรับเรื่องโดยเร็วที่สุด</p></div></section>
+
+    <% if @incident.errors.any? %><div class="public-report-errors"><strong>กรุณาตรวจสอบข้อมูล</strong><ul><% @incident.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul></div><% end %>
+
+    <%= form_with model: @incident, url: public_incident_report_path(token: params[:token]), method: :post, local: true, html: { class: "public-report-form" } do |form| %>
+      <input type="text" name="website" class="public-report-honeypot" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <section class="public-report-card">
+        <div class="public-report-card-title"><span>1</span><div><h2>ข้อมูลเหตุการณ์</h2><p>ระบุข้อมูลที่ช่วยให้เจ้าหน้าที่เข้าใจสถานการณ์</p></div></div>
+        <div class="public-report-grid">
+          <div class="wide public-report-area"><small>พื้นที่เกิดเหตุ</small><strong><%= @report_area_name %></strong></div>
+          <label class="wide"><span class="public-required-label"><b>*</b> ชื่อเหตุการณ์</span><%= form.text_field :title, required: true, maxlength: 150, placeholder: "เช่น ต้นไม้ล้มกีดขวางถนน" %></label>
+          <label>ประเภทเหตุการณ์<%= form.text_field :incident_type, maxlength: 100, placeholder: "เช่น ถนน ไฟฟ้า อุบัติเหตุ" %></label>
+          <label><span class="public-required-label"><b>*</b> ระดับความเร่งด่วน</span><%= form.select :severity, [["วิกฤต", "critical"], ["เร่งด่วนมาก", "very_urgent"], ["เร่งด่วน", "urgent"], ["ไม่เร่งด่วน", "non_urgent"], ["ทั่วไป", "general"]], { selected: @incident.severity || "general" }, required: true %></label>
+          <label class="wide"><span class="public-required-label"><b>*</b> รายละเอียดเหตุการณ์</span><%= form.text_area :description, required: true, rows: 5, maxlength: 2000, placeholder: "อธิบายสิ่งที่เกิดขึ้นและสภาพเหตุการณ์ปัจจุบัน" %></label>
+          <label class="wide">ผลกระทบเบื้องต้น<%= form.text_area :initial_impact, rows: 3, maxlength: 1000, placeholder: "เช่น การจราจรติดขัด บ้านเรือนได้รับความเสียหาย" %></label>
+        </div>
+      </section>
+
+      <section class="public-report-card">
+        <div class="public-report-card-title"><span>2</span><div><h2><span class="public-required-label"><b>*</b> ตำแหน่งที่เกิดเหตุ</span></h2><p>แตะบนแผนที่หรือใช้ตำแหน่งปัจจุบัน</p></div></div>
+        <button type="button" class="public-report-location-button" data-public-use-location><span class="material-symbols-outlined">my_location</span>ใช้ตำแหน่งปัจจุบัน</button>
+        <div class="public-report-map" data-public-report-map data-latitude="<%= @incident.latitude %>" data-longitude="<%= @incident.longitude %>"></div>
+        <div class="public-report-map-legend"><span><i class="boundary"></i>ขอบเขตพื้นที่รับแจ้ง</span><span><i class="place"></i>สถานที่สำคัญ</span></div>
+        <p class="public-report-coordinate" data-public-coordinate><%= @incident.latitude.present? ? "#{@incident.latitude}, #{@incident.longitude}" : "ยังไม่ได้ปักหมุด — แตะบนแผนที่เพื่อเลือกตำแหน่ง" %></p>
+        <%= form.hidden_field :latitude, data: { public_latitude: true } %>
+        <%= form.hidden_field :longitude, data: { public_longitude: true } %>
+        <%= form.hidden_field :location_name, value: @incident.location_name %>
+      </section>
+
+      <section class="public-report-card">
+        <div class="public-report-card-title"><span>3</span><div><h2>ข้อมูลผู้แจ้ง</h2><p>ใช้สำหรับติดต่อสอบถามข้อมูลเพิ่มเติมเท่านั้น</p></div></div>
+        <div class="public-report-grid">
+          <div class="wide public-report-area"><small>ช่องทางรับแจ้ง</small><strong>แจ้งเหตุโดย <%= @report_source_name %></strong></div>
+          <label><span class="public-required-label"><b>*</b> ชื่อผู้แจ้ง</span><%= form.text_field :reporter_name, required: true, maxlength: 120, autocomplete: "name" %></label><label><span class="public-required-label"><b>*</b> เบอร์ติดต่อ</span><%= form.telephone_field :reporter_contact, required: true, maxlength: 20, inputmode: "tel", autocomplete: "tel" %></label>
+        </div>
+        <label class="public-report-consent"><%= check_box_tag :consent, "1", params[:consent] == "1", required: true, data: { public_report_consent: true } %> <span class="public-required-label"><b>*</b> ยืนยันว่าข้อมูลที่แจ้งเป็นความจริง และยินยอมให้เจ้าหน้าที่ใช้ข้อมูลเพื่อดำเนินการเกี่ยวกับเหตุการณ์นี้</span></label>
+      </section>
+
+      <button type="submit" class="public-report-submit" data-public-report-submit disabled><span class="material-symbols-outlined">send</span>ส่งข้อมูลแจ้งเหตุ</button>
+      <p class="public-report-submit-hint" data-public-submit-hint>กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน</p>
+    <% end %>
+  </div>
+</main>

@@ -14,22 +14,28 @@ class DashboardController < ApplicationController
     render :index
   end
 
+  def general_incidents
+    load_incident_page("general", :general_incidents)
+  end
+
   def disasters
-    @page_mode = :disasters
+    load_incident_page("disaster", :disasters)
+  end
+
+  def load_incident_page(category, page_mode)
+    @page_mode = page_mode
     load_area_context
-    @incident_category = params[:category].presence_in(Incident::CATEGORIES)
-    all_incidents = Incident.visible_to(current_user).desc(:created_at).to_a
+    @incident_category = category
+    @incidents_path = category == "disaster" ? disasters_path : general_incidents_path
+    @allow_incident_creation = category == "general"
+    all_incidents = Incident.visible_to(current_user).where(category: category).desc(:created_at).to_a
     @incident_summary = {
       total: all_incidents.size,
       pending: all_incidents.count { |incident| incident.status == "pending" },
       in_progress: all_incidents.count { |incident| %w[assessing in_progress].include?(incident.status) },
       completed: all_incidents.count { |incident| incident.status == "completed" }
     }
-    category_incidents = if @incident_category
-      all_incidents.select { |incident| incident.category == @incident_category }
-    else
-      all_incidents
-    end
+    category_incidents = all_incidents
     @incident_status_counts = {
       all: category_incidents.size,
       pending: category_incidents.count { |incident| incident.status == "pending" },

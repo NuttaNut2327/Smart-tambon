@@ -11,6 +11,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const selectionSource = new ol.source.Vector();
   const simulationPointSource = new ol.source.Vector();
   const isCityMap = page.dataset.cityMap === "true";
+  const cityIncidents = (() => {
+    try { return JSON.parse(page.querySelector("[data-city-incidents]")?.textContent || "[]"); }
+    catch (_error) { return []; }
+  })();
+  const incidentSourceNames = [...new Set(cityIncidents.map((incident) => incident.source || "ไม่ระบุแหล่งที่มา"))];
+  const visibleIncidentSources = new Set(incidentSourceNames);
   const placeConfig = {
     government: { color: "#2563eb", icon: "account_balance" }, education: { color: "#f59e0b", icon: "school" },
     health: { color: "#e11d48", icon: "heart_plus" }, culture: { color: "#8b5cf6", icon: "folded_hands" },
@@ -19,6 +25,10 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   const placeMarkerIcon = (color) => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 42 52"><path d="M21 1C10 1 2 9.5 2 20c0 14.2 19 30.4 19 30.4S40 34.2 40 20C40 9.5 32 1 21 1z" fill="${color}" stroke="#fff" stroke-width="3"/></svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  };
+  const reportedIncidentMarkerIcon = () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 42 52"><path d="M21 1C10 1 2 9.5 2 20c0 14.2 19 30.4 19 30.4S40 34.2 40 20C40 9.5 32 1 21 1z" fill="#ef3340" stroke="#facc15" stroke-width="3"/></svg>';
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   };
   const placeStyleCache = {};
@@ -51,9 +61,22 @@ document.addEventListener("DOMContentLoaded", () => {
   const incidentSource = new ol.source.Vector();
   if (Number.isFinite(longitude) && Number.isFinite(latitude)) incidentSource.addFeature(new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([longitude, latitude]))));
   const incidentLayer = new ol.layer.Vector({ source: incidentSource, zIndex: 20, style: new ol.style.Style({ image: new ol.style.Icon({ src: incidentMarkerUrl, anchor: [0.5, 1], scale: 0.9 }) }) });
+  const cityIncidentLayers = new Map(incidentSourceNames.map((sourceName, index) => {
+    const source = new ol.source.Vector();
+    cityIncidents.filter((incident) => (incident.source || "ไม่ระบุแหล่งที่มา") === sourceName).forEach((incident) => {
+      const feature = new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([Number(incident.longitude), Number(incident.latitude)])));
+      feature.set("cityIncident", incident);
+      source.addFeature(feature);
+    });
+    const layer = new ol.layer.Vector({ source, zIndex: 19, style: new ol.style.Style({
+      image: new ol.style.Icon({ src: reportedIncidentMarkerIcon(), anchor: [0.5, 1], scale: 0.9 }),
+      text: new ol.style.Text({ text: "campaign", font: '18px "Material Symbols Outlined"', fill: new ol.style.Fill({ color: "#fff" }), offsetY: -23 })
+    }) });
+    return [sourceName, layer];
+  }));
   const roadLayer = new ol.layer.Tile({ source: new ol.source.OSM() });
-  const satelliteLayer = new ol.layer.Tile({ source: new ol.source.XYZ({ url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attributions: "Tiles © Esri" }), visible: false });
-  const map = new ol.Map({ target: mapElement, layers: [roadLayer, satelliteLayer, maskLayer, boundaryLayer, placesLayer, waterLayer, selectionLayer, simulationPointLayer, incidentLayer], view: new ol.View({ center: ol.proj.fromLonLat([Number.isFinite(longitude) ? longitude : 100.5, Number.isFinite(latitude) ? latitude : 13.7]), zoom: 13 }), controls: [] });
+  const satelliteLayer = new ol.layer.Tile({ source: new ol.source.XYZ({ url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attributions: "Tiles © Esri", maxZoom: 18, wrapX: false }), visible: false });
+  const map = new ol.Map({ target: mapElement, layers: [roadLayer, satelliteLayer, maskLayer, boundaryLayer, placesLayer, waterLayer, ...cityIncidentLayers.values(), selectionLayer, simulationPointLayer, incidentLayer], view: new ol.View({ center: ol.proj.fromLonLat([Number.isFinite(longitude) ? longitude : 100.5, Number.isFinite(latitude) ? latitude : 13.7]), zoom: 13, minZoom: 5, maxZoom: 18, extent: ol.proj.get("EPSG:3857").getExtent() }), controls: [] });
   let accessBoundary;
   let accessAreaSqKm = 0;
   let draw;
@@ -72,6 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let cesiumSelection = null;
   let cesiumPlaces = null;
   let cesiumWater = null;
+  let cesiumIncidentDataSource = null;
   let placesPayload = [];
   let waterPayload = [];
 
@@ -96,11 +120,38 @@ document.addEventListener("DOMContentLoaded", () => {
     const contact = placeDetail.querySelector("[data-place-detail-contact]");
     contact.textContent = place.tel ? `โทร. ${place.tel}` : ""; contact.hidden = !place.tel;
     const link = placeDetail.querySelector("[data-place-detail-link]");
-    const safeUrl = /^https?:\/\//i.test(place.url || "") ? place.url : "";
-    link.href = safeUrl; link.hidden = !safeUrl;
+    link.removeAttribute("href"); link.textContent = ""; link.hidden = true;
     placeDetail.hidden = false;
   };
-
+  const showIncidentDetail = (incident) => {
+    if (!placeDetail || !incident) return;
+    placeDetail.querySelector("[data-place-detail-icon]").textContent = "campaign";
+    placeDetail.querySelector("[data-place-detail-icon]").style.backgroundColor = "#dc2635";
+    placeDetail.querySelector("[data-place-detail-category]").textContent = `แจ้งเหตุโดย ${incident.source || "ไม่ระบุแหล่งที่มา"}`;
+    placeDetail.querySelector("[data-place-detail-name]").textContent = incident.title || "เหตุการณ์";
+    const severityLabels = { critical: "วิกฤต", very_urgent: "เร่งด่วนมาก", urgent: "เร่งด่วน", non_urgent: "ไม่เร่งด่วน", general: "ทั่วไป", waiting: "ไม่เร่งด่วน", watch: "เร่งด่วน" };
+    const address = placeDetail.querySelector("[data-place-detail-address]");
+    address.textContent = `ระดับความเร่งด่วน: ${severityLabels[incident.severity] || "ทั่วไป"}`; address.hidden = false;
+    const contact = placeDetail.querySelector("[data-place-detail-contact]");
+    contact.textContent = incident.description || "ไม่มีรายละเอียดเพิ่มเติม"; contact.hidden = false;
+    const link = placeDetail.querySelector("[data-place-detail-link]");
+    link.removeAttribute("href"); link.textContent = ""; link.hidden = true;
+    placeDetail.hidden = false;
+  };
+  page.querySelectorAll("[data-city-incident-toggle]").forEach((button) => {
+    button.addEventListener("change", () => {
+      const sourceName = button.dataset.cityIncidentToggle;
+      const visible = button.checked;
+      cityIncidentLayers.get(sourceName)?.setVisible(visible);
+      if (visible) visibleIncidentSources.add(sourceName); else visibleIncidentSources.delete(sourceName);
+      if (cesiumIncidentDataSource) {
+        const now = window.Cesium.JulianDate.now();
+        cesiumIncidentDataSource.entities.values.forEach((entity) => {
+          entity.show = visibleIncidentSources.has(entity.properties?.source?.getValue(now));
+        });
+      }
+    });
+  });
   const terrainHeights = async (x, y, level) => {
     try {
       const response = await fetch(`/api/terrain_tiles/${level}/${x}/${y}`);
@@ -130,11 +181,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     cesiumViewer.scene.globe.depthTestAgainstTerrain = true;
     cesiumViewer.scene.verticalExaggeration = 2.5;
+    cesiumViewer.scene.screenSpaceCameraController.enableCollisionDetection = true;
+    cesiumViewer.scene.screenSpaceCameraController.minimumZoomDistance = 1_200;
+    cesiumViewer.scene.screenSpaceCameraController.maximumZoomDistance = 4_000_000;
+    cesiumViewer.scene.globe.baseColor = Cesium.Color.fromCssColorString("#d9e2e8");
+    cesiumViewer.scene.backgroundColor = Cesium.Color.fromCssColorString("#d9e2e8");
     if (isCityMap) {
       const placeClickHandler = new Cesium.ScreenSpaceEventHandler(cesiumViewer.scene.canvas);
       placeClickHandler.setInputAction((movement) => {
         const picked = cesiumViewer.scene.pick(movement.position);
         if (picked?.id?.assessmentPlace) showPlaceDetail(picked.id.assessmentPlace);
+        else if (picked?.id?.cityIncident) showIncidentDetail(picked.id.cityIncident);
         else if (placeDetail) placeDetail.hidden = true;
       }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     }
@@ -152,6 +209,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (Number.isFinite(longitude) && Number.isFinite(latitude)) {
       cesiumViewer.entities.add({ name: "ตำแหน่งเกิดเหตุ", position: Cesium.Cartesian3.fromDegrees(longitude, latitude, 4), billboard: { image: incidentMarkerUrl, width: 38, height: 49, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY } });
+    }
+    if (isCityMap && cityIncidents.length) {
+      cesiumIncidentDataSource = new Cesium.CustomDataSource("reported-incidents");
+      cityIncidents.forEach((reportedIncident) => {
+        const entity = cesiumIncidentDataSource.entities.add({
+          properties: { source: reportedIncident.source || "ไม่ระบุแหล่งที่มา" },
+          position: Cesium.Cartesian3.fromDegrees(Number(reportedIncident.longitude), Number(reportedIncident.latitude), 4),
+          billboard: { image: reportedIncidentMarkerIcon(), width: 36, height: 44, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY }
+        });
+        entity.cityIncident = reportedIncident;
+      });
+      cesiumViewer.dataSources.add(cesiumIncidentDataSource);
     }
     syncCesiumPointLayers();
     return cesiumViewer;
@@ -326,9 +395,13 @@ document.addEventListener("DOMContentLoaded", () => {
       const resourceContainer = page.querySelector("[data-resource-results]");
       resourceContainer.innerHTML = result.resources.length ? result.resources.map((resource) => `<article><div><b>${escapeHtml(resource.name)}</b><small>ต้องใช้ ${resource.required.toLocaleString()} ${escapeHtml(resource.unit)} · พร้อมใช้ ${resource.available.toLocaleString()} ${escapeHtml(resource.unit)}</small></div><span class="${resource.sufficient ? "enough" : "shortage"}">${resource.sufficient ? "เพียงพอ" : `ขาด ${Math.max(resource.required - resource.available, 0).toLocaleString()}`}</span></article>`).join("") : `<p>${result.evaluated_rule_count > 0 ? "ยังไม่มีกฎที่ผ่านเงื่อนไขจากข้อมูลล่าสุด" : "ไม่พบกฎที่เปิดใช้งานสำหรับประเภทเหตุการณ์นี้"}</p>`;
       const savePopulation = page.querySelector("[data-save-population]");
+      const saveArea = page.querySelector("[data-save-area]");
+      const saveHouseholds = page.querySelector("[data-save-households]");
       const saveResources = page.querySelector("[data-save-resources]");
       const saveButton = page.querySelector("[data-save-button]");
+      if (saveArea) saveArea.value = result.area_sq_km;
       if (savePopulation) savePopulation.value = result.affected_people;
+      if (saveHouseholds) saveHouseholds.value = result.affected_households;
       if (saveResources) saveResources.value = result.resources.map((resource) => `${resource.name} | ${resource.required} | ${resource.available} | ${resource.unit}`).join("\n");
       if (saveButton) saveButton.disabled = false;
       hint.textContent = result.rule_names.length ? `คำนวณด้วยกฎที่ผ่านเงื่อนไข: ${result.rule_names.join(", ")}` : result.evaluated_rule_count > 0 ? `ตรวจสอบ ${result.evaluated_rule_count} กฎแล้ว แต่ยังไม่มีกฎที่ผ่านทุกเงื่อนไข` : "ไม่พบกฎที่เปิดใช้งานสำหรับประเภทเหตุการณ์นี้";
@@ -398,9 +471,11 @@ document.addEventListener("DOMContentLoaded", () => {
   page.querySelector("[data-close-place-detail]")?.addEventListener("click", () => { placeDetail.hidden = true; });
   map.on("singleclick", (event) => {
     if (!isCityMap) return;
-    const feature = map.forEachFeatureAtPixel(event.pixel, (candidate, layer) => layer === placesLayer ? candidate : null);
-    if (!feature) { if (placeDetail) placeDetail.hidden = true; return; }
-    showPlaceDetail(feature.get("place"));
+    const incidentFeature = map.forEachFeatureAtPixel(event.pixel, (candidate) => candidate.get("cityIncident") ? candidate : null);
+    if (incidentFeature) { showIncidentDetail(incidentFeature.get("cityIncident")); return; }
+    const placeFeature = map.forEachFeatureAtPixel(event.pixel, (candidate, layer) => layer === placesLayer ? candidate : null);
+    if (!placeFeature) { if (placeDetail) placeDetail.hidden = true; return; }
+    showPlaceDetail(placeFeature.get("place"));
   });
 
   fetch("/api/access_area", { headers: { Accept: "application/json" } }).then((response) => response.json()).then((data) => {

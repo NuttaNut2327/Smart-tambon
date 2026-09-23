@@ -1,0 +1,7 @@
+.city-place-controls .incident-source { background: #334e68; }
+.incident-source-tags { padding-top: 0; border-top: 0; overflow-x: auto; }
+.incident-source-tags button { white-space: nowrap; }
+.assessment-layer-panel { max-height: calc(100% - 24px); overflow-y: auto; }
+.city-place-detail { width: min(290px, calc(100% - 24px)); height: fit-content; min-height: 0; align-content: start; box-sizing: border-box; }
+.city-place-detail > div { align-self: start; }
+.city-place-detail a[hidden] { display: none; }
