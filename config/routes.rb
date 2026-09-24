@@ -3,6 +3,9 @@ Rails.application.routes.draw do
   resources :users, except: :show
   resource :my_access_area, only: :update
   resource :data_layers, only: :show
+  get "data_layers/population_villages", to: "data_layers#population_villages", as: :population_villages
+  post "data_layers/link_village_boundaries", to: "data_layers#link_village_boundaries", as: :link_village_boundaries
+  post "data_layers/consumable_movements", to: "consumable_movements#create", as: :consumable_movements
   get "map", to: "dashboard#map", as: :map
   get "area_analysis", to: "dashboard#area_analysis", as: :area_analysis
   get "general_incidents", to: "dashboard#general_incidents", as: :general_incidents
@@ -69,6 +72,7 @@ Rails.application.routes.draw do
     resources :places, only: :index do
       get :usage, on: :collection
     end
+    resource :reverse_geocode, only: :show
     resources :analysis_records, only: %i[index create]
   end
 end

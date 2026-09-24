@@ -107,7 +107,7 @@
 
         <section class="incident-card incident-history-card"><div class="incident-card-heading"><div><h3>ประวัติการดำเนินงาน</h3><p>ลำดับการรับเรื่อง การประเมิน และการปฏิบัติงาน</p></div></div><ol><% Array(incident.histories).reverse_each do |history| %><li><div><b><%= history["title"] %></b><p><%= history["description"] %></p><% Array(history["resources"]).each do |resource| %><span><%= resource["name"] %> <%= resource["quantity"] %> <%= resource["unit"] %></span><% end %></div><time><%= thai_incident_datetime(history["occurred_at"]) %><small><%= history["actor"] %></small></time></li><% end %><% if incident.histories.empty? %><li class="empty">ยังไม่มีประวัติการดำเนินงาน</li><% end %></ol></section>
 
-        <section class="incident-card incident-resources-card"><div class="incident-card-heading"><div><h3>สรุปทรัพยากรและทีมงานที่ใช้ในเหตุการณ์</h3><p>ยอดสะสมจากประวัติการดำเนินงาน</p></div><b><%= incident.resources_used.size %> รายการ</b></div><div class="incident-resource-list"><% Array(incident.resources_used).each do |resource| %><article><span class="material-symbols-outlined"><%= resource["kind"] == "workforce" ? "groups" : "inventory_2" %></span><div><b><%= resource["name"] %></b><small><%= resource["kind"] == "workforce" ? "ทีมงาน" : "ทรัพยากร" %> · <%= resource["note"] %></small></div><strong>ใช้แล้ว <%= resource["quantity"] %> <%= resource["unit"] %></strong></article><% end %><% if incident.resources_used.empty? %><p>ยังไม่มีการบันทึกทรัพยากรหรือทีมงานที่ใช้</p><% end %></div></section>
+        <%= render "dashboard/incident_usage_summary", incident: incident %>
       </article>
     </div>
   <% end %>

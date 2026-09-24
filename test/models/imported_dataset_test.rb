@@ -6,17 +6,22 @@ class ImportedDatasetTest < ActiveSupport::TestCase
   end
 
   test "standard schemas are available for all system dataset types" do
-    assert_equal %w[population resources workforce], ImportedDataset::STANDARD_SCHEMAS.keys
+    assert_equal %w[population village_boundaries resources consumables workforce teams agencies incidents], ImportedDataset::STANDARD_SCHEMAS.keys
     ImportedDataset::STANDARD_SCHEMAS.each_value { |schema| assert schema.any? }
   end
 
+  test "consumable schema tracks stock and responsible agency" do
+    assert_equal %w[consumable_code name category unit agency_code agency_name storage_location current_quantity minimum_quantity],
+                 ImportedDataset.schema_for("consumables").map { |field| field.fetch("key") }
+  end
+
   test "resource schema uses the defined asset register columns" do
-    assert_equal %w[name code registration resource_type status storage_location responsible_person],
+    assert_equal %w[name code registration resource_type status responsible_person agency_code storage_location],
                  ImportedDataset.schema_for("resources").map { |field| field.fetch("key") }
   end
 
   test "workforce schema uses the defined team columns" do
-    assert_equal %w[team_name duty member_count ready_count responsible_area team_leader],
+    assert_equal %w[personnel_code full_name position skills agency_code agency_name team_code team_name employment_status availability_status phone],
                  ImportedDataset.schema_for("workforce").map { |field| field.fetch("key") }
   end
 

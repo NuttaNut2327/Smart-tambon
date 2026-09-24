@@ -42,7 +42,7 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
       manual_records: [{ subdistrict: "ตำบลทดสอบ", village_number: 1, village_name: "บ้านหนึ่ง", population_male: 2, population_female: 2,
                          population_total: 4, household_count: 2 }]).import!
 
-    post manual_dataset_import_drafts_path, params: { data_type: "population", target_dataset_id: dataset.id,
+    post manual_dataset_import_drafts_path, params: { data_type: "population",
       record: { subdistrict: "ตำบลทดสอบ", village_number: 2, village_name: "บ้านสอง", population_male: 3, population_female: 3,
                 population_total: 6, household_count: 3 } }
     assert_response :success, response.body
@@ -56,6 +56,8 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
     assert_select "table.fixed-data-table"
     assert_select "#manual-data-dialog"
     assert_select "#file-import-dialog[data-selected-type='resources']"
+    assert_select "[name='target_dataset_id']", count: 0
+    assert_select ".automatic-destination-note", text: /Version ใหม่/
   end
 
   test "edits and deletes a population row by creating new versions" do

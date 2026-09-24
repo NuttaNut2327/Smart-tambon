@@ -4,14 +4,19 @@ class DatasetImportDraftsController < ApplicationController
 
   def manual
     data_type = normalized_type
+    record = params.require(:record).to_unsafe_h
+    if data_type == "village_boundaries" && record["geometry"].blank?
+      raise ArgumentError, "กรุณาวาดขอบเขตหรืออัปโหลดไฟล์ GeoJSON ก่อนบันทึก"
+    end
     map_enabled = ActiveModel::Type::Boolean.new.cast(params[:map_enabled]) || false
     target = destination_dataset(data_type, map_enabled)
-    records = Array(target.current_version&.records) + [params.require(:record).to_unsafe_h]
+    records = Array(target.current_version&.records) + [record]
     version = DatasetVersionImportService.new(dataset: target, user: current_user, manual_records: records,
       source_kind: "manual", change_note: params[:change_note].presence || "เพิ่มข้อมูลด้วยตนเอง").import!
     render json: { dataset_id: target.id.to_s, version: version.version_number, records: version.record_count,
                    redirect_url: data_layers_path(data_type: data_type) }
   rescue ActionController::ParameterMissing, ActiveRecord::RecordNotFound, Mongoid::Errors::DocumentNotFound, Mongoid::Errors::Validations, ArgumentError => error
+    target&.destroy if @destination_dataset_created && target&.persisted? && target.current_version_id.blank?
     render json: { error: error.message }, status: :unprocessable_entity
   end
 
@@ -46,7 +51,13 @@ class DatasetImportDraftsController < ApplicationController
       { draft_row: draft_row, mapped: mapped } unless mapped.values.all?(&:blank?)
     end
     mapped_rows = mapped_entries.map { |entry| entry[:mapped] }
-    target_geometry = @draft.data_type == "custom" ? custom_target_dataset.geometry_type : "none"
+    target_geometry = if @draft.data_type == "custom"
+                        custom_target_dataset.geometry_type
+                      elsif @draft.data_type == "village_boundaries"
+                        "polygon"
+                      else
+                        "none"
+                      end
     preview_dataset = ImportedDataset.new(user: current_user, name: "preview", data_type: @draft.data_type,
       geometry_type: target_geometry, schema_definition: @draft.schema, map_enabled: target_geometry != "none")
     records, errors = DatasetVersionImportService.new(dataset: preview_dataset, user: current_user).validate_records(mapped_rows)
@@ -69,6 +80,7 @@ class DatasetImportDraftsController < ApplicationController
   def finalize
     records = @draft.validated_records
     raise ArgumentError, "กรุณาตรวจสอบข้อมูลให้ผ่านก่อนนำเข้า" if records.empty?
+    records.each { |record| record["boundary_source"] = "อัปโหลดไฟล์" } if @draft.data_type == "village_boundaries"
     map_enabled = ActiveModel::Type::Boolean.new.cast(params[:map_enabled]) || false
     target = @draft.data_type == "custom" ? custom_target_dataset : destination_dataset(@draft.data_type, map_enabled)
     source_content = DatasetGridFileStore.download(@draft.source_file_id)
@@ -77,9 +89,10 @@ class DatasetImportDraftsController < ApplicationController
       source_kind: "file", source_filename: @draft.source_filename, source_content_type: @draft.source_content_type,
       source_content: source_content, change_note: params[:change_note].presence || "นำเข้าจาก #{@draft.source_filename}",
       append_records: append_records).import!
+    next_url = data_layers_path(data_type: @draft.data_type)
     @draft.destroy
     render json: { dataset_id: target.id.to_s, version: version.version_number, records: version.record_count,
-                   redirect_url: imported_dataset_path(target) }
+                   redirect_url: next_url }
   rescue ActiveRecord::RecordNotFound, Mongoid::Errors::DocumentNotFound
     render json: { error: "ไม่พบชุดข้อมูลที่เลือก" }, status: :not_found
   rescue Mongoid::Errors::Validations, ArgumentError => error
@@ -124,18 +137,38 @@ class DatasetImportDraftsController < ApplicationController
   end
 
   def destination_dataset(data_type, map_enabled)
-    if params[:target_dataset_id].present?
-      scope = current_user.system_admin? ? ImportedDataset.all : ImportedDataset.where(user_id: current_user.id)
-      dataset = scope.find(params[:target_dataset_id])
-      raise ArgumentError, "ประเภทชุดข้อมูลเดิมไม่ตรงกัน" unless dataset.data_type == data_type
-      dataset.update!(map_enabled: map_enabled, geometry_type: map_enabled ? "point" : "none")
-      return dataset
+    if data_type == "village_boundaries"
+      map_enabled = true
+      geometry_type = "polygon"
+    else
+      geometry_type = map_enabled ? "point" : "none"
     end
     subdistrict = params[:subdistrict_id].present? ? Subdistrict.find(params[:subdistrict_id]) : current_user.subdistrict
     authorize_subdistrict!(subdistrict)
+
+    candidates = if subdistrict
+                   ImportedDataset.where(data_type: data_type, subdistrict_id: subdistrict.id).to_a
+                 else
+                   ImportedDataset.where(data_type: data_type, user_id: current_user.id, subdistrict_id: nil).to_a
+                 end
+    if candidates.empty? && subdistrict
+      # รองรับชุดข้อมูลเดิมที่สร้างก่อนระบบผูกชุดข้อมูลกับพื้นที่
+      owner_scope = current_user.system_admin? ? ImportedDataset.all : ImportedDataset.where(user_id: current_user.id)
+      candidates = owner_scope.where(data_type: data_type, subdistrict_id: nil).to_a
+    end
+    dataset = candidates.max_by do |candidate|
+      [candidate.current_version&.record_count.to_i, candidate.updated_at || Time.at(0)]
+    end
+
+    if dataset
+      dataset.update!(subdistrict: subdistrict, map_enabled: map_enabled, geometry_type: geometry_type)
+      return dataset
+    end
+
+    @destination_dataset_created = true
     ImportedDataset.create!(user: current_user, subdistrict: subdistrict,
-      name: params[:dataset_name].presence || ImportedDataset::TYPE_LABELS.fetch(data_type), data_type: data_type,
-      geometry_type: map_enabled ? "point" : "none", schema_definition: ImportedDataset.schema_for(data_type),
+      name: ImportedDataset::TYPE_LABELS.fetch(data_type), data_type: data_type,
+      geometry_type: geometry_type, schema_definition: ImportedDataset.schema_for(data_type),
       map_enabled: map_enabled, shared_with_all: true)
   end
 

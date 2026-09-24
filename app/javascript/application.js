@@ -101,6 +101,14 @@ document.addEventListener("DOMContentLoaded", () => {
       image:new ol.style.Circle({radius:8,fill:new ol.style.Fill({color:"#7c3aed"}),stroke:new ol.style.Stroke({color:"#fff",width:2})})
     })
   });
+  const villageBoundaryLayer = new ol.layer.Vector({
+    source:new ol.source.Vector(),
+    style:new ol.style.Style({
+      stroke:new ol.style.Stroke({color:"#2563eb",width:3}),
+      fill:new ol.style.Fill({color:"rgba(37,99,235,0)"}),
+      text:new ol.style.Text({font:"600 11px sans-serif",fill:new ol.style.Fill({color:"#173f6b"}),stroke:new ol.style.Stroke({color:"#fff",width:3}),overflow:true})
+    })
+  });
   const waterStationLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
     style:new ol.style.Style({
@@ -123,12 +131,25 @@ document.addEventListener("DOMContentLoaded", () => {
     source:new ol.source.Vector(),
     style:new ol.style.Style({image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#237d69"}),stroke:new ol.style.Stroke({color:"white",width:3})})})
   });
-  const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,...Object.values(placeLayers),importedPlacesLayer,importedDatasetLayer,waterStationLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5,maxZoom:19,extent:ol.proj.get("EPSG:3857").getExtent()}) });
+  const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,villageBoundaryLayer,...Object.values(placeLayers),importedPlacesLayer,importedDatasetLayer,waterStationLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5,maxZoom:19,extent:ol.proj.get("EPSG:3857").getExtent()}) });
   window.smartCityMap=map;
   fetch("/api/imported_datasets",{headers:{Accept:"application/json"}}).then(response=>response.ok?response.json():null).then(data=>{
     if(!data)return;
-    importedDatasetLayer.getSource().addFeatures(new ol.format.GeoJSON().readFeatures(data,{featureProjection:"EPSG:3857"}));
+    const features=new ol.format.GeoJSON().readFeatures(data,{featureProjection:"EPSG:3857"});
+    const villageBoundaries=features.filter(feature=>feature.get("data_type")==="village_boundaries");
+    villageBoundaryGeoJson={type:"FeatureCollection",features:data.features.filter(feature=>feature.properties?.data_type==="village_boundaries")};
+    villageBoundaries.forEach(feature=>feature.setStyle(new ol.style.Style({stroke:new ol.style.Stroke({color:"#2563eb",width:3}),fill:new ol.style.Fill({color:"rgba(37,99,235,0)"}),text:new ol.style.Text({text:feature.get("village_name") || `หมู่ ${feature.get("village_number") || ""}`,font:"600 11px sans-serif",fill:new ol.style.Fill({color:"#173f6b"}),stroke:new ol.style.Stroke({color:"#fff",width:3}),overflow:true})})));
+    villageBoundaryLayer.getSource().addFeatures(villageBoundaries);
+    importedDatasetLayer.getSource().addFeatures(features.filter(feature=>feature.get("data_type")!=="village_boundaries"));
+    if(cesiumMode) syncCesiumVillageBoundaries();
   }).catch(error=>console.warn("Unable to load imported dataset layers",error));
+  const mapLayerList=document.querySelector(".layer-list");
+  if(mapLayerList && !mapLayerList.querySelector("[data-village-boundary-toggle]")){
+    const label=document.createElement("label");
+    label.innerHTML='<input type="checkbox" checked data-village-boundary-toggle><span class="layer-dot village-boundary"></span><b>ขอบเขตหมู่บ้าน</b><small>ข้อมูลที่บันทึก</small>';
+    mapLayerList.append(label);
+    label.querySelector("input").addEventListener("change",event=>{villageBoundaryVisible=event.target.checked;villageBoundaryLayer.setVisible(villageBoundaryVisible);if(cesiumVillageBoundaryDataSource)cesiumVillageBoundaryDataSource.show=villageBoundaryVisible;});
+  }
   const disasterWorkspace=document.querySelector(".disaster-workspace");
   if(disasterWorkspace){
     const disasterEventList=disasterWorkspace.querySelector(".disaster-event-list");
@@ -247,7 +268,7 @@ document.addEventListener("DOMContentLoaded", () => {
   terrainElevationLegend.id="terrain-elevation-legend";
   terrainElevationLegend.innerHTML='<div class="terrain-legend-heading"><b>สีและเงาตามระดับความสูง</b><button type="button" id="terrain-color-toggle" class="terrain-switch is-on" role="switch" aria-checked="true" aria-label="เปิดหรือปิดสีแสดงระดับความสูง"><span></span></button></div><span class="terrain-gradient"></span><div><small>0 ม.</small><small>100</small><small>250</small><small>500</small><small>1,000+ ม.</small></div>';
   document.querySelector(".map-wrap").appendChild(terrainElevationLegend);
-  let cesiumViewer, cesiumBoundaryDataSource, cesiumSiblingBoundaryDataSource, cesiumProvinceBoundaryDataSource, cesiumPickHandler, terrainColorLayer, floodDataSource, floodStartEntity, floodStart, floodPicking=false, cesiumMode=false, terrainColorEnabled=true, selectedFeatureData, lastFloodAnalysis=null, cesiumPlaceVersion=0, cesiumBoundaryVersion=0;
+  let cesiumViewer, cesiumBoundaryDataSource, cesiumSiblingBoundaryDataSource, cesiumProvinceBoundaryDataSource, cesiumVillageBoundaryDataSource, cesiumPickHandler, terrainColorLayer, floodDataSource, floodStartEntity, floodStart, floodPicking=false, cesiumMode=false, terrainColorEnabled=true, villageBoundaryVisible=true, villageBoundaryGeoJson=null, selectedFeatureData, lastFloodAnalysis=null, cesiumPlaceVersion=0, cesiumBoundaryVersion=0;
   const cesiumPlaceEntities=[];
   const cesiumBoundaryPayloadCache=new Map();
   const selectedAreaPayloadCache=new Map();
@@ -526,6 +547,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  async function syncCesiumVillageBoundaries() {
+    if(!cesiumViewer || !villageBoundaryGeoJson) return;
+    if(cesiumVillageBoundaryDataSource) cesiumViewer.dataSources.remove(cesiumVillageBoundaryDataSource,true);
+    const Cesium=window.Cesium;
+    cesiumVillageBoundaryDataSource=await Cesium.GeoJsonDataSource.load(villageBoundaryGeoJson,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#2563eb"),fill:Cesium.Color.TRANSPARENT,strokeWidth:3});
+    cesiumVillageBoundaryDataSource.show=villageBoundaryVisible;
+    cesiumViewer.dataSources.add(cesiumVillageBoundaryDataSource);
+  }
+
   function selectedGeometryBounds() {
     const coordinates=[];
     const collect=value=>Array.isArray(value) && typeof value[0]==="number" ? coordinates.push(value) : Array.isArray(value) ? value.forEach(collect) : null;
@@ -546,7 +576,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-map-mode]").forEach(button=>button.classList.toggle("active",is3d && button.dataset.mapMode==="3d"));
     updateFloodControls();
     if(!is3d){requestAnimationFrame(()=>map.updateSize());return;}
-    try{initializeCesium();updateFloodControls();cesiumViewer.resize();syncCesiumPlaces();syncCesiumBoundary();if(selectedAreaCenter){focusCesiumArea();}else{placeSearchLocation().then(focusCesiumCurrentLocation);}}catch(error){setMapMode(false);document.querySelector("#map-message").textContent=error.message;document.querySelector("#map-message").classList.add("error");}
+    try{initializeCesium();updateFloodControls();cesiumViewer.resize();syncCesiumPlaces();syncCesiumBoundary();syncCesiumVillageBoundaries();if(selectedAreaCenter){focusCesiumArea();}else{placeSearchLocation().then(focusCesiumCurrentLocation);}}catch(error){setMapMode(false);document.querySelector("#map-message").textContent=error.message;document.querySelector("#map-message").classList.add("error");}
   }
   function setTerrainColorVisible(visible) {
     terrainColorEnabled=visible;

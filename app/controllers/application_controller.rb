@@ -1,10 +1,22 @@
 class ApplicationController < ActionController::Base
   before_action :authenticate_user!
+  before_action :normalize_authentication_flash!
   before_action :require_access_configuration!
 
   helper_method :system_admin?, :global_viewer?
 
   private
+
+  def normalize_authentication_flash!
+    already_authenticated_messages = [
+      "You are already signed in.",
+      I18n.t("devise.failure.already_authenticated", default: "คุณเข้าสู่ระบบแล้ว")
+    ]
+    return unless already_authenticated_messages.include?(flash[:alert])
+
+    flash[:notice] = "คุณเข้าสู่ระบบแล้ว"
+    flash.delete(:alert)
+  end
 
   def system_admin?
     current_user.system_admin?

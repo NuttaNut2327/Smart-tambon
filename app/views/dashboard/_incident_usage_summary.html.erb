@@ -1,0 +1,27 @@
+<% usage_groups = [
+  { kind: "resource", title: "ทรัพยากรและอุปกรณ์ที่ใช้", icon: "inventory_2", empty: "ยังไม่มีการใช้ทรัพยากร" },
+  { kind: "workforce", title: "บุคลากรปฏิบัติงานที่ใช้", icon: "groups", empty: "ยังไม่มีบุคลากรปฏิบัติงาน" },
+  { kind: "consumable", title: "วัสดุสิ้นเปลืองที่ใช้", icon: "package_2", empty: "ยังไม่มีการใช้วัสดุสิ้นเปลือง" }
+] %>
+<section class="incident-card incident-resources-card">
+  <div class="incident-card-heading"><div><h3>สรุปรายการที่ใช้ในเหตุการณ์</h3><p>แยกตามประเภทและแสดงสถานะล่าสุด</p></div><b><%= incident.resources_used.size %> รายการ</b></div>
+  <div class="incident-usage-summary-groups">
+    <% usage_groups.each do |group| %>
+      <% items = Array(incident.resources_used).select { |item| (item["kind"].presence || "resource") == group[:kind] } %>
+      <section class="incident-usage-summary-group kind-<%= group[:kind] %>">
+        <header><span class="material-symbols-outlined"><%= group[:icon] %></span><h4><%= group[:title] %></h4><b><%= items.size %></b></header>
+        <% items.each do |item| %>
+          <article>
+            <% if group[:kind] == "workforce" %><div><b><%= item["team_name"].present? ? "ทีม #{item['team_name']}" : "ยังไม่ระบุทีม" %></b><small><%= [item["name"], item["note"].presence].compact.join(" · ") %></small></div><% else %><div><b><%= item["name"] %></b><small><%= [item["agency_name"].presence, item["note"].presence].compact.join(" · ") %></small></div><% end %>
+            <div class="incident-usage-amount"><% unless group[:kind] == "workforce" %><strong>ใช้ <%= item["quantity"] %> <%= item["unit"] %></strong><% end %>
+              <% if group[:kind] == "consumable" %><small>คงเหลือ <%= item["remaining"].to_i %> <%= item["unit"] %></small>
+              <% elsif group[:kind] == "workforce" %><small class="usage-state <%= incident.status == 'completed' ? 'ready' : 'active' %>"><%= incident.status == "completed" ? "พร้อมปฏิบัติงาน" : "กำลังปฏิบัติงาน" %></small>
+              <% else %><small class="usage-state <%= incident.status == 'completed' ? 'ready' : 'active' %>"><%= incident.status == "completed" ? "พร้อมใช้งาน" : "กำลังใช้งาน" %></small><% end %>
+            </div>
+          </article>
+        <% end %>
+        <% if items.empty? %><p><%= group[:empty] %></p><% end %>
+      </section>
+    <% end %>
+  </div>
+</section>

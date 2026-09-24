@@ -83,4 +83,16 @@ module ApplicationHelper
     token = Rails.application.message_verifier(:public_incident_form).generate(scope)
     public_incident_report_url(token: token)
   end
+
+  def operational_status_badge(status)
+    value = status.presence || "—"
+    tone = case value
+           when "พร้อมปฏิบัติงาน", "พร้อมใช้งาน", "พร้อมใช้", "เชื่อมแล้ว" then "ready"
+           when "กำลังปฏิบัติงาน", "กำลังใช้งาน", "รอตรวจสอบ" then "active"
+           when "ไม่พร้อมปฏิบัติงาน", "ติดภารกิจ" then "unavailable"
+           when "ยังไม่เชื่อมขอบเขต", "ยังไม่เชื่อม" then "neutral"
+           else "neutral"
+           end
+    content_tag(:span, value, class: "operational-status-badge #{tone}")
+  end
 end

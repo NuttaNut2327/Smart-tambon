@@ -4,41 +4,87 @@ class ImportedDataset
 
   STANDARD_SCHEMAS = {
     "population" => [
+      { "key" => "subdistrict_code", "label" => "รหัสตำบล", "type" => "text", "required" => false },
       { "key" => "subdistrict", "label" => "ตำบล", "type" => "text", "required" => true },
+      { "key" => "village_code", "label" => "รหัสหมู่บ้าน", "type" => "text", "required" => false },
       { "key" => "village_number", "label" => "หมู่ที่", "type" => "integer", "required" => true },
       { "key" => "village_name", "label" => "หมู่บ้าน", "type" => "text", "required" => true },
       { "key" => "population_male", "label" => "ประชากรชาย", "type" => "integer", "required" => true },
       { "key" => "population_female", "label" => "ประชากรหญิง", "type" => "integer", "required" => true },
       { "key" => "population_total", "label" => "ประชากรทั้งหมด", "type" => "integer", "required" => true },
-      { "key" => "household_count", "label" => "จำนวนครัวเรือน", "type" => "integer", "required" => true }
+      { "key" => "household_count", "label" => "จำนวนครัวเรือน", "type" => "integer", "required" => true },
+      { "key" => "boundary_status", "label" => "สถานะขอบเขต", "type" => "text", "required" => false, "generated" => true },
+      { "key" => "boundary_dataset_id", "label" => "ชุดข้อมูลขอบเขต", "type" => "text", "required" => false, "generated" => true, "hidden" => true },
+      { "key" => "boundary_record_position", "label" => "ลำดับขอบเขต", "type" => "integer", "required" => false, "generated" => true, "hidden" => true }
+    ],
+    "village_boundaries" => [
+      { "key" => "subdistrict_code", "label" => "รหัสตำบล", "type" => "text", "required" => false },
+      { "key" => "subdistrict", "label" => "ตำบล", "type" => "text", "required" => true },
+      { "key" => "village_code", "label" => "รหัสหมู่บ้าน", "type" => "text", "required" => false },
+      { "key" => "village_number", "label" => "หมู่ที่", "type" => "integer", "required" => true },
+      { "key" => "village_name", "label" => "หมู่บ้าน", "type" => "text", "required" => true },
+      { "key" => "geometry", "label" => "ขอบเขต (GeoJSON)", "type" => "text", "required" => true, "hidden" => true },
+      { "key" => "boundary_source", "label" => "วิธีบันทึก", "type" => "text", "required" => false, "generated" => true }
     ],
     "resources" => [
       { "key" => "name", "label" => "ชื่อทรัพยากร/อุปกรณ์", "type" => "text", "required" => true },
-      { "key" => "code", "label" => "รหัส", "type" => "text", "required" => false },
+      { "key" => "code", "label" => "รหัสทรัพยากร", "type" => "text", "required" => false, "generated" => true },
       { "key" => "registration", "label" => "ทะเบียน", "type" => "text", "required" => false },
       { "key" => "resource_type", "label" => "ประเภท", "type" => "text", "required" => true },
-      { "key" => "status", "label" => "สถานะ", "type" => "text", "required" => false },
+      { "key" => "status", "label" => "สถานะความพร้อม", "type" => "text", "required" => true },
+      { "key" => "responsible_person", "label" => "หน่วยงานผู้รับผิดชอบ", "type" => "text", "required" => true },
+      { "key" => "agency_code", "label" => "รหัสหน่วยงาน", "type" => "text", "required" => true, "hidden" => true },
+      { "key" => "storage_location", "label" => "สถานที่เก็บ", "type" => "text", "required" => false }
+    ],
+    "consumables" => [
+      { "key" => "consumable_code", "label" => "รหัสวัสดุ", "type" => "text", "required" => false, "generated" => true },
+      { "key" => "name", "label" => "ชื่อวัสดุสิ้นเปลือง", "type" => "text", "required" => true },
+      { "key" => "category", "label" => "ประเภท", "type" => "text", "required" => true },
+      { "key" => "unit", "label" => "หน่วยนับ", "type" => "text", "required" => true },
+      { "key" => "agency_code", "label" => "รหัสหน่วยงาน", "type" => "text", "required" => true, "hidden" => true },
+      { "key" => "agency_name", "label" => "หน่วยงานผู้รับผิดชอบ", "type" => "text", "required" => true },
       { "key" => "storage_location", "label" => "สถานที่เก็บ", "type" => "text", "required" => false },
-      { "key" => "responsible_person", "label" => "ผู้รับผิดชอบ", "type" => "text", "required" => false }
+      { "key" => "current_quantity", "label" => "จำนวนคงเหลือ", "type" => "number", "required" => true },
+      { "key" => "minimum_quantity", "label" => "จุดแจ้งเตือนขั้นต่ำ", "type" => "number", "required" => false }
     ],
     "workforce" => [
+      { "key" => "personnel_code", "label" => "รหัสบุคลากร", "type" => "text", "required" => false, "generated" => true },
+      { "key" => "full_name", "label" => "ชื่อ–นามสกุล", "type" => "text", "required" => true },
+      { "key" => "position", "label" => "ตำแหน่ง/หน้าที่", "type" => "text", "required" => true },
+      { "key" => "skills", "label" => "ทักษะ", "type" => "text", "required" => false },
+      { "key" => "agency_code", "label" => "รหัสหน่วยงาน", "type" => "text", "required" => true, "hidden" => true },
+      { "key" => "agency_name", "label" => "หน่วยงาน", "type" => "text", "required" => true },
+      { "key" => "team_code", "label" => "รหัสทีม", "type" => "text", "required" => false, "hidden" => true },
+      { "key" => "team_name", "label" => "ทีมปฏิบัติงาน", "type" => "text", "required" => false },
+      { "key" => "employment_status", "label" => "สถานะบุคลากร", "type" => "text", "required" => true },
+      { "key" => "availability_status", "label" => "ความพร้อมปฏิบัติงาน", "type" => "text", "required" => true },
+      { "key" => "phone", "label" => "เบอร์ติดต่อ", "type" => "text", "required" => false }
+    ],
+    "teams" => [
+      { "key" => "team_code", "label" => "รหัสทีม", "type" => "text", "required" => false, "generated" => true },
       { "key" => "team_name", "label" => "ชื่อทีม", "type" => "text", "required" => true },
-      { "key" => "duty", "label" => "หน้าที่", "type" => "text", "required" => true },
-      { "key" => "member_count", "label" => "จำนวนสมาชิก", "type" => "integer", "required" => true },
-      { "key" => "ready_count", "label" => "พร้อมปฏิบัติงาน", "type" => "integer", "required" => true },
-      { "key" => "responsible_area", "label" => "พื้นที่รับผิดชอบ", "type" => "text", "required" => true },
-      { "key" => "team_leader", "label" => "หัวหน้าทีม", "type" => "text", "required" => true }
+      { "key" => "agency_code", "label" => "รหัสหน่วยงาน", "type" => "text", "required" => true, "hidden" => true },
+      { "key" => "agency_name", "label" => "หน่วยงานต้นสังกัด", "type" => "text", "required" => true },
+      { "key" => "team_type", "label" => "ประเภททีม", "type" => "text", "required" => true },
+      { "key" => "leader_name", "label" => "หัวหน้าทีม", "type" => "text", "required" => false },
+      { "key" => "responsible_area", "label" => "พื้นที่รับผิดชอบ", "type" => "text", "required" => false },
+      { "key" => "status", "label" => "สถานะทีม", "type" => "text", "required" => true }
     ],
     "agencies" => [
-      { "key" => "agency_code", "label" => "รหัสหน่วยงาน", "type" => "text", "required" => false },
+      { "key" => "agency_code", "label" => "รหัสหน่วยงาน", "type" => "text", "required" => false, "generated" => true },
       { "key" => "agency_name", "label" => "ชื่อหน่วยงาน", "type" => "text", "required" => true },
       { "key" => "agency_type", "label" => "ประเภทหน่วยงาน", "type" => "text", "required" => true },
       { "key" => "contact_person", "label" => "ผู้ประสานงาน", "type" => "text", "required" => false },
       { "key" => "phone", "label" => "เบอร์ติดต่อ", "type" => "text", "required" => false },
       { "key" => "email", "label" => "อีเมล", "type" => "text", "required" => false },
-      { "key" => "address", "label" => "ที่อยู่", "type" => "text", "required" => false },
-      { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => true },
-      { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true }
+      { "key" => "address", "label" => "ที่อยู่โดยประมาณ", "type" => "text", "required" => false },
+      { "key" => "road", "label" => "ถนน", "type" => "text", "required" => false, "hidden" => true },
+      { "key" => "subdistrict", "label" => "ตำบล", "type" => "text", "required" => false, "hidden" => true },
+      { "key" => "district", "label" => "อำเภอ", "type" => "text", "required" => false, "hidden" => true },
+      { "key" => "province", "label" => "จังหวัด", "type" => "text", "required" => false, "hidden" => true },
+      { "key" => "postcode", "label" => "รหัสไปรษณีย์", "type" => "text", "required" => false, "hidden" => true },
+      { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => true, "hidden" => true },
+      { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true, "hidden" => true }
     ],
     "incidents" => [
       { "key" => "reference_code", "label" => "รหัสเหตุการณ์", "type" => "text", "required" => false, "generated" => true },
@@ -56,9 +102,9 @@ class ImportedDataset
       { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true }
     ]
   }.freeze
-  TYPE_LABELS = { "population" => "ข้อมูลประชากร", "resources" => "ข้อมูลทรัพยากรและอุปกรณ์", "workforce" => "ข้อมูลทีมงานและกำลังคน", "agencies" => "หน่วยงาน", "incidents" => "แจ้งเหตุการณ์", "custom" => "ชุดข้อมูลแบบกำหนดเอง" }.freeze
+  TYPE_LABELS = { "population" => "ข้อมูลประชากร", "village_boundaries" => "ขอบเขตหมู่บ้าน", "resources" => "ข้อมูลทรัพยากรและอุปกรณ์", "consumables" => "วัสดุสิ้นเปลือง", "workforce" => "บุคลากรปฏิบัติงาน", "teams" => "ทีมปฏิบัติงาน", "agencies" => "หน่วยงาน", "incidents" => "แจ้งเหตุการณ์", "custom" => "ชุดข้อมูลแบบกำหนดเอง" }.freeze
   CUSTOM_CATEGORY_LABELS = { "population" => "ข้อมูลประชากร", "resources" => "ข้อมูลทรัพยากรและอุปกรณ์",
-    "workforce" => "ข้อมูลทีมงานและกำลังคน", "area" => "ข้อมูลพื้นที่" }.freeze
+    "workforce" => "บุคลากรปฏิบัติงาน", "area" => "ข้อมูลพื้นที่" }.freeze
   GEOMETRY_TYPES = %w[none point line polygon].freeze
   FIELD_TYPES = %w[text number integer date boolean].freeze
 

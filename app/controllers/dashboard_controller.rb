@@ -43,10 +43,16 @@ class DashboardController < ApplicationController
       completed: category_incidents.count { |incident| incident.status == "completed" }
     }
     @incidents = category_incidents
-    workforce_datasets = ImportedDataset.visible_to(current_user).where(data_type: "workforce").to_a
-    @incident_team_options = workforce_datasets.flat_map do |dataset|
-      Array(dataset.current_version&.records).filter_map { |record| record["team_name"].presence || record["name"].presence }
-    end.uniq.sort
+    team_datasets = ImportedDataset.visible_to(current_user).where(data_type: "teams").to_a
+    @incident_team_options = team_datasets.flat_map do |dataset|
+      Array(dataset.current_version&.records).filter_map do |record|
+        [record["team_name"], record["team_code"]] if record["team_name"].present? && record["status"].to_s != "ไม่พร้อมปฏิบัติงาน"
+      end
+    end.uniq.sort_by(&:first)
+    if @incident_team_options.empty?
+      workforce_datasets = ImportedDataset.visible_to(current_user).where(data_type: "workforce").to_a
+      @incident_team_options = workforce_datasets.flat_map { |dataset| Array(dataset.current_version&.records).filter_map { |record| [record["team_name"], record["team_name"]] if record["team_name"].present? } }.uniq.sort_by(&:first)
+    end
     @incident_usage_options = IncidentUsageCatalog.for(current_user)
     @selected_incident = @incidents.find { |incident| incident.id.to_s == params[:incident_id] } || @incidents.first
     requested_version = params[:plan_version].to_i

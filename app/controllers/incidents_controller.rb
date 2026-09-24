@@ -134,9 +134,17 @@ class IncidentsController < ApplicationController
         end
         (basis.to_f / [formula["per_value"].to_f, 1].max * formula["amount"].to_f).ceil
       end
-      workforce = workforce_records.find { |record| record["team_name"].to_s.casecmp?(name.to_s) }
-      available = if workforce
-        workforce["ready_count"].to_i
+      workforce = workforce_records.select do |record|
+        record["team_name"].to_s.casecmp?(name.to_s) || record["full_name"].to_s.casecmp?(name.to_s)
+      end
+      available = if workforce.any?
+        workforce.sum do |record|
+          if record["availability_status"].present?
+            record["employment_status"].to_s != "พ้นสภาพ" && record["availability_status"] == "พร้อมปฏิบัติงาน" ? 1 : 0
+          else
+            record["ready_count"].to_i
+          end
+        end
       else
         resource_records.count { |record| record["name"].to_s.casecmp?(name.to_s) && record["status"].to_s.include?("พร้อม") }
       end
@@ -177,7 +185,11 @@ class IncidentsController < ApplicationController
 
   def update
     incident = find_incident
-    incident.update!(incident_attributes)
+    attributes = incident_attributes
+    if attributes[:assigned_team_code].present?
+      attributes[:assigned_to] = team_name_for(attributes[:assigned_team_code])
+    end
+    incident.update!(attributes)
     redirect_to incident_page_path(incident, incident_id: incident.id), notice: "แก้ไขข้อมูลเหตุการณ์เรียบร้อยแล้ว"
   rescue Mongoid::Errors::DocumentNotFound
     redirect_to general_incidents_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
@@ -210,7 +222,18 @@ class IncidentsController < ApplicationController
         return redirect_to incident_page_path(incident, incident_id: incident.id), alert: "จำนวนที่ใช้ของ #{item[:name]} มากกว่าจำนวนพร้อมใช้ #{item[:available]} #{item[:unit]}"
       end
 
-      { "kind" => item[:kind], "name" => item[:name], "quantity" => quantity, "unit" => item[:unit] }
+      { "catalog_key" => key, "kind" => item[:kind], "name" => item[:name], "quantity" => quantity, "unit" => item[:unit],
+        "agency_name" => item[:agency_name], "team_name" => item[:team_name],
+        "remaining" => item[:available] - quantity }
+    end
+
+    usages.select { |usage| usage["kind"] == "consumable" }.each do |usage|
+      source_item = catalog.fetch(usage["catalog_key"])
+      dataset = ImportedDataset.visible_to(current_user).find(source_item[:dataset_id])
+      ConsumableStockMovementService.new(dataset: dataset, record_position: source_item[:record_position],
+        movement_type: "issue", quantity: usage["quantity"], user: current_user,
+        incident_reference: incident.reference_code,
+        note: "ใช้ในเหตุการณ์ #{incident.title}").call
     end
     incident.status = progress[:status] if Incident::STATUSES.include?(progress[:status])
     incident.assigned_to = progress[:assigned_to] if progress[:assigned_to].present?
@@ -221,7 +244,10 @@ class IncidentsController < ApplicationController
       "actor" => current_user.username,
       "resources" => usages
     }
+    incident.active_assignments = Array(incident.active_assignments)
     if incident.status == "completed" && previous_status != "completed"
+      released_at = Time.current.utc.iso8601
+      incident.active_assignments = incident.active_assignments.map { |assignment| assignment.merge("released_at" => assignment["released_at"].presence || released_at) }
       incident.histories << {
         "title" => "ดำเนินการเสร็จสิ้นแล้ว",
         "description" => "เจ้าหน้าที่ดำเนินงานเสร็จสิ้น",
@@ -232,6 +258,16 @@ class IncidentsController < ApplicationController
     end
     accumulated_resources = Array(incident.resources_used).map(&:deep_dup)
     usages.each do |usage|
+      source_item = catalog[usage["catalog_key"]]
+      incident.active_assignments << {
+        "key" => source_item[:key], "kind" => source_item[:kind], "name" => source_item[:name],
+        "record_code" => source_item[:record_code], "agency_code" => source_item[:agency_code],
+        "agency_name" => source_item[:agency_name], "team_code" => source_item[:team_code],
+        "team_name" => source_item[:team_name], "assigned_at" => Time.current.utc.iso8601,
+        "released_at" => (Time.current.utc.iso8601 if incident.status == "completed")
+      } if source_item && source_item[:kind] != "consumable"
+    end
+    usages.each do |usage|
       existing = accumulated_resources.find do |item|
         same_kind = item["kind"].to_s == usage["kind"].to_s || (item["kind"].blank? && usage["kind"] == "resource")
         item["name"].to_s == usage["name"] && item["unit"].to_s == usage["unit"] && same_kind
@@ -239,6 +275,7 @@ class IncidentsController < ApplicationController
       if existing
         existing["kind"] = usage["kind"]
         existing["quantity"] = existing["quantity"].to_i + usage["quantity"].to_i
+        existing["remaining"] = usage["remaining"] if usage["kind"] == "consumable"
         existing["note"] = progress[:title].presence || "อัปเดตการทำงาน"
       else
         accumulated_resources << usage.merge("note" => progress[:title].presence || "อัปเดตการทำงาน")
@@ -247,6 +284,8 @@ class IncidentsController < ApplicationController
     incident.resources_used = accumulated_resources
     incident.save!
     redirect_to incident_page_path(incident, incident_id: incident.id), notice: "อัปเดตการทำงานเรียบร้อยแล้ว"
+  rescue ArgumentError, Mongoid::Errors::Validations => error
+    redirect_to incident_page_path(incident, incident_id: incident.id), alert: error.message
   rescue Mongoid::Errors::DocumentNotFound
     redirect_to general_incidents_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
   end
@@ -292,7 +331,8 @@ class IncidentsController < ApplicationController
     incident = Incident.visible_to(current_user).find(params[:id])
     return redirect_to incident_page_path(incident, incident_id: incident.id), notice: "เหตุการณ์นี้ถูกรับเรื่องแล้ว" unless incident.status == "pending"
 
-    assigned_to = params.require(:incident).require(:assigned_to)
+    assigned_team_code = params.require(:incident).require(:assigned_team_code)
+    assigned_to = team_name_for(assigned_team_code)
 
     incident.histories << {
       "title" => "รับเรื่องแล้ว",
@@ -303,6 +343,7 @@ class IncidentsController < ApplicationController
     }
     incident.status = "in_progress"
     incident.assigned_to = assigned_to
+    incident.assigned_team_code = assigned_team_code
     incident.received_by = current_user.username
     incident.received_by_user_id = current_user.id
     incident.received_at = Time.current
@@ -356,11 +397,18 @@ class IncidentsController < ApplicationController
     Incident.visible_to(current_user).find(params[:id])
   end
 
+  def team_name_for(team_code)
+    team_record = ImportedDataset.visible_to(current_user).where(data_type: "teams").flat_map do |dataset|
+      Array(dataset.current_version&.records)
+    end.find { |record| record["team_code"] == team_code }
+    team_record&.dig("team_name") || team_code
+  end
+
   def incident_attributes
     params.require(:incident).permit(
       :incident_type, :title, :description, :backdated, :occurred_at, :severity,
       :reporter_name, :reporter_contact, :location_name, :longitude, :latitude,
-      :affected_people, :affected_households, :initial_impact, :assigned_to
+      :affected_people, :affected_households, :initial_impact, :assigned_to, :assigned_team_code
     )
   end
 

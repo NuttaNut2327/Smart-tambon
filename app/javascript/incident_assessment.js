@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
   const boundarySource = new ol.source.Vector();
+  const villageBoundarySource = new ol.source.Vector();
   const maskSource = new ol.source.Vector();
   const placesSource = new ol.source.Vector();
   const waterSource = new ol.source.Vector();
@@ -44,6 +45,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return placeStyleCache[key];
   };
   const boundaryLayer = new ol.layer.Vector({ source: boundarySource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#42b99a", width: 3 }), fill: new ol.style.Fill({ color: "rgba(0,0,0,0)" }) }) });
+  const villageBoundaryLayer = new ol.layer.Vector({ source: villageBoundarySource, style: (feature) => new ol.style.Style({
+    stroke: new ol.style.Stroke({ color: "#2563eb", width: 2.5 }),
+    fill: new ol.style.Fill({ color: "rgba(37,99,235,0)" }),
+    text: new ol.style.Text({ text: feature.get("village_name") || `หมู่ ${feature.get("village_number") || ""}`, font: '600 11px "Google Sans",sans-serif', fill: new ol.style.Fill({ color: "#17457a" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }), overflow: true })
+  }) });
   const maskLayer = new ol.layer.Vector({ source: maskSource, style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(12,29,48,.55)" }) }) });
   const placesLayer = new ol.layer.Vector({ source: placesSource, declutter: true, style: (feature) => {
     const selectedGeometry = lastAssessmentGeometry;
@@ -76,7 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }));
   const roadLayer = new ol.layer.Tile({ source: new ol.source.OSM() });
   const satelliteLayer = new ol.layer.Tile({ source: new ol.source.XYZ({ url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attributions: "Tiles © Esri", maxZoom: 18, wrapX: false }), visible: false });
-  const map = new ol.Map({ target: mapElement, layers: [roadLayer, satelliteLayer, maskLayer, boundaryLayer, placesLayer, waterLayer, ...cityIncidentLayers.values(), selectionLayer, simulationPointLayer, incidentLayer], view: new ol.View({ center: ol.proj.fromLonLat([Number.isFinite(longitude) ? longitude : 100.5, Number.isFinite(latitude) ? latitude : 13.7]), zoom: 13, minZoom: 5, maxZoom: 18, extent: ol.proj.get("EPSG:3857").getExtent() }), controls: [] });
+  const map = new ol.Map({ target: mapElement, layers: [roadLayer, satelliteLayer, maskLayer, boundaryLayer, villageBoundaryLayer, placesLayer, waterLayer, ...cityIncidentLayers.values(), selectionLayer, simulationPointLayer, incidentLayer], view: new ol.View({ center: ol.proj.fromLonLat([Number.isFinite(longitude) ? longitude : 100.5, Number.isFinite(latitude) ? latitude : 13.7]), zoom: 13, minZoom: 5, maxZoom: 18, extent: ol.proj.get("EPSG:3857").getExtent() }), controls: [] });
   let accessBoundary;
   let accessAreaSqKm = 0;
   let draw;
@@ -92,6 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let accessBoundaryGeoJSON = null;
   let cesiumViewer = null;
   let cesiumBoundary = null;
+  let cesiumVillageBoundaries = null;
   let cesiumSelection = null;
   let cesiumPlaces = null;
   let cesiumWater = null;
@@ -207,6 +214,7 @@ document.addEventListener("DOMContentLoaded", () => {
       cesiumBoundary.show = page.querySelector('[data-layer-toggle="boundary"]').checked;
       await cesiumViewer.flyTo(cesiumBoundary, { duration: 0.8 });
     }
+    if (villageBoundarySource.getFeatures().length) await syncCesiumVillageBoundaries();
     if (Number.isFinite(longitude) && Number.isFinite(latitude)) {
       cesiumViewer.entities.add({ name: "ตำแหน่งเกิดเหตุ", position: Cesium.Cartesian3.fromDegrees(longitude, latitude, 4), billboard: { image: incidentMarkerUrl, width: 38, height: 49, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY } });
     }
@@ -224,6 +232,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     syncCesiumPointLayers();
     return cesiumViewer;
+  };
+  const syncCesiumVillageBoundaries = async () => {
+    if (!cesiumViewer || !window.Cesium || !villageBoundarySource.getFeatures().length) return;
+    const Cesium = window.Cesium;
+    if (cesiumVillageBoundaries) cesiumViewer.dataSources.remove(cesiumVillageBoundaries, true);
+    const geojson = new ol.format.GeoJSON().writeFeaturesObject(villageBoundarySource.getFeatures(), { featureProjection: "EPSG:3857", dataProjection: "EPSG:4326" });
+    cesiumVillageBoundaries = await Cesium.GeoJsonDataSource.load(geojson, { clampToGround: true, stroke: Cesium.Color.fromCssColorString("#2563eb"), fill: Cesium.Color.TRANSPARENT, strokeWidth: 3 });
+    cesiumVillageBoundaries.show = page.querySelector('[data-layer-toggle="village-boundaries"]')?.checked !== false;
+    cesiumViewer.dataSources.add(cesiumVillageBoundaries);
   };
   const syncCesiumPointLayers = () => {
     if (!cesiumViewer || !window.Cesium) return;
@@ -452,8 +469,9 @@ document.addEventListener("DOMContentLoaded", () => {
   page.querySelector("[data-clear-area]").addEventListener("click", () => { selectionSource.clear(); simulationPointSource.clear(); areaAnchor = null; areaLine = null; page.querySelector("[data-area-status]").textContent = ""; page.querySelector("[data-clear-area]").disabled = true; if (cesiumViewer && cesiumSelection) { cesiumViewer.dataSources.remove(cesiumSelection, true); cesiumSelection = null; } selectedAreaSqKm = null; lastAssessmentGeometry = null; rulePicker.hidden = true; ruleSelect.innerHTML = '<option value="">ยังไม่มีกฎที่ผ่านเงื่อนไข</option>'; ruleSelect.disabled = true; page.querySelectorAll("[data-result-area],[data-result-population],[data-result-households],[data-result-villages]").forEach((element) => { element.textContent = "—"; }); page.querySelector("[data-resource-results]").innerHTML = "<p>ยังไม่มีผลการคำนวณ</p>"; const saveButton = page.querySelector("[data-save-button]"); if (saveButton) saveButton.disabled = true; });
   page.querySelector("[data-clear-area]").addEventListener("click", () => { areaPolygon = null; placesLayer.changed(); updateCesiumPlaceEmphasis(); });
   page.querySelectorAll("[data-layer-toggle]").forEach((input) => input.addEventListener("change", () => {
-    ({ boundary: boundaryLayer, places: placesLayer, water: waterLayer }[input.dataset.layerToggle]).setVisible(input.checked);
+    ({ boundary: boundaryLayer, "village-boundaries": villageBoundaryLayer, places: placesLayer, water: waterLayer }[input.dataset.layerToggle]).setVisible(input.checked);
     if (input.dataset.layerToggle === "boundary" && cesiumBoundary) cesiumBoundary.show = input.checked;
+    if (input.dataset.layerToggle === "village-boundaries" && cesiumVillageBoundaries) cesiumVillageBoundaries.show = input.checked;
     if (input.dataset.layerToggle === "places" && cesiumPlaces) cesiumPlaces.show = input.checked;
     if (input.dataset.layerToggle === "water" && cesiumWater) cesiumWater.show = input.checked;
   }));
@@ -487,6 +505,12 @@ document.addEventListener("DOMContentLoaded", () => {
     polygons.forEach((polygon) => world.appendLinearRing(new ol.geom.LinearRing(polygon.getCoordinates()[0])));
     maskSource.addFeature(new ol.Feature(world)); map.getView().fit(accessBoundary.getExtent(), { padding: [30, 30, 30, 30], maxZoom: 15 });
   });
+  fetch("/api/imported_datasets", { headers: { Accept: "application/json" } }).then((response) => response.ok ? response.json() : null).then((data) => {
+    if (!data) return;
+    const features = new ol.format.GeoJSON().readFeatures(data, { featureProjection: "EPSG:3857" }).filter((feature) => feature.get("data_type") === "village_boundaries");
+    villageBoundarySource.addFeatures(features);
+    if (cesiumViewer) syncCesiumVillageBoundaries();
+  }).catch((error) => console.warn("Unable to load village boundaries", error));
   const placesByCategory = {};
   const renderAssessmentPlaces = () => {
     const seen = new Set();

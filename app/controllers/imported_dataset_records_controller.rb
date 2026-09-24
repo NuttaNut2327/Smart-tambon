@@ -5,9 +5,21 @@ class ImportedDatasetRecordsController < ApplicationController
     records = current_records
     records.fetch(position)
     updated_record = record_params
+    @dataset.effective_schema_definition.select { |field| field["generated"] }.each do |field|
+      updated_record[field["key"]] = records[position][field["key"]] if records[position][field["key"]].present?
+    end
     if @dataset.data_type == "incidents"
       updated_record["reference_code"] = records[position]["reference_code"]
       updated_record["status"] = records[position]["status"]
+    elsif @dataset.data_type == "population"
+      %w[boundary_status boundary_dataset_id boundary_record_position].each do |key|
+        updated_record[key] = records[position][key] if records[position][key].present?
+      end
+    elsif @dataset.data_type == "village_boundaries"
+      updated_record["boundary_source"] = params.dig(:record, :boundary_source).presence || records[position]["boundary_source"]
+    elsif @dataset.data_type == "consumables"
+      # ยอดคงเหลือต้องเปลี่ยนผ่านรายการรับเข้า–เบิกออก เพื่อให้ตรวจสอบย้อนหลังได้เสมอ
+      updated_record["current_quantity"] = records[position]["current_quantity"]
     end
     records[position] = updated_record
     version = create_version(records, "แก้ไข#{@dataset.type_label}")
@@ -32,7 +44,16 @@ class ImportedDatasetRecordsController < ApplicationController
   private
 
   def set_dataset
-    scope = current_user.system_admin? ? ImportedDataset.all : ImportedDataset.where(user_id: current_user.id)
+    scope = if current_user.system_admin?
+              ImportedDataset.all
+            elsif current_user.subdistrict_admin?
+              ImportedDataset.any_of(
+                { user_id: current_user.id },
+                { shared_with_all: true, subdistrict_id: { "$in" => current_user.accessible_subdistrict_ids } }
+              )
+            else
+              ImportedDataset.where(user_id: current_user.id)
+            end
     @dataset = scope.where(id: params[:imported_dataset_id], data_type: { "$in" => ImportedDataset::TYPE_LABELS.keys }).first
     return if @dataset
     render json: { error: "ไม่พบชุดข้อมูล หรือคุณไม่มีสิทธิ์แก้ไข" }, status: :not_found

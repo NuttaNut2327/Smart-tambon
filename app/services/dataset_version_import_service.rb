@@ -98,6 +98,21 @@ class DatasetVersionImportService
         errors << "แถว #{index + 2}: #{field['label']} มีชนิดข้อมูลไม่ถูกต้อง"
       end
       normalized["reference_code"] = raw["reference_code"] if @dataset.data_type == "incidents" && raw["reference_code"].present?
+      if @dataset.data_type == "population"
+        %w[boundary_status boundary_dataset_id boundary_record_position].each do |key|
+          normalized[key] = raw[key] if raw[key].present?
+        end
+        normalized["boundary_status"] ||= "ยังไม่เชื่อมขอบเขต"
+      end
+      if @dataset.data_type == "village_boundaries"
+        normalized["boundary_source"] = raw["boundary_source"].presence || (@source_kind == "file" ? "อัปโหลดไฟล์" : "วาดขอบเขตเอง")
+      end
+      assign_registry_code(normalized, raw)
+      if @dataset.data_type == "consumables"
+        errors << "แถว #{index + 2}: จำนวนคงเหลือต้องไม่น้อยกว่า 0" if normalized["current_quantity"].to_f.negative?
+        errors << "แถว #{index + 2}: จุดแจ้งเตือนขั้นต่ำต้องไม่น้อยกว่า 0" if normalized["minimum_quantity"].to_f.negative?
+      end
+      validate_boundary_geometry(normalized, index, errors) if @dataset.data_type == "village_boundaries"
       validate_location(normalized, index, errors)
       normalized unless normalized.values.all?(&:blank?)
     end
@@ -123,6 +138,19 @@ class DatasetVersionImportService
       used_codes << code
       record
     end
+  end
+
+  def assign_registry_code(record, raw)
+    key, prefix = case @dataset.data_type
+                  when "agencies" then ["agency_code", "AG"]
+                  when "teams" then ["team_code", "TEAM"]
+                  when "workforce" then ["personnel_code", "PER"]
+                  when "resources" then ["code", "RES"]
+                  when "consumables" then ["consumable_code", "MAT"]
+                  end
+    return unless key
+
+    record[key] = raw[key].presence || "#{prefix}-#{SecureRandom.hex(3).upcase}"
   end
 
   def next_incident_reference_code(used_codes)
@@ -155,6 +183,39 @@ class DatasetVersionImportService
     end
     return if @user.system_admin? || point_inside_access_boundary?(lon, lat)
     errors << "แถว #{index + 2}: พิกัดอยู่นอกพื้นที่รับผิดชอบ"
+  end
+
+  def validate_boundary_geometry(record, index, errors)
+    geometry = JSON.parse(record["geometry"].to_s)
+    type = geometry["type"]
+    unless %w[Polygon MultiPolygon].include?(type)
+      errors << "แถว #{index + 2}: ขอบเขตต้องเป็น Polygon หรือ MultiPolygon"
+      return
+    end
+    if geometry["coordinates"].blank?
+      errors << "แถว #{index + 2}: ขอบเขตไม่มีพิกัด"
+      return
+    end
+    return if @user.system_admin?
+
+    boundary = @user.access_boundary
+    if boundary.blank?
+      errors << "แถว #{index + 2}: บัญชีนี้ยังไม่มีขอบเขตพื้นที่ดูแล"
+      return
+    end
+    query = <<~SQL.squish
+      WITH village_geometry AS (
+        SELECT ST_SetSRID(ST_GeomFromGeoJSON(?), 4326) AS geometry
+      )
+      SELECT ST_IsValid(geometry) AND ST_Covers(?::geometry, geometry)
+      FROM village_geometry
+    SQL
+    sql = ActiveRecord::Base.sanitize_sql_array([query, geometry.to_json, boundary])
+    errors << "แถว #{index + 2}: ขอบเขตหมู่บ้านต้องอยู่ภายในพื้นที่ดูแล" unless ActiveRecord::Base.connection.select_value(sql)
+  rescue JSON::ParserError
+    errors << "แถว #{index + 2}: ขอบเขต GeoJSON ไม่ถูกต้อง"
+  rescue ActiveRecord::StatementInvalid
+    errors << "แถว #{index + 2}: ไม่สามารถตรวจสอบขอบเขต GeoJSON ได้"
   end
 
   def point_inside_access_boundary?(lon, lat)

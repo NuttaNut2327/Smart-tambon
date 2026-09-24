@@ -36,6 +36,8 @@ class Incident
   field :received_at, type: Time
   field :histories, type: Array, default: []
   field :resources_used, type: Array, default: []
+  field :active_assignments, type: Array, default: []
+  field :assigned_team_code, type: String
   field :response_plan_versions, type: Array, default: []
   field :active_plan_version, type: Integer
   field :deleted_at, type: Time

@@ -1,0 +1,35 @@
+<% usage_groups = [
+  { kind: "resource", title: "ทรัพยากรและอุปกรณ์ที่ใช้", description: "เลือกรถ เครื่องมือ หรืออุปกรณ์รายชิ้น", empty: "ยังไม่มีทรัพยากรพร้อมใช้งาน" },
+  { kind: "workforce", title: "บุคลากรปฏิบัติงานที่ใช้", description: "เลือกทีมและบุคลากรที่เข้าปฏิบัติงาน", empty: "ยังไม่มีบุคลากรพร้อมปฏิบัติงาน" },
+  { kind: "consumable", title: "วัสดุสิ้นเปลืองที่ใช้", description: "จำนวนที่บันทึกจะถูกหักจากยอดคงเหลือทันที", empty: "ยังไม่มีวัสดุสิ้นเปลืองคงเหลือ" }
+] %>
+<% usage_groups.each do |group| %>
+  <% options = @incident_usage_options.select { |item| item[:kind] == group[:kind] } %>
+  <section class="wide incident-usage-picker kind-<%= group[:kind] %>" data-incident-usage-picker>
+    <div class="incident-usage-heading">
+      <div><h3><%= group[:title] %></h3><p><%= group[:description] %></p></div>
+      <button type="button" data-add-incident-usage <%= "disabled" if options.empty? %>><span class="material-symbols-outlined">add</span>เพิ่มรายการ</button>
+    </div>
+    <div data-incident-usage-list></div>
+    <template data-incident-usage-template>
+      <div class="incident-usage-row <%= 'without-quantity' if group[:kind] == 'workforce' %>">
+        <label>รายการ
+          <select name="progress[usages][][key]" required>
+            <option value="">เลือกรายการ</option>
+            <% options.each do |item| %>
+              <% if group[:kind] == "workforce" %>
+                <option value="<%= item[:key] %>" data-available="1" data-unit="คน"><%= item[:team_name].present? ? "ทีม #{item[:team_name]} — " : "ยังไม่ระบุทีม — " %><%= item[:display_name].presence || item[:name] %></option>
+              <% else %>
+                <% details = item[:agency_name].presence %>
+                <option value="<%= item[:key] %>" data-available="<%= item[:available] %>" data-unit="<%= item[:unit] %>"><%= item[:display_name].presence || item[:name] %><%= " · #{details}" if details.present? %> — คงเหลือ <%= item[:available] %> <%= item[:unit] %></option>
+              <% end %>
+            <% end %>
+          </select>
+        </label>
+        <% if group[:kind] == "workforce" %><input type="hidden" name="progress[usages][][quantity]" value="1"><% else %><label>จำนวนที่ใช้<input type="number" name="progress[usages][][quantity]" min="1" step="1" required></label><% end %>
+        <button type="button" data-remove-incident-usage aria-label="ลบรายการ"><span class="material-symbols-outlined">delete</span></button>
+      </div>
+    </template>
+    <% if options.empty? %><p class="incident-form-warning"><%= group[:empty] %> กรุณาเพิ่มข้อมูลในเมนูนำเข้าข้อมูลก่อน</p><% else %><p class="incident-usage-empty" data-incident-usage-empty>ยังไม่ได้เพิ่มรายการ</p><% end %>
+  </section>
+<% end %>
