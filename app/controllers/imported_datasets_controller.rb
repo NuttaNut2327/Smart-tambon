@@ -89,7 +89,13 @@ class ImportedDatasetsController < ApplicationController
     @dataset.save!
     respond_to do |format|
       format.html { redirect_to(@dataset.data_type == "custom" ? imported_datasets_path : data_layers_path(data_type: @dataset.data_type), notice: "อัปเดตการตั้งค่าชุดข้อมูลแล้ว") }
-      format.json { render json: { schema: @dataset.effective_schema_definition } }
+      format.json do
+        render json: {
+          schema: @dataset.effective_schema_definition,
+          map_enabled: @dataset.map_enabled?,
+          updated_at: @dataset.updated_at.iso8601
+        }
+      end
     end
   rescue Mongoid::Errors::Validations, ArgumentError => error
     respond_to do |format|

@@ -36,7 +36,11 @@ module Api
           nil
         end
       end
-      { type: "FeatureCollection", features: }
+      metadata = datasets.map do |dataset|
+        { id: dataset.id.to_s, name: dataset.name, data_type: dataset.data_type,
+          geometry_type: dataset.geometry_type, record_count: dataset.record_count }
+      end
+      { type: "FeatureCollection", features:, datasets: metadata }
     end
   end
 end

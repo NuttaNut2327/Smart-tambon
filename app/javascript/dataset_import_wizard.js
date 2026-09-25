@@ -1,4 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("[data-map-layer-visibility-form]").forEach((form) => {
+    form.querySelector('input[type="checkbox"][name="imported_dataset[map_enabled]"]')?.addEventListener("change", () => form.requestSubmit());
+  });
   const token = document.querySelector('meta[name="csrf-token"]')?.content;
   const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, character => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[character]));
   const request = async (url, options = {}) => {

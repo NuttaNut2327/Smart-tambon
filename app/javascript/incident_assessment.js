@@ -32,6 +32,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 42 52"><path d="M21 1C10 1 2 9.5 2 20c0 14.2 19 30.4 19 30.4S40 34.2 40 20C40 9.5 32 1 21 1z" fill="#ef3340" stroke="#facc15" stroke-width="3"/></svg>';
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   };
+  const datasetColors = { agencies: "#7c3aed", resources: "#0f766e", workforce: "#2563eb", teams: "#ea580c", consumables: "#16a34a", population: "#475569", custom: "#9333ea" };
+  const datasetIcons = { agencies: "domain", resources: "construction", workforce: "person", teams: "groups", consumables: "inventory_2", population: "home", custom: "location_on" };
+  const importedDatasetLayers = new Map([...page.querySelectorAll("[data-city-dataset-toggle]")].map((input) => {
+    const source = new ol.source.Vector();
+    const color = datasetColors[input.dataset.datasetType] || "#7c3aed";
+    const icon = datasetIcons[input.dataset.datasetType] || "location_on";
+    const layer = new ol.layer.Vector({ source, zIndex: 17, style: (feature) => {
+      const geometryType = feature.getGeometry()?.getType();
+      if (geometryType === "Polygon" || geometryType === "MultiPolygon") return new ol.style.Style({ stroke: new ol.style.Stroke({ color, width: 2.5 }), fill: new ol.style.Fill({ color: `${color}22` }) });
+      return new ol.style.Style({
+        image: new ol.style.Icon({ src: placeMarkerIcon(color), anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
+        text: new ol.style.Text({ text: icon, font: '18px "Material Symbols Outlined"', fill: new ol.style.Fill({ color: "#fff" }), offsetY: -25 })
+      });
+    } });
+    return [input.dataset.cityDatasetToggle, { input, source, layer, color }];
+  }));
   const placeStyleCache = {};
   const visiblePlaceCategories = new Set(Object.keys(placeConfig));
   const cityPlaceStyle = (category, highlighted) => {
@@ -82,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }));
   const roadLayer = new ol.layer.Tile({ source: new ol.source.OSM() });
   const satelliteLayer = new ol.layer.Tile({ source: new ol.source.XYZ({ url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attributions: "Tiles © Esri", maxZoom: 18, wrapX: false }), visible: false });
-  const map = new ol.Map({ target: mapElement, layers: [roadLayer, satelliteLayer, maskLayer, boundaryLayer, villageBoundaryLayer, placesLayer, waterLayer, ...cityIncidentLayers.values(), selectionLayer, simulationPointLayer, incidentLayer], view: new ol.View({ center: ol.proj.fromLonLat([Number.isFinite(longitude) ? longitude : 100.5, Number.isFinite(latitude) ? latitude : 13.7]), zoom: 13, minZoom: 5, maxZoom: 18, extent: ol.proj.get("EPSG:3857").getExtent() }), controls: [] });
+  const map = new ol.Map({ target: mapElement, layers: [roadLayer, satelliteLayer, maskLayer, boundaryLayer, villageBoundaryLayer, placesLayer, waterLayer, ...importedDatasetLayers.values()].map((entry) => entry.layer || entry).concat([...cityIncidentLayers.values(), selectionLayer, simulationPointLayer, incidentLayer]), view: new ol.View({ center: ol.proj.fromLonLat([Number.isFinite(longitude) ? longitude : 100.5, Number.isFinite(latitude) ? latitude : 13.7]), zoom: 13, minZoom: 5, maxZoom: 18, extent: ol.proj.get("EPSG:3857").getExtent() }), controls: [] });
   let accessBoundary;
   let accessAreaSqKm = 0;
   let draw;
@@ -145,6 +161,26 @@ document.addEventListener("DOMContentLoaded", () => {
     link.removeAttribute("href"); link.textContent = ""; link.hidden = true;
     placeDetail.hidden = false;
   };
+  const showImportedDatasetDetail = (properties) => {
+    if (!placeDetail || !properties) return;
+    const dataType = properties.data_type || "custom";
+    const titleKeys = { agencies: "agency_name", resources: "resource_name", workforce: "full_name", teams: "team_name", consumables: "name", population: "village_name" };
+    const ignored = new Set(["data_type", "dataset_id", "dataset_name", "version"]);
+    const titleKey = titleKeys[dataType];
+    const title = properties[titleKey] || properties.name || properties.title || properties.dataset_name || "ข้อมูลบนแผนที่";
+    const details = Object.entries(properties).filter(([key, value]) => !ignored.has(key) && key !== titleKey && value !== null && value !== "").slice(0, 3).map(([, value]) => value).join(" · ");
+    placeDetail.querySelector("[data-place-detail-icon]").textContent = datasetIcons[dataType] || "location_on";
+    placeDetail.querySelector("[data-place-detail-icon]").style.backgroundColor = datasetColors[dataType] || "#7c3aed";
+    placeDetail.querySelector("[data-place-detail-category]").textContent = properties.dataset_name || "ชุดข้อมูลบนแผนที่";
+    placeDetail.querySelector("[data-place-detail-name]").textContent = title;
+    const address = placeDetail.querySelector("[data-place-detail-address]");
+    address.textContent = properties.address || properties.location || details || ""; address.hidden = !address.textContent;
+    const contact = placeDetail.querySelector("[data-place-detail-contact]");
+    contact.textContent = properties.phone ? `โทร. ${properties.phone}` : ""; contact.hidden = !contact.textContent;
+    const link = placeDetail.querySelector("[data-place-detail-link]");
+    link.removeAttribute("href"); link.textContent = ""; link.hidden = true;
+    placeDetail.hidden = false;
+  };
   page.querySelectorAll("[data-city-incident-toggle]").forEach((button) => {
     button.addEventListener("change", () => {
       const sourceName = button.dataset.cityIncidentToggle;
@@ -159,6 +195,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
+  page.querySelectorAll("[data-city-dataset-toggle]").forEach((input) => input.addEventListener("change", () => {
+    importedDatasetLayers.get(input.dataset.cityDatasetToggle)?.layer.setVisible(input.checked);
+  }));
   const terrainHeights = async (x, y, level) => {
     try {
       const response = await fetch(`/api/terrain_tiles/${level}/${x}/${y}`);
@@ -491,6 +530,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!isCityMap) return;
     const incidentFeature = map.forEachFeatureAtPixel(event.pixel, (candidate) => candidate.get("cityIncident") ? candidate : null);
     if (incidentFeature) { showIncidentDetail(incidentFeature.get("cityIncident")); return; }
+    const datasetFeature = map.forEachFeatureAtPixel(event.pixel, (candidate) => candidate.get("importedDataset") ? candidate : null);
+    if (datasetFeature) { showImportedDatasetDetail(datasetFeature.get("importedDataset")); return; }
     const placeFeature = map.forEachFeatureAtPixel(event.pixel, (candidate, layer) => layer === placesLayer ? candidate : null);
     if (!placeFeature) { if (placeDetail) placeDetail.hidden = true; return; }
     showPlaceDetail(placeFeature.get("place"));
@@ -507,10 +548,17 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   fetch("/api/imported_datasets", { headers: { Accept: "application/json" } }).then((response) => response.ok ? response.json() : null).then((data) => {
     if (!data) return;
-    const features = new ol.format.GeoJSON().readFeatures(data, { featureProjection: "EPSG:3857" }).filter((feature) => feature.get("data_type") === "village_boundaries");
-    villageBoundarySource.addFeatures(features);
+    const features = new ol.format.GeoJSON().readFeatures(data, { featureProjection: "EPSG:3857" });
+    villageBoundarySource.addFeatures(features.filter((feature) => feature.get("data_type") === "village_boundaries"));
+    features.filter((feature) => feature.get("data_type") !== "village_boundaries").forEach((feature) => {
+      const datasetId = String(feature.get("dataset_id") || "");
+      const entry = importedDatasetLayers.get(datasetId);
+      if (!entry) return;
+      feature.set("importedDataset", { ...feature.getProperties(), geometry: undefined });
+      entry.source.addFeature(feature);
+    });
     if (cesiumViewer) syncCesiumVillageBoundaries();
-  }).catch((error) => console.warn("Unable to load village boundaries", error));
+  }).catch((error) => console.warn("Unable to load imported map layers", error));
   const placesByCategory = {};
   const renderAssessmentPlaces = () => {
     const seen = new Set();

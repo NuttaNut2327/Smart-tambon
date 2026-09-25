@@ -42,6 +42,11 @@ class IncidentsController < ApplicationController
       }
     end
     @map_incident_sources = @map_incidents.group_by { |incident| incident[:source] }
+    @map_datasets = ImportedDataset.visible_to(current_user)
+      .where(map_enabled: true)
+      .to_a
+      .reject { |dataset| dataset.data_type == "village_boundaries" }
+      .sort_by { |dataset| dataset.name.to_s }
     render :assessment
   end
 
