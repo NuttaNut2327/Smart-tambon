@@ -1,6 +1,40 @@
 require "digest"
 
 class IncidentUsageCatalog
+  def self.rule_options_for(user)
+    type_config = {
+      "resources" => { label: "ทรัพยากร", default_unit: "รายการ" },
+      "consumables" => { label: "วัสดุสิ้นเปลือง", default_unit: "หน่วย" },
+      "teams" => { label: "ทีมปฏิบัติงาน", default_unit: "ทีม" }
+    }
+    rows = ImportedDataset.visible_to(user).where(:data_type.in => type_config.keys).flat_map do |dataset|
+      Array(dataset.current_version&.records).filter_map do |record|
+        name = dataset.data_type == "teams" ? record["team_name"].presence : record["name"].presence
+        next if name.blank?
+
+        config = type_config.fetch(dataset.data_type)
+        unit = dataset.data_type == "consumables" ? record["unit"].presence || config[:default_unit] : config[:default_unit]
+        available = case dataset.data_type
+        when "consumables" then [record["current_quantity"].to_f, 0].max
+        when "teams" then record["status"].to_s == "พร้อมปฏิบัติงาน" ? 1 : 0
+        else %w[พร้อมใช้ พร้อมใช้งาน available ready].include?(record["status"].to_s.strip.downcase) ? 1 : 0
+        end
+        { label: name.to_s.strip, source_type: dataset.data_type, source_label: config[:label], unit: unit.to_s.strip,
+          available: available, agency_name: record["agency_name"].presence || record["responsible_person"].presence }
+      end
+    end
+    rows.group_by { |item| [item[:source_type], item[:label], item[:unit]] }.map do |(_, label, unit), items|
+      { label: label, source_type: items.first[:source_type], source_label: items.first[:source_label], unit: unit,
+        available: items.sum { |item| item[:available] }, agency_name: items.filter_map { |item| item[:agency_name] }.uniq.join(", ") }
+    end.sort_by { |item| [%w[resources consumables teams].index(item[:source_type]) || 9, item[:label]] }
+  end
+
+  def self.summary_for(user)
+    self.for(user).group_by { |item| [item[:name], item[:unit]] }.map do |(name, unit), items|
+      { name: name, unit: unit, available: items.sum { |item| item[:available].to_f } }
+    end.sort_by { |item| item[:name] }
+  end
+
   def self.for(user)
     datasets = ImportedDataset.visible_to(user).where(:data_type.in => %w[resources workforce consumables]).to_a
     assigned_keys = Incident.visible_to(user).where(:status.ne => "completed").pluck(:active_assignments).flatten.compact

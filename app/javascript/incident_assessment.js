@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const waterSource = new ol.source.Vector();
   const selectionSource = new ol.source.Vector();
   const simulationPointSource = new ol.source.Vector();
+  const simulationGridSource = new ol.source.Vector();
   const isCityMap = page.dataset.cityMap === "true";
   const cityIncidents = (() => {
     try { return JSON.parse(page.querySelector("[data-city-incidents]")?.textContent || "[]"); }
@@ -75,6 +76,11 @@ document.addEventListener("DOMContentLoaded", () => {
   } });
   const waterLayer = new ol.layer.Vector({ source: waterSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 6, fill: new ol.style.Fill({ color: "#0891b2" }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) }) }) });
   const selectionLayer = new ol.layer.Vector({ source: selectionSource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#f97316", width: 3, lineDash: [8, 5] }), fill: new ol.style.Fill({ color: "rgba(249,115,22,.18)" }) }) });
+  const simulationGridLayer = new ol.layer.Vector({ source: simulationGridSource, zIndex: 18, style: (feature) => {
+    const severity = Number(feature.get("severity") || 1);
+    const colors = severity >= .67 ? ["#dc2626", "rgba(220,38,38,.58)"] : severity >= .34 ? ["#f59e0b", "rgba(245,158,11,.5)"] : ["#2563eb", "rgba(37,99,235,.42)"];
+    return new ol.style.Style({ stroke: new ol.style.Stroke({ color: colors[0], width: 1 }), fill: new ol.style.Fill({ color: colors[1] }) });
+  } });
   const simulationPointLayer = new ol.layer.Vector({ source: simulationPointSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 7, fill: new ol.style.Fill({ color: "#176fe5" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) }) }) });
   const longitude = Number(mapElement.dataset.incidentLongitude);
   const latitude = Number(mapElement.dataset.incidentLatitude);
@@ -98,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }));
   const roadLayer = new ol.layer.Tile({ source: new ol.source.OSM() });
   const satelliteLayer = new ol.layer.Tile({ source: new ol.source.XYZ({ url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attributions: "Tiles © Esri", maxZoom: 18, wrapX: false }), visible: false });
-  const map = new ol.Map({ target: mapElement, layers: [roadLayer, satelliteLayer, maskLayer, boundaryLayer, villageBoundaryLayer, placesLayer, waterLayer, ...importedDatasetLayers.values()].map((entry) => entry.layer || entry).concat([...cityIncidentLayers.values(), selectionLayer, simulationPointLayer, incidentLayer]), view: new ol.View({ center: ol.proj.fromLonLat([Number.isFinite(longitude) ? longitude : 100.5, Number.isFinite(latitude) ? latitude : 13.7]), zoom: 13, minZoom: 5, maxZoom: 18, extent: ol.proj.get("EPSG:3857").getExtent() }), controls: [] });
+  const map = new ol.Map({ target: mapElement, layers: [roadLayer, satelliteLayer, maskLayer, boundaryLayer, villageBoundaryLayer, placesLayer, waterLayer, ...importedDatasetLayers.values()].map((entry) => entry.layer || entry).concat([...cityIncidentLayers.values(), selectionLayer, simulationGridLayer, simulationPointLayer, incidentLayer]), view: new ol.View({ center: ol.proj.fromLonLat([Number.isFinite(longitude) ? longitude : 100.5, Number.isFinite(latitude) ? latitude : 13.7]), zoom: 13, minZoom: 5, maxZoom: 18, extent: ol.proj.get("EPSG:3857").getExtent() }), controls: [] });
   let accessBoundary;
   let accessAreaSqKm = 0;
   let draw;
@@ -109,6 +115,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let pointClickKey = null;
   let selectedAreaSqKm = null;
   let lastAssessmentGeometry = null;
+  let lastAnalysisGeometry = null;
+  let lastSimulationGeometry = null;
+  let simulationOrigin = null;
+  let simulationRunId = 0;
   let assessmentMode = isCityMap ? "map" : "analysis";
   page.classList.add(`mode-${assessmentMode}`);
   let accessBoundaryGeoJSON = null;
@@ -127,10 +137,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const rulePicker = page.querySelector("[data-rule-picker]");
   const ruleSelect = page.querySelector("[data-rule-select]");
   const disasterTypeSelect = page.querySelector("[data-assessment-disaster-type]");
+  const disasterType = () => disasterTypeSelect?.value || page.dataset.disasterType || "other";
+  let analysisDisasterType = disasterType();
   const mapWrap = page.querySelector(".assessment-map-wrap");
   const cesiumElement = page.querySelector("[data-assessment-cesium]");
   const placeDetail = page.querySelector("[data-city-place-detail]");
   const placeCategoryLabels = { government: "สถานที่ราชการ", education: "การศึกษา", health: "สาธารณสุข", culture: "ศาสนาและวัฒนธรรม", tourism: "ท่องเที่ยว", transport: "คมนาคม", service: "ร้านค้าและบริการ", emergency: "ความปลอดภัยและฉุกเฉิน" };
+  const renderAffectedPlaces = (geometry = lastAssessmentGeometry) => {
+    const container = page.querySelector("[data-affected-places]"); const count = page.querySelector("[data-affected-place-count]");
+    if (!container || !count) return;
+    if (!geometry) { count.textContent = "0 แห่ง"; container.innerHTML = "<p>ยังไม่มีพื้นที่สำหรับตรวจสอบสถานที่</p>"; return; }
+    const affected = placesPayload.filter((place) => {
+      const lon = Number(place.lon); const lat = Number(place.lat);
+      return Number.isFinite(lon) && Number.isFinite(lat) && geometry.intersectsCoordinate(ol.proj.fromLonLat([lon, lat]));
+    });
+    count.textContent = `${affected.length.toLocaleString("th-TH")} แห่ง`;
+    const grouped = Object.entries(placeCategoryLabels).map(([category, label]) => [category, label, affected.filter((place) => place.assessmentCategory === category)]).filter(([, , places]) => places.length);
+    container.innerHTML = affected.length ? grouped.map(([category, label, places]) => `<details class="affected-place-group" open><summary><span class="material-symbols-outlined">${escapeHtml((placeConfig[category] || placeConfig.service).icon)}</span><b>${escapeHtml(label)}</b><small>${places.length.toLocaleString("th-TH")} แห่ง</small><i class="material-symbols-outlined">expand_more</i></summary><div>${places.map((place) => `<article><b>${escapeHtml(place.name || "ไม่ระบุชื่อสถานที่")}</b><small>${place.address ? escapeHtml(place.address) : "ไม่มีรายละเอียดที่อยู่"}</small></article>`).join("")}</div></details>`).join("") : "<p>ไม่พบสถานที่สำคัญในพื้นที่ที่ได้รับผลกระทบ</p>";
+  };
   const showPlaceDetail = (place) => {
     if (!placeDetail || !place) return;
     const config = placeConfig[place.assessmentCategory] || placeConfig.service;
@@ -215,6 +239,20 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       return heights;
     } catch (_) { return new Float32Array(257 * 257); }
+  };
+  const terrainTileCache = new Map();
+  const terrainHeightAt = async (coordinate, level = 13) => {
+    const [lon, lat] = ol.proj.toLonLat(coordinate);
+    const count = 2 ** level;
+    const tileX = (lon + 180) / 360 * count;
+    const latitudeRadians = Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI / 180;
+    const tileY = (1 - Math.log(Math.tan(latitudeRadians) + 1 / Math.cos(latitudeRadians)) / Math.PI) / 2 * count;
+    const x = Math.floor(tileX); const y = Math.floor(tileY); const key = `${level}/${x}/${y}`;
+    if (!terrainTileCache.has(key)) terrainTileCache.set(key, terrainHeights(x, y, level));
+    const heights = await terrainTileCache.get(key);
+    const pixelX = Math.max(0, Math.min(256, Math.round((tileX - x) * 256)));
+    const pixelY = Math.max(0, Math.min(256, Math.round((tileY - y) * 256)));
+    return heights[pixelY * 257 + pixelX];
   };
   const initializeCesium = async () => {
     if (cesiumViewer) return cesiumViewer;
@@ -343,7 +381,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const value = selectedAreaSqKm * unit.multiplier;
     areaResult.textContent = `${value.toLocaleString("th-TH", { maximumFractionDigits: value < 10 ? 3 : 2 })} ${unit.label}`;
   };
-  const simulationMetrics = () => Object.fromEntries([...page.querySelectorAll("[data-simulation-metric]")].filter((input) => input.value !== "").map((input) => [input.dataset.simulationMetric, Number(input.value)]));
+  const simulationMetrics = () => {
+    const metrics = Object.fromEntries([...page.querySelectorAll("[data-simulation-metric]")].filter((input) => !input.closest("[data-simulation-field]")?.hidden && input.value !== "").map((input) => [input.dataset.simulationMetric, Number(input.value)]));
+    if (Number.isFinite(metrics.water_rise_cm)) metrics.water_level = metrics.water_rise_cm / 100;
+    return metrics;
+  };
   const areaDistance = () => Math.max(0, Number(page.querySelector("[data-area-distance]")?.value) || 0);
 
   const geometryArea = (geometry) => {
@@ -352,6 +394,75 @@ document.addEventListener("DOMContentLoaded", () => {
       : geometry;
 
     return ol.sphere.getArea(areaGeometry, { projection: "EPSG:3857" }) / 1_000_000;
+  };
+  const updateSimulationFields = () => {
+    page.querySelectorAll("[data-simulation-field]").forEach((field) => { field.hidden = disasterType() !== "flood"; });
+    page.querySelector("[data-simulation-description]").textContent = "ระบุระดับน้ำหรือปริมาณน้ำฝน ระบบจะตรวจระดับความสูงและแสดงกริดพื้นที่ลุ่มต่ำที่น้ำไหลถึง";
+  };
+  const updateSimulationAvailability = () => {
+    const button = page.querySelector('[data-assessment-mode="simulation"]');
+    const available = isCityMap || disasterType() === "flood";
+    button.disabled = !available;
+    button.setAttribute("aria-disabled", String(!available));
+    button.title = available ? "จำลองพื้นที่น้ำท่วม" : "ขณะนี้การจำลองสถานการณ์รองรับเฉพาะน้ำท่วม";
+    if (!available && assessmentMode === "simulation") page.querySelector('[data-assessment-mode="analysis"]')?.click();
+  };
+  const makeGridCell = (x, y, size, severity) => {
+    const gap = Math.min(1, size * .01);
+    const polygon = new ol.geom.Polygon([[[x + gap, y + gap], [x + size - gap, y + gap], [x + size - gap, y + size - gap], [x + gap, y + size - gap], [x + gap, y + gap]]]);
+    const feature = new ol.Feature(polygon); feature.set("severity", severity);
+    return feature;
+  };
+  const runSimulation = async (origin) => {
+    const runId = ++simulationRunId;
+    const type = disasterType(); const metrics = simulationMetrics();
+    const hint = page.querySelector("[data-assessment-hint]");
+    if (type !== "flood") { hint.textContent = "ขณะนี้การจำลองสถานการณ์รองรับเฉพาะน้ำท่วม"; return; }
+    if (!accessBoundary) { hint.textContent = "กำลังโหลดขอบเขตพื้นที่ดูแล กรุณาลองอีกครั้ง"; return; }
+    if (type === "flood" && !(Number(metrics.water_rise_cm) > 0 || Number(metrics.rainfall) > 0)) { hint.textContent = "กรุณาระบุระดับน้ำที่เพิ่มขึ้นหรือปริมาณน้ำฝน"; return; }
+    if (type === "fire" && !(Number(metrics.hotspot_count) > 0)) { hint.textContent = "กรุณาระบุจำนวน Hotspot"; return; }
+    if (type === "wind" && !(Number(metrics.wind_speed) > 0)) { hint.textContent = "กรุณาระบุความเร็วลม"; return; }
+    if (accessBoundary && !accessBoundary.intersectsCoordinate(origin)) { hint.textContent = "กรุณาเลือกจุดเริ่มต้นภายในขอบเขตพื้นที่ดูแล"; return; }
+    hint.textContent = "กำลังอ่านระดับความสูงทั่วพื้นที่ดูแล…";
+    const extent = accessBoundary.getExtent();
+    const width = extent[2] - extent[0]; const height = extent[3] - extent[1];
+    const cellSize = Math.max(50, Math.max(width, height) / 45);
+    const cells = [];
+    for (let column = 0, x = extent[0]; x < extent[2]; column += 1, x += cellSize) for (let row = 0, y = extent[1]; y < extent[3]; row += 1, y += cellSize) {
+      const center = [x + cellSize / 2, y + cellSize / 2];
+      if (!accessBoundary.intersectsCoordinate(center)) continue;
+      cells.push({ x, y, center, row, column });
+    }
+    let affected = [];
+    if (type === "flood") {
+      const heights = await Promise.all([origin, ...cells.map((cell) => cell.center)].map((coordinate) => terrainHeightAt(coordinate)));
+      if (runId !== simulationRunId) return;
+      const originHeight = heights[0]; const rise = Math.max(0, Number(metrics.water_rise_cm) || 0) / 100 + Math.max(0, Number(metrics.rainfall) || 0) / 100;
+      const waterLevel = originHeight + rise;
+      cells.forEach((cell, index) => { cell.height = heights[index + 1]; });
+      const byGrid = new Map(cells.map((cell) => [`${cell.row}/${cell.column}`, cell]));
+      const seed = cells.reduce((nearest, cell) => !nearest || Math.hypot(cell.center[0] - origin[0], cell.center[1] - origin[1]) < Math.hypot(nearest.center[0] - origin[0], nearest.center[1] - origin[1]) ? cell : nearest, null);
+      if (seed) seed.height = Math.min(seed.height, originHeight);
+      const flooded = new Set(); const queue = seed ? [seed] : [];
+      const neighbors = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+      while (queue.length) {
+        const cell = queue.shift(); const key = `${cell.row}/${cell.column}`;
+        if (flooded.has(key) || !Number.isFinite(cell.height) || cell.height > waterLevel) continue;
+        flooded.add(key);
+        neighbors.forEach(([row, column]) => { const next = byGrid.get(`${cell.row + row}/${cell.column + column}`); if (next && !flooded.has(`${next.row}/${next.column}`) && next.height <= waterLevel) queue.push(next); });
+      }
+      affected = [...flooded].map((key) => { const cell = byGrid.get(key); cell.severity = Math.min(1, Math.max(.12, (waterLevel - cell.height) / Math.max(rise, .1))); return cell; });
+      hint.textContent = affected.length ? `จุดเริ่มต้นสูง ${originHeight.toFixed(1)} ม. · น้ำเพิ่มขึ้น ${Number(metrics.water_rise_cm || 0).toLocaleString("th-TH")} ซม. · พื้นที่ต่ำที่น้ำไหลต่อเนื่องถึง ${affected.length.toLocaleString("th-TH")} ช่องกริด` : "ไม่พบพื้นที่ต่ำที่น้ำไหลต่อเนื่องถึงจากจุดเริ่มต้น";
+    }
+    simulationGridSource.clear();
+    const features = affected.map((cell) => makeGridCell(cell.x, cell.y, cellSize, cell.severity));
+    simulationGridSource.addFeatures(features);
+    page.querySelector("[data-simulation-grid-legend]").hidden = features.length === 0;
+    if (!features.length) return;
+    const geometry = new ol.geom.MultiPolygon(features.map((feature) => feature.getGeometry().getCoordinates()));
+    lastSimulationGeometry = geometry;
+    page.querySelector("[data-clear-simulation]").disabled = false;
+    await calculate(geometry, "", "simulation");
   };
   const showDrawingMap = () => {
     mapWrap.classList.remove("is-3d");
@@ -394,7 +505,8 @@ document.addEventListener("DOMContentLoaded", () => {
     selectionSource.clear(); selectionSource.addFeature(new ol.Feature(geometry));
     page.querySelector("[data-area-status]").textContent = "เลือกพื้นที่แล้ว กำลังคำนวณผลกระทบ";
     page.querySelector("[data-clear-area]").disabled = false;
-    calculate(geometry);
+    lastAnalysisGeometry = geometry;
+    calculate(geometry, "", "analysis");
   };
   const setDrawing = (type) => {
     showDrawingMap();
@@ -419,10 +531,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  const calculate = async (geometry, ruleId = "") => {
+  const calculate = async (geometry, ruleId = "", calculationMode = assessmentMode) => {
     lastAssessmentGeometry = geometry;
+    if (calculationMode === "simulation") lastSimulationGeometry = geometry; else lastAnalysisGeometry = geometry;
     placesLayer.changed();
     updateCesiumPlaceEmphasis();
+    renderAffectedPlaces(geometry);
     const area = geometryArea(geometry);
     selectedAreaSqKm = area;
     formatArea();
@@ -433,11 +547,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const hint = page.querySelector("[data-assessment-hint]");
     hint.textContent = "กำลังคำนวณเฉพาะพื้นที่ภายในขอบเขตดูแล…";
     try {
-      const response = await fetch(page.dataset.calculateUrl, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content }, body: JSON.stringify({ geometry: geometryGeoJSON, area_sq_km: area, coverage_ratio: ratio, rule_id: ruleId, disaster_type: disasterTypeSelect?.value, simulation_metrics: assessmentMode === "simulation" ? simulationMetrics() : {} }) });
+      const response = await fetch(page.dataset.calculateUrl, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content }, body: JSON.stringify({ geometry: geometryGeoJSON, area_sq_km: area, coverage_ratio: ratio, rule_id: ruleId, disaster_type: disasterTypeSelect?.value, simulation_metrics: calculationMode === "simulation" ? simulationMetrics() : {} }) });
       const responseType = response.headers.get("content-type") || "";
       if (!responseType.includes("application/json")) throw new Error("ระบบประเมินผลขัดข้อง กรุณาลองใหม่อีกครั้ง");
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "คำนวณไม่สำเร็จ");
+      if (assessmentMode !== calculationMode) return;
       selectedAreaSqKm = Number(result.area_sq_km);
       formatArea();
       const areaStatus = page.querySelector("[data-area-status]");
@@ -449,7 +564,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ruleSelect.innerHTML = result.available_rules.length ? result.available_rules.map((rule) => `<option value="${escapeHtml(rule.id)}" ${rule.id === result.selected_rule_id ? "selected" : ""}>${escapeHtml(rule.name)}</option>`).join("") : '<option value="">ยังไม่มีกฎที่ผ่านเงื่อนไข</option>';
       ruleSelect.disabled = result.available_rules.length === 0;
       const resourceContainer = page.querySelector("[data-resource-results]");
-      resourceContainer.innerHTML = result.resources.length ? result.resources.map((resource) => `<article><div><b>${escapeHtml(resource.name)}</b><small>ต้องใช้ ${resource.required.toLocaleString()} ${escapeHtml(resource.unit)} · พร้อมใช้ ${resource.available.toLocaleString()} ${escapeHtml(resource.unit)}</small></div><span class="${resource.sufficient ? "enough" : "shortage"}">${resource.sufficient ? "เพียงพอ" : `ขาด ${Math.max(resource.required - resource.available, 0).toLocaleString()}`}</span></article>`).join("") : `<p>${result.evaluated_rule_count > 0 ? "ยังไม่มีกฎที่ผ่านเงื่อนไขจากข้อมูลล่าสุด" : "ไม่พบกฎที่เปิดใช้งานสำหรับประเภทเหตุการณ์นี้"}</p>`;
+      resourceContainer.innerHTML = result.resources.length ? `<div class="assessment-resource-table"><div class="assessment-resource-head"><span>ทรัพยากร</span><span>ต้องใช้</span><span>พร้อมใช้</span><span>ผลเปรียบเทียบ</span></div>${result.resources.map((resource) => { const shortage = Math.max(resource.required - resource.available, 0); return `<article><b>${escapeHtml(resource.name)}</b><div class="resource-amount required"><strong>${resource.required.toLocaleString()} <em>${escapeHtml(resource.unit)}</em></strong></div><div class="resource-amount available"><strong>${resource.available.toLocaleString()} <em>${escapeHtml(resource.unit)}</em></strong></div><span class="resource-comparison ${resource.sufficient ? "enough" : "shortage"}"><b>${resource.sufficient ? "เพียงพอ" : `ขาดอีก ${shortage.toLocaleString()} ${escapeHtml(resource.unit)}`}</b></span></article>`; }).join("")}</div>` : `<p>${result.evaluated_rule_count > 0 ? "ยังไม่มีกฎที่ผ่านเงื่อนไขจากข้อมูลล่าสุด" : "ไม่พบกฎที่เปิดใช้งานสำหรับประเภทเหตุการณ์นี้"}</p>`;
       const savePopulation = page.querySelector("[data-save-population]");
       const saveArea = page.querySelector("[data-save-area]");
       const saveHouseholds = page.querySelector("[data-save-households]");
@@ -460,19 +575,46 @@ document.addEventListener("DOMContentLoaded", () => {
       if (saveHouseholds) saveHouseholds.value = result.affected_households;
       if (saveResources) saveResources.value = result.resources.map((resource) => `${resource.name} | ${resource.required} | ${resource.available} | ${resource.unit}`).join("\n");
       if (saveButton) saveButton.disabled = false;
-      hint.textContent = result.rule_names.length ? `คำนวณด้วยกฎที่ผ่านเงื่อนไข: ${result.rule_names.join(", ")}` : result.evaluated_rule_count > 0 ? `ตรวจสอบ ${result.evaluated_rule_count} กฎแล้ว แต่ยังไม่มีกฎที่ผ่านทุกเงื่อนไข` : "ไม่พบกฎที่เปิดใช้งานสำหรับประเภทเหตุการณ์นี้";
+      hint.textContent = result.rule_names.length ? `คำนวณด้วยกฎที่ผ่านเงื่อนไข: ${result.rule_names.join(", ")}` : result.evaluated_rule_count > 0 ? `ตรวจสอบ ${result.evaluated_rule_count} กฎแล้ว แต่ยังไม่มีเงื่อนไขใดผ่าน` : "ไม่พบกฎที่เปิดใช้งานสำหรับประเภทเหตุการณ์นี้";
     } catch (error) { hint.textContent = error.message; }
   };
 
   page.querySelectorAll("[data-assessment-mode]").forEach((button) => button.addEventListener("click", () => {
+    const previousMode = assessmentMode;
     assessmentMode = button.dataset.assessmentMode;
+    if (previousMode === "analysis" && assessmentMode === "simulation") {
+      selectionSource.clear();
+      lastAnalysisGeometry = null;
+      areaAnchor = null; areaLine = null; areaPolygon = null;
+      page.querySelector("[data-area-status]").textContent = "";
+      page.querySelector("[data-clear-area]").disabled = true;
+      page.querySelectorAll("[data-area-mode]").forEach((item) => item.classList.remove("active"));
+    }
+    if (disasterTypeSelect) {
+      if (assessmentMode === "simulation") {
+        if (previousMode !== "simulation") analysisDisasterType = disasterTypeSelect.value;
+        disasterTypeSelect.value = "flood";
+        disasterTypeSelect.disabled = true;
+      } else {
+        disasterTypeSelect.disabled = false;
+        if (previousMode === "simulation") disasterTypeSelect.value = analysisDisasterType;
+      }
+      updateSimulationFields();
+    }
     page.classList.toggle("mode-map", assessmentMode === "map");
     page.classList.toggle("mode-analysis", assessmentMode === "analysis");
     page.classList.toggle("mode-simulation", assessmentMode === "simulation");
     page.querySelectorAll("[data-assessment-mode]").forEach((item) => { const active = item === button; item.classList.toggle("active", active); item.setAttribute("aria-selected", String(active)); });
     page.querySelectorAll("[data-mode-panel]").forEach((panel) => { panel.hidden = panel.dataset.modePanel !== assessmentMode; });
     if (draw) { map.removeInteraction(draw); draw = null; }
+    selectionLayer.setVisible(assessmentMode === "analysis");
+    simulationGridLayer.setVisible(assessmentMode === "simulation");
+    simulationPointLayer.setVisible(assessmentMode === "simulation");
+    const modeGeometry = assessmentMode === "simulation" ? lastSimulationGeometry : assessmentMode === "analysis" ? lastAnalysisGeometry : null;
+    lastAssessmentGeometry = modeGeometry;
+    placesLayer.changed(); updateCesiumPlaceEmphasis();
     page.querySelector("[data-assessment-hint]").textContent = assessmentMode === "simulation" ? "กำหนดค่าจำลองแล้วกดปักจุดบนแผนที่" : "";
+    if (modeGeometry) calculate(modeGeometry, "", assessmentMode); else clearDisplayedResults();
     window.setTimeout(() => { map.updateSize(); cesiumViewer?.resize(); }, 0);
   }));
   page.querySelector("[data-pick-simulation-point]").addEventListener("click", () => {
@@ -481,31 +623,31 @@ document.addEventListener("DOMContentLoaded", () => {
     window.setTimeout(() => map.updateSize(), 0);
     page.querySelector("[data-assessment-hint]").textContent = "คลิกตำแหน่งเริ่มต้นสถานการณ์บนแผนที่";
     map.once("singleclick", (event) => {
-      const radius = Math.max(100, Number(page.querySelector("[data-simulation-radius]").value) || 1000);
-      const circle = new ol.geom.Circle(event.coordinate, radius);
-      simulationPointSource.clear(); selectionSource.clear();
+      simulationOrigin = event.coordinate;
+      simulationPointSource.clear(); simulationGridSource.clear();
       simulationPointSource.addFeature(new ol.Feature(new ol.geom.Point(event.coordinate)));
-      selectionSource.addFeature(new ol.Feature(circle));
-      calculate(circle);
+      runSimulation(event.coordinate);
     });
   });
-  page.querySelectorAll("[data-simulation-metric],[data-simulation-radius]").forEach((input) => input.addEventListener("change", () => { if (assessmentMode === "simulation" && lastAssessmentGeometry) calculate(lastAssessmentGeometry); }));
+  page.querySelectorAll("[data-simulation-metric],[data-simulation-radius]").forEach((input) => input.addEventListener("change", () => { if (assessmentMode === "simulation" && simulationOrigin) runSimulation(simulationOrigin); }));
   page.querySelectorAll("[data-area-mode]").forEach((button) => button.addEventListener("click", () => setDrawing(button.dataset.areaMode)));
   page.querySelector("[data-area-distance]").addEventListener("input", (event) => {
     page.querySelector("[data-distance-output]").textContent = `${Number(event.target.value).toLocaleString("th-TH")} เมตร`;
     const previewGeometry = areaMode === "point" && areaAnchor ? new ol.geom.Circle(areaAnchor, areaDistance()) : areaMode === "line" && areaLine ? bufferedLineGeometry(areaLine, areaDistance()) : areaMode === "polygon" && areaPolygon ? bufferedPolygonGeometry(areaPolygon, areaDistance()) : null;
     if (!previewGeometry) return;
     selectionSource.clear(); selectionSource.addFeature(new ol.Feature(previewGeometry));
-    lastAssessmentGeometry = previewGeometry;
+    lastAnalysisGeometry = previewGeometry; lastAssessmentGeometry = previewGeometry;
     placesLayer.changed();
     page.querySelector("[data-area-status]").textContent = "กำลังปรับระยะพื้นที่…";
   });
   page.querySelector("[data-area-distance]").addEventListener("change", () => { if (areaMode === "point" && areaAnchor) useSelectedGeometry(new ol.geom.Circle(areaAnchor, areaDistance())); if (areaMode === "line" && areaLine) useSelectedGeometry(bufferedLineGeometry(areaLine, areaDistance())); if (areaMode === "polygon" && areaPolygon) useSelectedGeometry(bufferedPolygonGeometry(areaPolygon, areaDistance())); });
   areaUnit.addEventListener("change", formatArea);
-  ruleSelect.addEventListener("change", () => { if (lastAssessmentGeometry && ruleSelect.value) calculate(lastAssessmentGeometry, ruleSelect.value); });
-  disasterTypeSelect?.addEventListener("change", () => { if (lastAssessmentGeometry) calculate(lastAssessmentGeometry); });
+  ruleSelect.addEventListener("change", () => { if (lastAssessmentGeometry && ruleSelect.value) calculate(lastAssessmentGeometry, ruleSelect.value, assessmentMode); });
+  disasterTypeSelect?.addEventListener("change", () => { if (assessmentMode !== "simulation") analysisDisasterType = disasterTypeSelect.value; updateSimulationFields(); updateSimulationAvailability(); simulationGridSource.clear(); lastSimulationGeometry = null; if (assessmentMode === "analysis" && lastAnalysisGeometry) calculate(lastAnalysisGeometry, "", "analysis"); });
   page.querySelectorAll("[data-basemap]").forEach((button) => button.addEventListener("click", async () => { const mode = button.dataset.basemap; const is3d = mode === "3d"; mapWrap.classList.toggle("is-3d", is3d); roadLayer.setVisible(mode === "road"); satelliteLayer.setVisible(mode === "satellite"); page.querySelectorAll("[data-basemap]").forEach((item) => item.classList.toggle("active", item === button)); if (is3d) { try { await initializeCesium(); if (lastAssessmentGeometry) { const geometry = lastAssessmentGeometry.getType() === "Circle" ? ol.geom.Polygon.fromCircle(lastAssessmentGeometry, 96) : lastAssessmentGeometry; const geojson = new ol.format.GeoJSON().writeGeometryObject(geometry, { featureProjection: "EPSG:3857", dataProjection: "EPSG:4326" }); await syncCesiumSelection(geojson); } cesiumViewer.resize(); } catch (error) { page.querySelector("[data-assessment-hint]").textContent = error.message; } } else { window.setTimeout(() => map.updateSize(), 0); } }));
-  page.querySelector("[data-clear-area]").addEventListener("click", () => { selectionSource.clear(); simulationPointSource.clear(); areaAnchor = null; areaLine = null; page.querySelector("[data-area-status]").textContent = ""; page.querySelector("[data-clear-area]").disabled = true; if (cesiumViewer && cesiumSelection) { cesiumViewer.dataSources.remove(cesiumSelection, true); cesiumSelection = null; } selectedAreaSqKm = null; lastAssessmentGeometry = null; rulePicker.hidden = true; ruleSelect.innerHTML = '<option value="">ยังไม่มีกฎที่ผ่านเงื่อนไข</option>'; ruleSelect.disabled = true; page.querySelectorAll("[data-result-area],[data-result-population],[data-result-households],[data-result-villages]").forEach((element) => { element.textContent = "—"; }); page.querySelector("[data-resource-results]").innerHTML = "<p>ยังไม่มีผลการคำนวณ</p>"; const saveButton = page.querySelector("[data-save-button]"); if (saveButton) saveButton.disabled = true; });
+  const clearDisplayedResults = () => { if (cesiumViewer && cesiumSelection) { cesiumViewer.dataSources.remove(cesiumSelection, true); cesiumSelection = null; } selectedAreaSqKm = null; lastAssessmentGeometry = null; renderAffectedPlaces(null); rulePicker.hidden = true; ruleSelect.innerHTML = '<option value="">ยังไม่มีกฎที่ผ่านเงื่อนไข</option>'; ruleSelect.disabled = true; page.querySelectorAll("[data-result-area],[data-result-population],[data-result-households],[data-result-villages]").forEach((element) => { element.textContent = "—"; }); page.querySelector("[data-resource-results]").innerHTML = "<p>ยังไม่มีผลการคำนวณ</p>"; const saveButton = page.querySelector("[data-save-button]"); if (saveButton) saveButton.disabled = true; };
+  page.querySelector("[data-clear-area]").addEventListener("click", () => { selectionSource.clear(); lastAnalysisGeometry = null; areaAnchor = null; areaLine = null; page.querySelector("[data-area-status]").textContent = ""; page.querySelector("[data-clear-area]").disabled = true; clearDisplayedResults(); });
+  page.querySelector("[data-clear-simulation]").addEventListener("click", () => { simulationPointSource.clear(); simulationGridSource.clear(); simulationOrigin = null; lastSimulationGeometry = null; simulationRunId += 1; page.querySelector("[data-simulation-grid-legend]").hidden = true; page.querySelector("[data-clear-simulation]").disabled = true; clearDisplayedResults(); page.querySelector("[data-assessment-hint]").textContent = "กำหนดค่าจำลองแล้วกดปักจุดบนแผนที่"; });
   page.querySelector("[data-clear-area]").addEventListener("click", () => { areaPolygon = null; placesLayer.changed(); updateCesiumPlaceEmphasis(); });
   page.querySelectorAll("[data-layer-toggle]").forEach((input) => input.addEventListener("change", () => {
     ({ boundary: boundaryLayer, "village-boundaries": villageBoundaryLayer, places: placesLayer, water: waterLayer }[input.dataset.layerToggle]).setVisible(input.checked);
@@ -514,6 +656,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (input.dataset.layerToggle === "places" && cesiumPlaces) cesiumPlaces.show = input.checked;
     if (input.dataset.layerToggle === "water" && cesiumWater) cesiumWater.show = input.checked;
   }));
+  updateSimulationFields();
+  updateSimulationAvailability();
   page.querySelectorAll("[data-city-place-toggle]").forEach((button) => button.addEventListener("click", () => {
     const category = button.dataset.cityPlaceToggle;
     if (visiblePlaceCategories.has(category)) visiblePlaceCategories.delete(category); else visiblePlaceCategories.add(category);
@@ -567,6 +711,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (seen.has(key)) return false;
       seen.add(key); return true;
     });
+    renderAffectedPlaces();
     placesSource.clear();
     placesPayload.forEach((place) => {
       const lon = Number(place.lon); const lat = Number(place.lat);

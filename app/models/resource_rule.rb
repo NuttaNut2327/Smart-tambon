@@ -2,7 +2,7 @@ class ResourceRule
   include Mongoid::Document
   include Mongoid::Timestamps
 
-  DISASTER_TYPES = %w[flood fire wind drought other].freeze
+  DISASTER_TYPES = %w[flood fire wind landslide drought other].freeze
   SEVERITY_LEVELS = %w[watch urgent critical].freeze
 
   field :user_id, type: Integer
@@ -20,6 +20,7 @@ class ResourceRule
   validates :disaster_type, inclusion: { in: DISASTER_TYPES }
   validates :severity, inclusion: { in: SEVERITY_LEVELS }
   validate :has_valid_conditions
+  validate :has_population_or_area_condition
   validate :has_valid_hotspot_areas
   validate :has_valid_formulas
 
@@ -28,7 +29,7 @@ class ResourceRule
   # Hotspot metrics must be supplied per measured area, for example:
   # { "hotspot_scopes" => [{ "area_value" => 10, "area_unit" => "sqkm", "count" => 4 }] }
   def matches_metrics?(metrics)
-    conditions.all? do |condition|
+    conditions.any? do |condition|
       observed = if condition["variable"] == "hotspot_count"
         hotspot_count_for(metrics, condition)
       else
@@ -42,6 +43,12 @@ class ResourceRule
 
   def has_valid_conditions
     errors.add(:conditions, "ต้องมีอย่างน้อย 1 เงื่อนไข") if conditions.blank?
+  end
+
+  def has_population_or_area_condition
+    return if conditions.any? { |item| %w[population area].include?(item["variable"]) }
+
+    errors.add(:conditions, "ต้องกำหนดจำนวนประชากรหรือพื้นที่อย่างน้อย 1 เงื่อนไข")
   end
 
   def has_valid_hotspot_areas

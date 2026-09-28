@@ -3,7 +3,7 @@ class Incident
   include Mongoid::Timestamps
 
   CATEGORIES = %w[disaster general].freeze
-  DISASTER_INCIDENT_TYPES = ["น้ำท่วม", "ไฟป่า", "วาตภัย", "ภัยแล้ง", "อื่น ๆ"].freeze
+  DISASTER_INCIDENT_TYPES = ["น้ำท่วม", "ไฟป่า", "พายุ", "ดินถล่ม", "ภัยแล้ง", "อื่น ๆ"].freeze
   STATUSES = %w[pending assessing in_progress completed].freeze
   SEVERITIES = %w[general non_urgent urgent very_urgent critical waiting watch].freeze
 
@@ -57,6 +57,7 @@ class Incident
 
   before_validation :assign_reference_code, on: :create
   before_validation :clear_occurred_at_unless_backdated
+  before_validation :normalize_disaster_incident_type
 
   scope :visible_to, lambda { |user|
     visible = where(deleted_at: nil)
@@ -88,5 +89,9 @@ class Incident
     return if backdated?
 
     self.occurred_at = nil
+  end
+
+  def normalize_disaster_incident_type
+    self.incident_type = "พายุ" if incident_type == "วาตภัย"
   end
 end

@@ -17,6 +17,7 @@ class IncidentsController < ApplicationController
 
   def assessment
     @incident = find_incident
+    @assessment_disaster_type = incident_disaster_type(@incident)
 
     @page_mode = :disasters
     @assigned_subdistrict = current_user.subdistrict unless current_user.system_admin?
@@ -28,6 +29,7 @@ class IncidentsController < ApplicationController
 
   def standalone_assessment
     @incident = nil
+    @assessment_disaster_type = "flood"
     @page_mode = :city_map
     @assigned_subdistrict = current_user.subdistrict unless current_user.system_admin?
     @provinces = current_user.system_admin? ? Province.alphabetical : [@assigned_subdistrict&.province].compact
@@ -332,6 +334,53 @@ class IncidentsController < ApplicationController
     redirect_to disasters_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
   end
 
+  def update_plan
+    incident = find_incident
+    unless current_user.system_admin? || current_user.subdistrict_admin?
+      return redirect_to incident_page_path(incident, incident_id: incident.id), alert: "บัญชีนี้ไม่มีสิทธิ์แก้ไขแผนรับมือ"
+    end
+
+    version_number = params[:version].to_i
+    versions = incident.response_plan_versions.map(&:deep_dup)
+    plan = versions.find { |item| item["version"].to_i == version_number }
+    raise ArgumentError, "ไม่พบ Version แผนรับมือที่เลือก" unless plan
+
+    submitted = params.require(:plan).permit(resources: %i[name required unit]).fetch(:resources, [])
+    availability = IncidentUsageCatalog.summary_for(current_user).index_by { |item| [item[:name].to_s.strip.downcase, item[:unit].to_s.strip.downcase] }
+    existing = Array(plan["resources"]).index_by { |item| [item["name"].to_s.strip.downcase, item["unit"].to_s.strip.downcase] }
+    resources = submitted.filter_map do |item|
+      name = item[:name].to_s.strip
+      next if name.blank?
+
+      required = item[:required].to_f
+      raise ArgumentError, "จำนวนทรัพยากรที่ต้องใช้ต้องมากกว่า 0" unless required.positive?
+
+      unit = item[:unit].presence || "รายการ"
+      key = [name.downcase, unit.to_s.strip.downcase]
+      available = availability[key]&.dig(:available) || existing[key]&.dig("available") || 0
+      { "name" => name, "required" => required, "available" => available.to_f, "unit" => unit }
+    end
+    raise ArgumentError, "กรุณาระบุทรัพยากรอย่างน้อย 1 รายการ" if resources.empty?
+
+    plan["resources"] = resources
+    plan["updated_at"] = Time.current.utc.iso8601
+    plan["updated_by"] = current_user.username
+    incident.response_plan_versions = versions
+    incident.histories << {
+      "title" => "แก้ไขทรัพยากรแผนรับมือ Version #{version_number}",
+      "description" => "ปรับรายการทรัพยากรในแผนรับมือเดิม โดยไม่สร้าง Version ใหม่",
+      "occurred_at" => Time.current.utc.iso8601,
+      "actor" => current_user.username,
+      "resources" => resources.map { |item| { "name" => item["name"], "quantity" => item["required"], "unit" => item["unit"] } }
+    }
+    incident.save!
+    redirect_to incident_page_path(incident, incident_id: incident.id, plan_version: version_number), notice: "บันทึกทรัพยากรในแผนรับมือ Version #{version_number} แล้ว"
+  rescue ArgumentError, ActionController::ParameterMissing, Mongoid::Errors::Validations => error
+    redirect_to incident_page_path(incident, incident_id: incident&.id, plan_version: params[:version]), alert: error.message
+  rescue Mongoid::Errors::DocumentNotFound
+    redirect_to disasters_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
+  end
+
   def acknowledge
     incident = Incident.visible_to(current_user).find(params[:id])
     return redirect_to incident_page_path(incident, incident_id: incident.id), notice: "เหตุการณ์นี้ถูกรับเรื่องแล้ว" unless incident.status == "pending"
@@ -426,6 +475,7 @@ class IncidentsController < ApplicationController
     return "flood" if value.match?(/น้ำ|ท่วม|flood/)
     return "fire" if value.match?(/ไฟ|hotspot|fire/)
     return "wind" if value.match?(/ลม|พายุ|wind|storm/)
+    return "landslide" if value.match?(/ดินถล่ม|landslide/)
     return "drought" if value.match?(/แล้ง|drought/)
 
     "other"

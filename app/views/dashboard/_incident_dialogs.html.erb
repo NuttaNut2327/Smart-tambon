@@ -3,7 +3,7 @@
     <header><div><small>จัดการเหตุการณ์</small><h2>บันทึกเหตุการณ์ใหม่</h2></div><button type="button" data-close-incident-dialog aria-label="ปิด">×</button></header>
     <div class="incident-form-grid">
       <label>ชื่อเหตุการณ์<%= form.text_field :title, required: true %></label>
-      <label>ประเภทเหตุการณ์<%= form.text_field :incident_type, placeholder: "เช่น ถนนชำรุด ไฟฟ้าขัดข้อง" %></label>
+      <% if @incident_category == "disaster" %><label>ประเภทภัย *<%= form.select :incident_type, Incident::DISASTER_INCIDENT_TYPES, {}, required: true %></label><% else %><label>ประเภทเหตุการณ์<%= form.text_field :incident_type, placeholder: "เช่น ถนนชำรุด ไฟฟ้าขัดข้อง" %></label><% end %>
       <label>ระดับความเร่งด่วน<%= form.select :severity, [["วิกฤต", "critical"], ["เร่งด่วนมาก", "very_urgent"], ["เร่งด่วน", "urgent"], ["ไม่เร่งด่วน", "non_urgent"], ["ทั่วไป", "general"]], selected: "general" %></label>
       <label class="wide incident-backdated-option"><span><%= form.check_box :backdated, data: { incident_backdated_toggle: true } %> เป็นการบันทึกเหตุการณ์ย้อนหลัง</span></label>
       <label class="wide" data-incident-occurred-on hidden>วันที่เกิดเหตุ *<span class="incident-date-control"><%= text_field_tag nil, nil, placeholder: "วว/ดด/ปปปป", inputmode: "numeric", pattern: "\\d{2}/\\d{2}/\\d{4}", disabled: true, data: { incident_occurred_on_input: true } %><button type="button" data-incident-date-picker-button aria-label="เลือกวันที่จากปฏิทิน"><span class="material-symbols-outlined">calendar_month</span></button><%= date_field_tag nil, nil, class: "incident-native-date-picker", tabindex: -1, disabled: true, data: { incident_date_picker: true } %></span><%= hidden_field_tag nil, nil, disabled: true, data: { incident_occurred_on_value: true } %></label>
@@ -36,7 +36,7 @@
       <header><div><small><%= incident.reference_code %></small><h2>แก้ไขข้อมูลเหตุการณ์</h2></div><button type="button" data-close-incident-dialog>×</button></header>
       <div class="incident-form-grid">
         <label>ชื่อเหตุการณ์<%= form.text_field :title, value: incident.title, required: true %></label>
-        <label>ประเภทเหตุการณ์<%= form.text_field :incident_type, value: incident.incident_type %></label>
+        <% if incident.category == "disaster" %><% selected_incident_type = incident.incident_type == "วาตภัย" ? "พายุ" : incident.incident_type %><label>ประเภทภัย *<%= form.select :incident_type, Incident::DISASTER_INCIDENT_TYPES, { selected: selected_incident_type }, required: true %></label><% else %><label>ประเภทเหตุการณ์<%= form.text_field :incident_type, value: incident.incident_type %></label><% end %>
         <% selected_severity = { "waiting" => "non_urgent", "watch" => "urgent" }.fetch(incident.severity, incident.severity) %><label>ระดับความเร่งด่วน<%= form.select :severity, [["วิกฤต", "critical"], ["เร่งด่วนมาก", "very_urgent"], ["เร่งด่วน", "urgent"], ["ไม่เร่งด่วน", "non_urgent"], ["ทั่วไป", "general"]], selected: selected_severity %></label>
         <label class="wide incident-backdated-option"><span><%= form.check_box :backdated, { checked: incident.backdated?, data: { incident_backdated_toggle: true } }, "1", "0" %> เป็นการบันทึกเหตุการณ์ย้อนหลัง</span></label>
         <% occurred_at_th = incident.occurred_at&.in_time_zone("Asia/Bangkok") %>
@@ -94,4 +94,5 @@
       <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "บันทึกผลประเมิน", class: "incident-primary-action" %></footer>
     <% end %>
   </dialog>
+
 <% end %>

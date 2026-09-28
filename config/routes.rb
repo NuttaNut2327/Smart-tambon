@@ -22,6 +22,7 @@ Rails.application.routes.draw do
   post "situation_assessment/calculate", to: "incidents#calculate_assessment", as: :calculate_situation_assessment
   post "incidents/:id/progress", to: "incidents#add_progress", as: :incident_progress
   post "incidents/:id/assessments", to: "incidents#assess", as: :incident_assessments
+  patch "incidents/:id/plans/:version", to: "incidents#update_plan", as: :update_incident_plan
   patch "incidents/:id/activate_plan", to: "incidents#activate_plan", as: :activate_incident_plan
   patch "incidents/:id/acknowledge", to: "incidents#acknowledge", as: :acknowledge_incident
   patch "incidents/:id/promote_to_disaster", to: "incidents#promote_to_disaster", as: :promote_incident_to_disaster

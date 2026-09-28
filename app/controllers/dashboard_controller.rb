@@ -54,6 +54,7 @@ class DashboardController < ApplicationController
       @incident_team_options = workforce_datasets.flat_map { |dataset| Array(dataset.current_version&.records).filter_map { |record| [record["team_name"], record["team_name"]] if record["team_name"].present? } }.uniq.sort_by(&:first)
     end
     @incident_usage_options = IncidentUsageCatalog.for(current_user)
+    @response_plan_resource_options = IncidentUsageCatalog.summary_for(current_user)
     @selected_incident = @incidents.find { |incident| incident.id.to_s == params[:incident_id] } || @incidents.first
     requested_version = params[:plan_version].to_i
     @selected_plan = if @selected_incident
@@ -66,15 +67,7 @@ class DashboardController < ApplicationController
   def resource_rules
     load_area_context
     @resource_rules = ResourceRule.visible_to(current_user).desc(:created_at).to_a
-    datasets = ImportedDataset.visible_to(current_user).where(:data_type.in => %w[resources workforce]).to_a
-    @rule_resource_options = datasets.flat_map do |dataset|
-      Array(dataset.current_version&.records).filter_map do |record|
-        label = record["name"].presence || record["team_name"].presence
-        next if label.blank?
-
-        { label: label, source_type: dataset.data_type }
-      end
-    end.uniq { |item| [item[:label], item[:source_type]] }
+    @rule_resource_options = IncidentUsageCatalog.rule_options_for(current_user)
   end
 
   private

@@ -443,6 +443,106 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  document.querySelectorAll("[data-edit-response-plan]").forEach((button) => {
+    const card = button.closest(".incident-plan-card");
+    const display = card?.querySelector("[data-response-plan-display]");
+    const editor = card?.querySelector("[data-response-plan-inline-editor]");
+    if (!display || !editor) return;
+    const rows = editor.querySelector("[data-plan-resource-rows]");
+    const initialRows = rows?.innerHTML || "";
+    button.addEventListener("click", () => {
+      display.hidden = true;
+      editor.hidden = false;
+      button.hidden = true;
+      editor.querySelector("[data-plan-resource-name]")?.focus();
+    });
+    editor.querySelector("[data-cancel-response-plan-edit]")?.addEventListener("click", () => {
+      editor.querySelectorAll("[data-plan-resource-menu]").forEach(menu => { if (menu.matches(":popover-open")) menu.hidePopover(); });
+      editor.querySelector("form")?.reset();
+      if (rows) rows.innerHTML = initialRows;
+      editor.hidden = true;
+      display.hidden = false;
+      button.hidden = false;
+    });
+  });
+
+  document.querySelectorAll("[data-response-plan-resource-form]").forEach((form) => {
+    const rows = form.querySelector("[data-plan-resource-rows]");
+    let options = [];
+    try { options = JSON.parse(form.querySelector("[data-plan-resource-options]")?.textContent || "[]"); } catch (_error) { options = []; }
+    const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
+    const rowMarkup = () => `<div class="response-plan-resource-row"><div class="response-plan-resource-picker"><input name="plan[resources][][name]" required autocomplete="off" data-plan-resource-name placeholder="เลือกหรือพิมพ์ชื่อทรัพยากร"><div class="response-plan-resource-menu" data-plan-resource-menu popover="manual"></div></div><input name="plan[resources][][required]" type="number" min="0.01" step="any" required value="1"><input name="plan[resources][][unit]" required data-plan-resource-unit value="รายการ"><output data-plan-resource-available>0 รายการ</output><button type="button" data-remove-plan-resource aria-label="ลบรายการ">×</button></div>`;
+    const hideMenu = menu => {
+      if (menu?.matches(":popover-open")) menu.hidePopover();
+    };
+    const positionMenu = (menu, input) => {
+      const rect = input.getBoundingClientRect();
+      menu.style.left = `${rect.left}px`;
+      menu.style.top = `${rect.bottom + 4}px`;
+      menu.style.width = `${rect.width}px`;
+      menu.style.maxHeight = `${Math.max(140, window.innerHeight - rect.bottom - 16)}px`;
+    };
+    const renderMenu = picker => {
+      const input = picker.querySelector("[data-plan-resource-name]");
+      const menu = picker.querySelector("[data-plan-resource-menu]");
+      const query = input.value.trim().toLowerCase();
+      const matches = options.map((option, index) => ({ option, index })).filter(({ option }) => !query || String(option.name).toLowerCase().includes(query)).slice(0, 30);
+      menu.innerHTML = matches.length ? matches.map(({ option, index }) => `<button type="button" data-plan-resource-option="${index}"><span><b>${escapeHtml(option.name)}</b><small>หน่วย: ${escapeHtml(option.unit || "รายการ")}</small></span><strong><small>พร้อมใช้</small>${Number(option.available || 0).toLocaleString("th-TH")} <em>${escapeHtml(option.unit || "รายการ")}</em></strong></button>`).join("") : '<p>ไม่พบรายการ สามารถพิมพ์ชื่อใหม่ได้</p>';
+      form.querySelectorAll("[data-plan-resource-menu]").forEach(otherMenu => { if (otherMenu !== menu) hideMenu(otherMenu); });
+      positionMenu(menu, input);
+      if (!menu.matches(":popover-open")) menu.showPopover();
+    };
+    const syncAvailability = row => {
+      const name = row.querySelector("[data-plan-resource-name]").value.trim();
+      const match = options.find(option => String(option.name).trim().toLowerCase() === name.toLowerCase());
+      if (match) row.querySelector("[data-plan-resource-unit]").value = match.unit || "รายการ";
+      const unit = row.querySelector("[data-plan-resource-unit]").value || "รายการ";
+      row.querySelector("[data-plan-resource-available]").textContent = `${Number(match?.available || 0).toLocaleString("th-TH")} ${unit}`;
+    };
+    form.querySelector("[data-add-plan-resource]")?.addEventListener("click", () => {
+      rows.insertAdjacentHTML("beforeend", rowMarkup());
+      rows.lastElementChild?.querySelector("[data-plan-resource-name]")?.focus();
+    });
+    rows.addEventListener("click", event => {
+      const optionButton = event.target.closest("[data-plan-resource-option]");
+      if (optionButton) {
+        const row = optionButton.closest(".response-plan-resource-row");
+        const selected = options[Number(optionButton.dataset.planResourceOption)];
+        row.querySelector("[data-plan-resource-name]").value = selected.name;
+        row.querySelector("[data-plan-resource-unit]").value = selected.unit || "รายการ";
+        row.querySelector("[data-plan-resource-available]").textContent = `${Number(selected.available || 0).toLocaleString("th-TH")} ${selected.unit || "รายการ"}`;
+        hideMenu(row.querySelector("[data-plan-resource-menu]"));
+        return;
+      }
+      const remove = event.target.closest("[data-remove-plan-resource]");
+      if (remove) remove.closest(".response-plan-resource-row")?.remove();
+    });
+    rows.addEventListener("focusin", event => {
+      const picker = event.target.closest(".response-plan-resource-picker");
+      if (picker && event.target.matches("[data-plan-resource-name]")) renderMenu(picker);
+    });
+    rows.addEventListener("input", event => {
+      const picker = event.target.closest(".response-plan-resource-picker");
+      if (picker && event.target.matches("[data-plan-resource-name]")) renderMenu(picker);
+    });
+    rows.addEventListener("change", event => {
+      const row = event.target.closest(".response-plan-resource-row");
+      if (row && (event.target.matches("[data-plan-resource-name]") || event.target.matches("[data-plan-resource-unit]"))) syncAvailability(row);
+    });
+    document.addEventListener("click", event => {
+      if (form.contains(event.target) && event.target.closest(".response-plan-resource-picker")) return;
+      form.querySelectorAll("[data-plan-resource-menu]").forEach(hideMenu);
+    });
+    const repositionOpenMenus = () => {
+      form.querySelectorAll("[data-plan-resource-menu]:popover-open").forEach(menu => {
+        const input = menu.closest(".response-plan-resource-picker")?.querySelector("[data-plan-resource-name]");
+        if (input) positionMenu(menu, input);
+      });
+    };
+    window.addEventListener("scroll", repositionOpenMenus, true);
+    window.addEventListener("resize", repositionOpenMenus);
+  });
+
   const element = document.querySelector("[data-incident-map]");
   if (!element || !window.ol) return;
 
