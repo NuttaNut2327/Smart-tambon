@@ -7,7 +7,7 @@ class DataLayersController < ApplicationController
   def show
     @can_upload = current_user.system_admin? || current_user.subdistrict_admin?
     @imported_datasets = ImportedDataset.visible_to(current_user).order_by(updated_at: :desc).to_a
-    visible_system_types = %w[population village_boundaries resources consumables workforce teams agencies]
+    visible_system_types = %w[population village_boundaries resources consumables workforce teams agencies cctv_devices water_level_sensors pm25_sensors]
     @selected_type = visible_system_types.include?(params[:data_type]) ? params[:data_type] : "population"
     @form_schema = ImportedDataset.schema_for(@selected_type)
     @selected_schema = @form_schema.reject { |field| field["hidden"] }

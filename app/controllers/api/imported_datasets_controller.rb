@@ -29,7 +29,7 @@ module Api
           next if lat.blank? || lon.blank?
           { type: "Feature", id: "#{dataset.id}-#{index}",
             geometry: { type: "Point", coordinates: [lon.to_f, lat.to_f] },
-            properties: record.except("latitude", "longitude").merge(
+            properties: record.except("latitude", "longitude", "token").merge(
               "data_type" => dataset.data_type, "dataset_id" => dataset.id.to_s, "dataset_name" => dataset.name,
               "version" => dataset.current_version.version_number) }
         rescue JSON::ParserError

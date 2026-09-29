@@ -1,4 +1,5 @@
 require "csv"
+require "set"
 
 class DatasetVersionImportService
   SUPPORTED_EXTENSIONS = %w[.csv .xls .xlsx .pdf].freeze
@@ -82,6 +83,7 @@ class DatasetVersionImportService
 
   def normalize(rows)
     errors = []
+    used_sensor_ids = Set.new
     records = rows.each_with_index.filter_map do |raw, index|
       raw = raw.to_h.stringify_keys
       normalized = {}
@@ -108,6 +110,11 @@ class DatasetVersionImportService
         normalized["boundary_source"] = raw["boundary_source"].presence || (@source_kind == "file" ? "อัปโหลดไฟล์" : "วาดขอบเขตเอง")
       end
       assign_registry_code(normalized, raw)
+      if device_dataset?
+        sensor_id = normalized["sensor_id"].to_s.strip.downcase
+        errors << "แถว #{index + 2}: Sensor ID ซ้ำในชุดข้อมูล" if sensor_id.present? && used_sensor_ids.include?(sensor_id)
+        used_sensor_ids << sensor_id if sensor_id.present?
+      end
       if @dataset.data_type == "consumables"
         errors << "แถว #{index + 2}: จำนวนคงเหลือต้องไม่น้อยกว่า 0" if normalized["current_quantity"].to_f.negative?
         errors << "แถว #{index + 2}: จุดแจ้งเตือนขั้นต่ำต้องไม่น้อยกว่า 0" if normalized["minimum_quantity"].to_f.negative?
@@ -141,6 +148,11 @@ class DatasetVersionImportService
   end
 
   def assign_registry_code(record, raw)
+    if device_dataset?
+      record["token"] = raw["token"].presence || SecureRandom.urlsafe_base64(32)
+      return
+    end
+
     key, prefix = case @dataset.data_type
                   when "agencies" then ["agency_code", "AG"]
                   when "teams" then ["team_code", "TEAM"]
@@ -151,6 +163,10 @@ class DatasetVersionImportService
     return unless key
 
     record[key] = raw[key].presence || "#{prefix}-#{SecureRandom.hex(3).upcase}"
+  end
+
+  def device_dataset?
+    %w[cctv_devices water_level_sensors pm25_sensors].include?(@dataset.data_type)
   end
 
   def next_incident_reference_code(used_codes)

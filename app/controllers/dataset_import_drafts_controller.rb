@@ -137,9 +137,12 @@ class DatasetImportDraftsController < ApplicationController
   end
 
   def destination_dataset(data_type, map_enabled)
+    device_dataset = %w[cctv_devices water_level_sensors pm25_sensors].include?(data_type)
     if data_type == "village_boundaries"
       map_enabled = true
       geometry_type = "polygon"
+    elsif device_dataset
+      geometry_type = "point"
     else
       geometry_type = map_enabled ? "point" : "none"
     end

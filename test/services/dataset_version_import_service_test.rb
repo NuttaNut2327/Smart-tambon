@@ -25,6 +25,37 @@ class DatasetVersionImportServiceTest < ActiveSupport::TestCase
     assert_match "พิกัดไม่ถูกต้อง", error.message
   end
 
+  test "generates and preserves device tokens" do
+    device = ImportedDataset.create!(user: @user, name: "กล้องวงจรปิด", data_type: "cctv_devices",
+      geometry_type: "point", map_enabled: true,
+      schema_definition: ImportedDataset.schema_for("cctv_devices"))
+    first = DatasetVersionImportService.new(dataset: device, user: @user, manual_records: [
+      { "sensor_id" => "CCTV-001", "latitude" => "13.7", "longitude" => "100.5" }
+    ]).import!
+    token = first.records.first["token"]
+
+    second = DatasetVersionImportService.new(dataset: device, user: @user,
+      manual_records: first.records.map(&:deep_dup)).import!
+
+    assert token.present?
+    assert_equal token, second.records.first["token"]
+  end
+
+  test "rejects duplicate sensor ids within a device dataset" do
+    device = ImportedDataset.create!(user: @user, name: "PM 2.5", data_type: "pm25_sensors",
+      geometry_type: "point", map_enabled: true,
+      schema_definition: ImportedDataset.schema_for("pm25_sensors"))
+
+    error = assert_raises(ArgumentError) do
+      DatasetVersionImportService.new(dataset: device, user: @user, manual_records: [
+        { "sensor_id" => "PM-001", "latitude" => "13.7", "longitude" => "100.5" },
+        { "sensor_id" => "pm-001", "latitude" => "13.8", "longitude" => "100.6" }
+      ]).import!
+    end
+
+    assert_match "Sensor ID ซ้ำ", error.message
+  end
+
   private
 
   def import(records)

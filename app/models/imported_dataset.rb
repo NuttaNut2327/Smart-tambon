@@ -86,6 +86,24 @@ class ImportedDataset
       { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => true, "hidden" => true },
       { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true, "hidden" => true }
     ],
+    "cctv_devices" => [
+      { "key" => "sensor_id", "label" => "Sensor ID", "type" => "text", "required" => true },
+      { "key" => "token", "label" => "Token", "type" => "text", "required" => false, "generated" => true },
+      { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => true },
+      { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true }
+    ],
+    "water_level_sensors" => [
+      { "key" => "sensor_id", "label" => "Sensor ID", "type" => "text", "required" => true },
+      { "key" => "token", "label" => "Token", "type" => "text", "required" => false, "generated" => true },
+      { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => true },
+      { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true }
+    ],
+    "pm25_sensors" => [
+      { "key" => "sensor_id", "label" => "Sensor ID", "type" => "text", "required" => true },
+      { "key" => "token", "label" => "Token", "type" => "text", "required" => false, "generated" => true },
+      { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => true },
+      { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true }
+    ],
     "incidents" => [
       { "key" => "reference_code", "label" => "รหัสเหตุการณ์", "type" => "text", "required" => false, "generated" => true },
       { "key" => "title", "label" => "ชื่อเหตุการณ์", "type" => "text", "required" => true },
@@ -102,7 +120,7 @@ class ImportedDataset
       { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true }
     ]
   }.freeze
-  TYPE_LABELS = { "population" => "ข้อมูลประชากร", "village_boundaries" => "ขอบเขตหมู่บ้าน", "resources" => "ข้อมูลทรัพยากรและอุปกรณ์", "consumables" => "วัสดุสิ้นเปลือง", "workforce" => "บุคลากรปฏิบัติงาน", "teams" => "ทีมปฏิบัติงาน", "agencies" => "หน่วยงาน", "incidents" => "แจ้งเหตุการณ์", "custom" => "ชุดข้อมูลแบบกำหนดเอง" }.freeze
+  TYPE_LABELS = { "population" => "ข้อมูลประชากร", "village_boundaries" => "ขอบเขตหมู่บ้าน", "resources" => "ข้อมูลทรัพยากรและอุปกรณ์", "consumables" => "วัสดุสิ้นเปลือง", "workforce" => "บุคลากรปฏิบัติงาน", "teams" => "ทีมปฏิบัติงาน", "agencies" => "หน่วยงาน", "cctv_devices" => "กล้องวงจรปิด", "water_level_sensors" => "เซนเซอร์วัดระดับน้ำ", "pm25_sensors" => "เซนเซอร์วัด PM 2.5", "incidents" => "แจ้งเหตุการณ์", "custom" => "ชุดข้อมูลแบบกำหนดเอง" }.freeze
   CUSTOM_CATEGORY_LABELS = { "population" => "ข้อมูลประชากร", "resources" => "ข้อมูลทรัพยากรและอุปกรณ์",
     "workforce" => "บุคลากรปฏิบัติงาน", "area" => "ข้อมูลพื้นที่" }.freeze
   GEOMETRY_TYPES = %w[none point line polygon].freeze

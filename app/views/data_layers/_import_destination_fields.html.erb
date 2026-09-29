@@ -16,7 +16,7 @@
   <% if selected_type == "village_boundaries" %>
     <div class="map-option map-option-note">ระบบจะสร้างชั้นข้อมูลแบบพื้นที่ และจับคู่กับประชากรด้วยรหัสหมู่บ้าน หรือ ตำบล + หมู่ที่</div>
   <% elsif selected_type != "population" %>
-    <label class="map-option"><input type="checkbox" name="map_enabled" value="1" <%= "checked" if %w[agencies incidents].include?(selected_type) %>> สร้าง/อัปเดตเป็นชั้นข้อมูลบนแผนที่ <small>ต้องมีละติจูดและลองจิจูด</small></label>
+    <label class="map-option"><input type="checkbox" name="map_enabled" value="1" <%= "checked" if %w[agencies incidents cctv_devices water_level_sensors pm25_sensors].include?(selected_type) %>> สร้าง/อัปเดตเป็นชั้นข้อมูลบนแผนที่ <small>ต้องมีละติจูดและลองจิจูด</small></label>
   <% else %>
     <div class="map-option map-option-note">ข้อมูลประชากรใช้งานได้โดยไม่ต้องมีขอบเขต และสามารถนำเข้าขอบเขตหมู่บ้านมาเชื่อมภายหลังได้</div>
   <% end %>

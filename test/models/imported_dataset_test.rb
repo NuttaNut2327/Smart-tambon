@@ -6,8 +6,16 @@ class ImportedDatasetTest < ActiveSupport::TestCase
   end
 
   test "standard schemas are available for all system dataset types" do
-    assert_equal %w[population village_boundaries resources consumables workforce teams agencies incidents], ImportedDataset::STANDARD_SCHEMAS.keys
+    assert_equal %w[population village_boundaries resources consumables workforce teams agencies cctv_devices water_level_sensors pm25_sensors incidents], ImportedDataset::STANDARD_SCHEMAS.keys
     ImportedDataset::STANDARD_SCHEMAS.each_value { |schema| assert schema.any? }
+  end
+
+  test "device schemas contain static identity token and coordinates" do
+    %w[cctv_devices water_level_sensors pm25_sensors].each do |type|
+      schema = ImportedDataset.schema_for(type)
+      assert_equal %w[sensor_id token latitude longitude], schema.map { |field| field.fetch("key") }
+      assert schema.find { |field| field["key"] == "token" }.fetch("generated")
+    end
   end
 
   test "consumable schema tracks stock and responsible agency" do
