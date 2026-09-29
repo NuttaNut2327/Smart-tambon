@@ -98,8 +98,6 @@ class IncidentsController < ApplicationController
     affected_people = (population_records.sum { |record| record["population_total"].to_i } * coverage_ratio).round
     affected_households = (population_records.sum { |record| record["household_count"].to_i } * coverage_ratio).round
     affected_villages = [(population_records.size * coverage_ratio).ceil, population_records.size].min
-    resource_records = records_by_type.fetch("resources", [])
-    workforce_records = records_by_type.fetch("workforce", [])
     custom_records = records_by_type.fetch("custom", [])
     %w[water_level rainfall wind_speed].each do |key|
       values = custom_records.filter_map { |record| Float(record[key], exception: false) }
@@ -131,6 +129,10 @@ class IncidentsController < ApplicationController
     end
     rules = selected_rule ? [selected_rule] : []
     formulas = rules.flat_map(&:formulas)
+    availability_rows = IncidentUsageCatalog.summary_for(current_user, exclude_incident: incident)
+    availability_by_key = availability_rows.index_by { |item| [item[:name].to_s.strip.downcase, item[:unit].to_s.strip.downcase] }
+    availability_by_name = availability_rows.group_by { |item| item[:name].to_s.strip.downcase }
+      .transform_values { |items| items.sum { |item| item[:available].to_f } }
     resources = formulas.group_by { |formula| [formula["resource"], formula["unit"]] }.map do |(name, unit), grouped|
       required = grouped.sum do |formula|
         basis = case formula["basis"]
@@ -141,20 +143,10 @@ class IncidentsController < ApplicationController
         end
         (basis.to_f / [formula["per_value"].to_f, 1].max * formula["amount"].to_f).ceil
       end
-      workforce = workforce_records.select do |record|
-        record["team_name"].to_s.casecmp?(name.to_s) || record["full_name"].to_s.casecmp?(name.to_s)
-      end
-      available = if workforce.any?
-        workforce.sum do |record|
-          if record["availability_status"].present?
-            record["employment_status"].to_s != "พ้นสภาพ" && record["availability_status"] == "พร้อมปฏิบัติงาน" ? 1 : 0
-          else
-            record["ready_count"].to_i
-          end
-        end
-      else
-        resource_records.count { |record| record["name"].to_s.casecmp?(name.to_s) && record["status"].to_s.include?("พร้อม") }
-      end
+      normalized_name = name.to_s.strip.downcase
+      normalized_unit = unit.to_s.strip.downcase
+      available = availability_by_key[[normalized_name, normalized_unit]]&.dig(:available)
+      available = availability_by_name.fetch(normalized_name, 0) if available.nil?
       { name: name, unit: unit, required: required, available: available, sufficient: available >= required }
     end
     render json: {

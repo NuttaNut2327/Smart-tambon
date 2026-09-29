@@ -18,10 +18,10 @@ class ConsumableMovementsController < ApplicationController
   def editable_datasets
     return ImportedDataset.all if current_user.system_admin?
 
-    return ImportedDataset.where(user_id: current_user.id) unless current_user.subdistrict_admin?
+    return ImportedDataset.where(:user_id.in => current_user.organization_user_ids) unless current_user.subdistrict_admin?
 
     ImportedDataset.any_of(
-      { user_id: current_user.id },
+      { :user_id.in => current_user.organization_user_ids },
       { shared_with_all: true, subdistrict_id: { "$in" => current_user.accessible_subdistrict_ids } }
     )
   end

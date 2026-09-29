@@ -24,7 +24,7 @@ class ResourceRule
   validate :has_valid_hotspot_areas
   validate :has_valid_formulas
 
-  scope :visible_to, ->(user) { user.system_admin? ? all : where(user_id: user.id) }
+  scope :visible_to, ->(user) { user.system_admin? ? all : where(:user_id.in => user.organization_user_ids) }
 
   # Hotspot metrics must be supplied per measured area, for example:
   # { "hotspot_scopes" => [{ "area_value" => 10, "area_unit" => "sqkm", "count" => 4 }] }

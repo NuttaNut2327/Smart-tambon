@@ -1,7 +1,7 @@
 class PopulationDatasetsController < ApplicationController
   def destroy
     dataset = PopulationDataset.find(params[:id])
-    unless current_user.system_admin? || dataset.user_id == current_user.id
+    unless current_user.can_manage_organization_data?(dataset.user_id)
       return redirect_to data_layers_path, alert: "ไม่มีสิทธิ์ลบชุดข้อมูลนี้"
     end
 

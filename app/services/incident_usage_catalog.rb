@@ -13,7 +13,7 @@ class IncidentUsageCatalog
         next if name.blank?
 
         config = type_config.fetch(dataset.data_type)
-        unit = dataset.data_type == "consumables" ? record["unit"].presence || config[:default_unit] : config[:default_unit]
+        unit = dataset.data_type == "teams" ? config[:default_unit] : record["unit"].presence || config[:default_unit]
         available = case dataset.data_type
         when "consumables" then [record["current_quantity"].to_f, 0].max
         when "teams" then record["status"].to_s == "พร้อมปฏิบัติงาน" ? 1 : 0
@@ -29,16 +29,20 @@ class IncidentUsageCatalog
     end.sort_by { |item| [%w[resources consumables teams].index(item[:source_type]) || 9, item[:label]] }
   end
 
-  def self.summary_for(user)
-    self.for(user).group_by { |item| [item[:name], item[:unit]] }.map do |(name, unit), items|
+  def self.summary_for(user, exclude_incident: nil)
+    self.for(user, exclude_incident: exclude_incident).group_by { |item| [item[:name], item[:unit]] }.map do |(name, unit), items|
       { name: name, unit: unit, available: items.sum { |item| item[:available].to_f } }
     end.sort_by { |item| item[:name] }
   end
 
-  def self.for(user)
-    datasets = ImportedDataset.visible_to(user).where(:data_type.in => %w[resources workforce consumables]).to_a
-    assigned_keys = Incident.visible_to(user).where(:status.ne => "completed").pluck(:active_assignments).flatten.compact
+  def self.for(user, exclude_incident: nil)
+    datasets = ImportedDataset.visible_to(user).where(:data_type.in => %w[resources workforce consumables teams]).to_a
+    active_incidents = Incident.visible_to(user).where(:status.ne => "completed")
+    active_incidents = active_incidents.where(:id.ne => exclude_incident.id) if exclude_incident
+    assigned_keys = active_incidents.pluck(:active_assignments).flatten.compact
       .select { |assignment| assignment["released_at"].blank? }.map { |assignment| assignment["key"] }.to_set
+    assigned_team_codes = active_incidents.pluck(:assigned_team_code).compact.map { |code| code.to_s.strip }.reject(&:blank?).to_set
+    assigned_team_names = active_incidents.pluck(:assigned_to).compact.map { |name| name.to_s.strip.downcase }.reject(&:blank?).to_set
     items = datasets.flat_map do |dataset|
       Array(dataset.current_version&.records).filter_map.with_index do |record, position|
         if dataset.data_type == "workforce"
@@ -50,6 +54,13 @@ class IncidentUsageCatalog
           code = record["personnel_code"].presence || "#{dataset.id}-#{position}"
           ready = record["employment_status"].to_s != "พ้นสภาพ" && record["availability_status"].to_s == "พร้อมปฏิบัติงาน"
           catalog_item("workforce", name, "คน", ready ? 1 : 0, dataset, code, position, record, assigned_keys)
+        elsif dataset.data_type == "teams"
+          name = record["team_name"].presence
+          next if name.blank?
+          code = record["team_code"].presence || "#{dataset.id}-#{position}"
+          ready = record["status"].to_s == "พร้อมปฏิบัติงาน"
+          assigned = assigned_team_codes.include?(code.to_s.strip) || assigned_team_names.include?(name.to_s.strip.downcase)
+          catalog_item("team", name, "ทีม", ready && !assigned ? 1 : 0, dataset, code, position, record, assigned_keys)
         elsif dataset.data_type == "consumables"
           name = record["name"].presence
           next if name.blank?
@@ -67,7 +78,7 @@ class IncidentUsageCatalog
         end
       end
     end
-    kind_order = { "resource" => 0, "workforce" => 1, "consumable" => 2 }
+    kind_order = { "resource" => 0, "team" => 1, "workforce" => 2, "consumable" => 3 }
     items.reject { |item| item[:available] <= 0 }.sort_by { |item| [kind_order.fetch(item[:kind], 9), item[:name]] }
   end
 

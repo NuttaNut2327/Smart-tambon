@@ -133,7 +133,7 @@ class DatasetImportDraftsController < ApplicationController
   end
 
   def editable_dataset_scope
-    current_user.system_admin? ? ImportedDataset.all : ImportedDataset.where(user_id: current_user.id)
+    current_user.system_admin? ? ImportedDataset.all : ImportedDataset.where(:user_id.in => current_user.organization_user_ids)
   end
 
   def destination_dataset(data_type, map_enabled)
@@ -149,11 +149,11 @@ class DatasetImportDraftsController < ApplicationController
     candidates = if subdistrict
                    ImportedDataset.where(data_type: data_type, subdistrict_id: subdistrict.id).to_a
                  else
-                   ImportedDataset.where(data_type: data_type, user_id: current_user.id, subdistrict_id: nil).to_a
+                   ImportedDataset.where(data_type: data_type, :user_id.in => current_user.organization_user_ids, subdistrict_id: nil).to_a
                  end
     if candidates.empty? && subdistrict
       # รองรับชุดข้อมูลเดิมที่สร้างก่อนระบบผูกชุดข้อมูลกับพื้นที่
-      owner_scope = current_user.system_admin? ? ImportedDataset.all : ImportedDataset.where(user_id: current_user.id)
+      owner_scope = current_user.system_admin? ? ImportedDataset.all : ImportedDataset.where(:user_id.in => current_user.organization_user_ids)
       candidates = owner_scope.where(data_type: data_type, subdistrict_id: nil).to_a
     end
     dataset = candidates.max_by do |candidate|

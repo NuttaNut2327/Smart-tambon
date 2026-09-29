@@ -48,7 +48,7 @@ class ImportedDatasetVersionsController < ApplicationController
   def set_version = @version = @dataset.versions.find(params[:id])
   def dataset_index_path = @dataset.data_type == "custom" ? imported_datasets_path : data_layers_path(data_type: @dataset.data_type)
   def require_owner!
-    return if current_user.system_admin? || @dataset.user_id == current_user.id
+    return if current_user.can_manage_organization_data?(@dataset.user_id)
     redirect_to data_layers_path, alert: "ไม่มีสิทธิ์แก้ไขชุดข้อมูลนี้"
   end
 end

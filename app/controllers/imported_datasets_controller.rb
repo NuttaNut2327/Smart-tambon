@@ -57,7 +57,7 @@ class ImportedDatasetsController < ApplicationController
           records: Array(@dataset.current_version&.records).first(100),
           record_count: @dataset.record_count,
           current_version_number: @dataset.current_version&.version_number,
-          editable: current_user.system_admin? || @dataset.user_id == current_user.id,
+          editable: current_user.can_manage_organization_data?(@dataset.user_id),
           versions: @versions.map { |version|
             {
               id: version.id.to_s, version_number: version.version_number,
@@ -163,7 +163,7 @@ class ImportedDatasetsController < ApplicationController
   end
 
   def authorize_owner!
-    return if current_user.system_admin? || @dataset.user_id == current_user.id
+    return if current_user.can_manage_organization_data?(@dataset.user_id)
     redirect_to data_layers_path, alert: "ไม่มีสิทธิ์จัดการชุดข้อมูลนี้"
   end
 

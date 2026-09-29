@@ -62,7 +62,7 @@ class Incident
   scope :visible_to, lambda { |user|
     visible = where(deleted_at: nil)
     user.system_admin? ? visible : visible.any_of(
-      { owner_user_id: user.id },
+      { :owner_user_id.in => user.organization_user_ids },
       { owner_user_id: nil, :subdistrict_id.in => user.accessible_subdistrict_ids }
     )
   }

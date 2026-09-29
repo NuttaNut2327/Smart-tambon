@@ -3,7 +3,7 @@ class ApplicationController < ActionController::Base
   before_action :normalize_authentication_flash!
   before_action :require_access_configuration!
 
-  helper_method :system_admin?, :global_viewer?
+  helper_method :system_admin?, :global_viewer?, :user_manager?
 
   private
 
@@ -26,6 +26,10 @@ class ApplicationController < ActionController::Base
     current_user.system_admin?
   end
 
+  def user_manager?
+    current_user.system_admin? || current_user.subdistrict_admin?
+  end
+
   def require_access_configuration!
     return unless user_signed_in?
     return if current_user&.system_admin? || current_user&.subdistrict.present? || current_user&.access_area.present?
@@ -46,5 +50,11 @@ class ApplicationController < ActionController::Base
     return if system_admin?
 
     redirect_to root_path, alert: "เฉพาะผู้ดูแลระบบเท่านั้นที่จัดการผู้ใช้ได้"
+  end
+
+  def require_user_manager!
+    return if user_manager?
+
+    redirect_to root_path, alert: "เฉพาะผู้ดูแลระบบหรือผู้ดูแลประจำ อบต. เท่านั้นที่จัดการผู้ใช้ได้"
   end
 end

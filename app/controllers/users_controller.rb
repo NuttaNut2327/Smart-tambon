@@ -1,13 +1,13 @@
 class UsersController < ApplicationController
-  before_action :require_system_admin!
+  before_action :require_user_manager!
   before_action :set_user, only: %i[edit update destroy]
 
   def index
-    @users = User.includes(subdistrict: :province).order(:username)
+    @users = manageable_users.includes(subdistrict: :province).order(:username)
   end
 
   def new
-    @user = User.new(role: :subdistrict_admin)
+    @user = User.new(role: current_user.system_admin? ? :subdistrict_admin : :subdistrict_user)
   end
 
   def create
@@ -34,6 +34,7 @@ class UsersController < ApplicationController
 
   def destroy
     return redirect_to users_path, alert: "ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่" if @user == current_user
+    return redirect_to users_path, alert: "ต้องมีผู้ดูแลประจำ อบต. อย่างน้อย 1 บัญชี" if removing_last_local_admin?
 
     @user.destroy
     redirect_to users_path, notice: "ลบผู้ใช้เรียบร้อยแล้ว"
@@ -42,7 +43,13 @@ class UsersController < ApplicationController
   private
 
   def set_user
-    @user = User.find(params[:id])
+    @user = manageable_users.find(params[:id])
+  end
+
+  def manageable_users
+    return User.all if current_user.system_admin?
+
+    User.where(organization_key: current_user.organization_key).where.not(role: :system_admin)
   end
 
   def user_params
@@ -51,6 +58,12 @@ class UsersController < ApplicationController
 
   def user_attributes
     attributes = user_params
+    unless current_user.system_admin?
+      attributes[:role] = "subdistrict_user" unless %w[subdistrict_admin subdistrict_user].include?(attributes[:role])
+      attributes[:subdistrict_id] = current_user.subdistrict_id
+      attributes[:organization_key] = current_user.organization_key
+      return attributes
+    end
     selected_ids = Array(access_area_params[:subdistrict_ids]).reject(&:blank?)
     attributes[:subdistrict_id] = selected_ids.first if attributes[:role] != "system_admin" && selected_ids.any?
     attributes
@@ -62,9 +75,13 @@ class UsersController < ApplicationController
 
   def save_user_and_access_area
     User.transaction do
-      @user.access_area_file_pending = file_access_area_mode?
+      @user.access_area_file_pending = current_user.system_admin? ? file_access_area_mode? : current_user.access_area.present?
       @user.save!
-      raise ArgumentError, @user.errors.full_messages.to_sentence unless save_access_area
+      if current_user.system_admin?
+        raise ArgumentError, @user.errors.full_messages.to_sentence unless save_access_area
+      else
+        copy_current_access_area!
+      end
     end
     true
   rescue ActiveRecord::RecordInvalid, ArgumentError => error
@@ -73,10 +90,18 @@ class UsersController < ApplicationController
   end
 
   def update_user_and_access_area(attributes)
+    old_role = @user.role
     User.transaction do
-      @user.access_area_file_pending = file_access_area_mode?
+      if !current_user.system_admin? && old_role == "subdistrict_admin" && attributes[:role] != "subdistrict_admin" && local_admin_count <= 1
+        raise ArgumentError, "ต้องมีผู้ดูแลประจำ อบต. อย่างน้อย 1 บัญชี"
+      end
+      @user.access_area_file_pending = current_user.system_admin? ? file_access_area_mode? : current_user.access_area.present?
       @user.update!(attributes)
-      raise ArgumentError, @user.errors.full_messages.to_sentence unless save_access_area
+      if current_user.system_admin?
+        raise ArgumentError, @user.errors.full_messages.to_sentence unless save_access_area
+      elsif @user.access_area.blank?
+        copy_current_access_area!
+      end
     end
     true
   rescue ActiveRecord::RecordInvalid, ArgumentError => error
@@ -113,5 +138,23 @@ class UsersController < ApplicationController
 
   def file_access_area_mode?
     params[:access_area_mode] == "file" && access_area_params[:boundary_file].present?
+  end
+
+  def copy_current_access_area!
+    source = current_user.access_area
+    return unless source
+
+    area = @user.access_area || @user.build_access_area
+    area.assign_attributes(name: source.name, source: source.source,
+      subdistrict_ids: source.subdistrict_ids, boundary: source.boundary)
+    area.save!
+  end
+
+  def local_admin_count
+    User.where(organization_key: @user.organization_key, role: :subdistrict_admin).count
+  end
+
+  def removing_last_local_admin?
+    @user.subdistrict_admin? && !current_user.system_admin? && local_admin_count <= 1
   end
 end

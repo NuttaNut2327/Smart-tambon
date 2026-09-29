@@ -127,7 +127,7 @@ class ImportedDataset
   validate :valid_schema_definition
   validate :map_geometry_is_usable
 
-  scope :visible_to, ->(user) { user.system_admin? ? all : any_of({ user_id: user.id }, { shared_with_all: true, subdistrict_id: { "$in" => user.accessible_subdistrict_ids } }) }
+  scope :visible_to, ->(user) { user.system_admin? ? all : any_of({ :user_id.in => user.organization_user_ids }, { shared_with_all: true, subdistrict_id: { "$in" => user.accessible_subdistrict_ids } }) }
 
   def user = User.find_by(id: user_id)
   def user=(value)

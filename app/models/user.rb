@@ -11,12 +11,13 @@ class User < ApplicationRecord
   validates :username, presence: true, uniqueness: { case_sensitive: false }, format: { with: /\A[a-z0-9._-]+\z/, message: "ใช้ตัวอักษรอังกฤษ ตัวเลข จุด ขีดกลาง หรือขีดล่างเท่านั้น" }
 
   before_validation :normalize_username
+  before_validation :assign_organization_key
 
   def role_label
     {
       "system_admin" => "ผู้ดูแลระบบ",
-      "subdistrict_admin" => "ผู้ดูแลประจำตำบล",
-      "subdistrict_user" => "ผู้ใช้งานประจำตำบล (อ่านข้อมูล)"
+      "subdistrict_admin" => "ผู้ดูแลประจำ อบต.",
+      "subdistrict_user" => "เจ้าหน้าที่ประจำ อบต."
     }.fetch(role, "ยังไม่กำหนดสิทธิ์")
   end
 
@@ -30,6 +31,19 @@ class User < ApplicationRecord
     (ids + [subdistrict_id]).compact.uniq
   end
 
+  def organization_user_ids
+    return User.pluck(:id) if system_admin?
+    return [id].compact if organization_key.blank?
+
+    User.where(organization_key: organization_key).where.not(role: :system_admin).pluck(:id)
+  end
+
+  def can_manage_organization_data?(owner_user_id)
+    return true if system_admin? || id == owner_user_id.to_i
+
+    subdistrict_admin? && organization_user_ids.include?(owner_user_id.to_i)
+  end
+
   def access_area_file_pending?
     ActiveModel::Type::Boolean.new.cast(access_area_file_pending)
   end
@@ -39,5 +53,15 @@ class User < ApplicationRecord
   def normalize_username
     self.username = username.to_s.strip.downcase
     self.email = "#{username}@smartcity.local" if username.present? && email.blank?
+  end
+
+  def assign_organization_key
+    self.organization_key ||= if system_admin?
+      "system:#{SecureRandom.uuid}"
+    elsif subdistrict_id.present?
+      "subdistrict:#{subdistrict_id}"
+    else
+      "account:#{SecureRandom.uuid}"
+    end
   end
 end

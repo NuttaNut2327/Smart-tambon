@@ -16,7 +16,7 @@
     <%= link_to disasters_path, class: "primary-nav-item #{'active' if active_nav == :disasters}", data: { turbo: false } do %><span class="material-symbols-outlined">warning</span>ภัยพิบัติ<% if pending_disaster_count.positive? %><em class="nav-alert-count"><%= pending_disaster_count %></em><% end %><% end %>
     <%= link_to resource_rules_path, class: "primary-nav-item #{'active' if active_nav == :resource_rules}", data: { turbo: false } do %><span class="material-symbols-outlined">rule</span>กฎการประเมินทรัพยากร<% end %>
     <%= link_to data_layers_path, class: "primary-nav-item #{'active' if active_nav == :data_layers}", data: { turbo: false } do %><span class="material-symbols-outlined">upload</span>นำเข้าข้อมูล<% end %>
-    <% if system_admin? %><%= link_to users_path, class: "primary-nav-item" do %><span class="material-symbols-outlined">manage_accounts</span>จัดการบัญชี<% end %><% end %>
+    <% if user_manager? %><%= link_to users_path, class: "primary-nav-item #{'active' if active_nav == :users}" do %><span class="material-symbols-outlined">manage_accounts</span>จัดการผู้ใช้<% end %><% end %>
   </nav>
   <% unless sidebar_local_account %><div class="sidebar-search area-search-wrap"><label class="search"><span>⌕</span><input id="area-search" type="search" placeholder="ค้นหาจังหวัดหรือ ตำบล" autocomplete="off" aria-controls="area-search-results" aria-expanded="false"></label><div id="area-search-results" class="area-search-results" role="listbox" hidden></div></div><% end %>
   <% if sidebar_local_account %>

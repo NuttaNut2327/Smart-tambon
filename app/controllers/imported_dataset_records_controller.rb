@@ -48,11 +48,11 @@ class ImportedDatasetRecordsController < ApplicationController
               ImportedDataset.all
             elsif current_user.subdistrict_admin?
               ImportedDataset.any_of(
-                { user_id: current_user.id },
+                { :user_id.in => current_user.organization_user_ids },
                 { shared_with_all: true, subdistrict_id: { "$in" => current_user.accessible_subdistrict_ids } }
               )
             else
-              ImportedDataset.where(user_id: current_user.id)
+              ImportedDataset.where(:user_id.in => current_user.organization_user_ids)
             end
     @dataset = scope.where(id: params[:imported_dataset_id], data_type: { "$in" => ImportedDataset::TYPE_LABELS.keys }).first
     return if @dataset
