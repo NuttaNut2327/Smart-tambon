@@ -4,7 +4,8 @@
 <% page_mode = (@page_mode || :overview).to_sym %>
 <% page_title = { overview: "ภาพรวมเมือง", map: "การวิเคราะห์แผนที่", analysis: "การวิเคราะห์แผนที่", general_incidents: "เหตุการณ์ทั่วไป", disasters: "ภัยพิบัติ" }.fetch(page_mode) %>
 
-<div class="shell dashboard-shell gis-dashboard page-<%= page_mode %>" data-maptiler-key="<%= ENV['MAPTILER_KEY'] %>" data-area-cache-scope="<%= current_user.id %>-<%= current_user.role %>" data-user-role="<%= current_user.role %>">
+<div class="shell dashboard-shell gis-dashboard page-<%= page_mode %>" data-maptiler-key="<%= ENV['MAPTILER_KEY'] %>" data-area-cache-scope="<%= current_user.id %>-<%= current_user.role %>" data-user-role="<%= current_user.role %>" data-area-name="<%= initial_area %>">
+  <% if page_mode == :overview %><script id="overview-dashboard-data" type="application/json"><%= raw json_escape(@overview_dashboard_data.to_json) %></script><% end %>
   <%= render "dashboard/sidebar", active_nav: page_mode, initial_area: initial_area, assigned_subdistrict: @assigned_subdistrict, provinces: @provinces %>
 
   <main class="dashboard-main content">
@@ -12,7 +13,12 @@
     <div class="dashboard-content">
       <% unless %i[general_incidents disasters].include?(page_mode) %><section id="city-overview" class="city-heading"><div><p class="page-kicker"><%= page_mode == :overview ? "ภาพรวมประจำวัน" : "เครื่องมือภูมิสารสนเทศ" %></p><div class="city-title-line"><h1><%= page_title %></h1></div><p><%= page_mode == :analysis ? "กำหนดขอบเขตบนแผนที่เพื่อวิเคราะห์สถานที่ภายในพื้นที่" : "ข้อมูลสถานการณ์เมืองแบบเรียลไทม์ · #{Time.current.strftime('%-d %B %Y')}" %></p></div><div class="city-live-status"><i></i><span>สถานะเมือง</span><b>พร้อมใช้งาน</b><small>อัปเดตล่าสุด <%= Time.current.strftime("%H:%M") %> น.</small></div></section><% end %>
       <% if page_mode == :overview %>
-      <section class="city-kpi-grid"><article><span class="kpi-icon blue">!</span><p>เหตุการณ์ที่กำลังดำเนินการ</p><strong>8</strong><small>2 เหตุระดับเร่งด่วน</small></article><article><span class="kpi-icon amber">⌖</span><p>พื้นที่ต้องเฝ้าระวัง</p><strong>3</strong><small>จากทั้งหมด 12 พื้นที่</small></article><article><span class="kpi-icon purple">♧</span><p>ประชากรในพื้นที่เสี่ยง</p><strong>1,240</strong><small>เพิ่มขึ้น 180 คนวันนี้</small></article><article><span class="kpi-icon red">⌁</span><p>การแจ้งเตือนใหม่วันนี้</p><strong>5</strong><small>ตรวจสอบแล้ว 3 รายการ</small></article></section>
+      <section class="city-kpi-grid" aria-label="สรุปเหตุการณ์">
+        <article class="kpi-total"><span class="kpi-icon blue material-symbols-outlined">database</span><div><strong><%= @overview_incident_summary[:received] %></strong><p>เหตุการณ์ทั้งหมดที่ได้รับแจ้ง</p><small>ย้อนหลัง 24 ชั่วโมง</small></div></article>
+        <article class="kpi-today"><span class="kpi-icon amber material-symbols-outlined">notifications_active</span><div><strong><%= @overview_incident_summary[:today] %></strong><p>แจ้งเตือนเข้ามาวันนี้</p><small><%= Time.current.strftime("%-d %b %Y") %></small></div></article>
+        <article class="kpi-unresolved"><span class="kpi-icon red material-symbols-outlined">shield</span><div><strong><%= @overview_incident_summary[:unresolved] %></strong><p>ยังไม่ได้รับการแก้ไข</p><small>ต้องเร่งดำเนินการ</small></div></article>
+        <article class="kpi-completed"><span class="kpi-icon green material-symbols-outlined">speed</span><div><strong><%= @overview_incident_summary[:completed] %></strong><p>แก้ไขเรียบร้อยแล้ว</p><small>ปิดงานสำเร็จ</small></div></article>
+      </section>
       <% end %>
       <% if page_mode != :none && !%i[general_incidents disasters].include?(page_mode) %>
       <section class="city-section-head"><div><h2><%= page_mode == :overview ? "แผนที่ภาพรวมพื้นที่" : page_mode == :analysis ? "เลือกพื้นที่เพื่อวิเคราะห์" : "แผนที่และชั้นข้อมูล" %></h2><p><%= page_mode == :overview ? "แผนที่โฟกัสขอบเขตพื้นที่ที่คุณดูแล" : page_mode == :analysis ? "เลือกจุด เส้น หรือ Polygon บนแผนที่" : "แสดงข้อมูลจริงของระบบ พร้อมสถานะสรุปสำหรับการติดตาม" %></p></div><div class="map-legend"><span><i class="critical"></i>วิกฤต</span><span><i class="watch"></i>เฝ้าระวัง</span><span><i class="normal"></i>ปกติ</span></div></section>

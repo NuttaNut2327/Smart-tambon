@@ -72,8 +72,8 @@ class IncidentUsageCatalog
           next if name.blank?
           code = record["code"].presence || "#{dataset.id}-#{position}"
           unit = record["unit"].presence || "รายการ"
-          status = record["status"].to_s
-          available = status.blank? || status.include?("พร้อม") || status.match?(/available|ready/i) ? 1 : 0
+          status = record["status"].to_s.strip.downcase
+          available = %w[พร้อมใช้ พร้อมใช้งาน available ready].include?(status) ? 1 : 0
           catalog_item("resource", name, unit, available, dataset, code, position, record, assigned_keys)
         end
       end
