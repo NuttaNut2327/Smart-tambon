@@ -37,8 +37,9 @@
             <%= link_to "#{@incidents_path}?incident_id=#{incident.id}", class: "incident-list-card incident-severity-#{incident.severity} #{'active' if incident == @selected_incident}", data: { incident_status_group: status_group, incident_source: incident.report_source_label } do %>
               <div><small><%= incident.reference_code %></small><em class="severity-<%= incident.severity %>"><%= severity_labels[incident.severity] %></em></div>
               <strong><%= incident.title %></strong>
-              <p><span class="material-symbols-outlined">location_on</span><%= incident.location_name.presence || "ไม่ระบุตำแหน่ง" %></p>
-              <footer><span><%= incident.report_source_label %></span><b><%= status_labels[incident.status] %></b></footer>
+              <% has_resolved_address = incident.location_name.present? && !incident.location_name.match?(/\A(ตำแหน่งที่|ไม่ระบุ)/) %>
+              <p><span class="material-symbols-outlined">location_on</span><span data-incident-address data-latitude="<%= incident.latitude %>" data-longitude="<%= incident.longitude %>" data-address-resolved="<%= has_resolved_address %>"><%= incident.location_name.presence || "กำลังค้นหาที่อยู่โดยประมาณ..." %></span></p>
+              <footer><span>แจ้งโดย <%= incident.report_source_label %></span><b><%= status_labels[incident.status] %></b></footer>
             <% end %>
           <% end %>
           <p class="incident-filter-empty" data-incident-filter-empty hidden>ไม่มีเหตุการณ์ในสถานะนี้</p>
@@ -81,7 +82,8 @@
             <h3>ตำแหน่งเหตุการณ์</h3>
             <% if incident.longitude.present? && incident.latitude.present? %>
               <div class="incident-mini-map" data-incident-map data-longitude="<%= incident.longitude %>" data-latitude="<%= incident.latitude %>" aria-label="แผนที่ตำแหน่งเหตุการณ์"></div>
-              <p><%= incident.latitude %>, <%= incident.longitude %></p>
+              <% has_resolved_address = incident.location_name.present? && !incident.location_name.match?(/\A(ตำแหน่งที่|ไม่ระบุ)/) %>
+              <p class="incident-approximate-address" data-incident-address data-latitude="<%= incident.latitude %>" data-longitude="<%= incident.longitude %>" data-address-resolved="<%= has_resolved_address %>"><%= has_resolved_address ? incident.location_name : "กำลังค้นหาที่อยู่โดยประมาณ..." %></p>
             <% else %><div class="incident-location-empty">ยังไม่มีพิกัดตำแหน่ง</div><% end %>
           </section>
         </div>

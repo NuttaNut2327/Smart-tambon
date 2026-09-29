@@ -16,6 +16,7 @@ class Incident
   field :reference_code, type: String
   field :category, type: String, default: "general"
   field :incident_type, type: String
+  field :incident_type_other, type: String
   field :title, type: String
   field :description, type: String
   field :backdated, type: Boolean, default: false
@@ -54,6 +55,7 @@ class Incident
   validates :status, inclusion: { in: STATUSES }
   validates :severity, inclusion: { in: SEVERITIES }
   validates :occurred_at, presence: true, if: :backdated?
+  validates :incident_type_other, presence: true, if: -> { incident_type == "อื่น ๆ" }
 
   before_validation :assign_reference_code, on: :create
   before_validation :clear_occurred_at_unless_backdated

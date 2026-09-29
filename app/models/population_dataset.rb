@@ -9,7 +9,10 @@ class PopulationDataset < ApplicationRecord
 
     scope = where("population_datasets.user_id = ? OR population_datasets.shared_with_all = ?", user.id, true)
     if user.access_area&.boundary
-      scope.joins(:subdistrict).where("ST_Intersects(subdistricts.boundary, ?)", user.access_area.boundary)
+      scope.joins(:subdistrict).where(
+        "ST_Intersects(subdistricts.boundary, ST_SetSRID(?::geometry, 4326))",
+        user.access_area.boundary
+      )
     else
       scope.where(subdistrict_id: user.accessible_subdistrict_ids)
     end

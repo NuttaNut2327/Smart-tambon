@@ -12,6 +12,7 @@ Rails.application.routes.draw do
   get "disasters", to: "dashboard#disasters", as: :disasters
   get "report/:token", to: "public_incident_reports#show", as: :public_incident_report
   post "report/:token", to: "public_incident_reports#create"
+  get "report/:token/reverse_geocode", to: "public_incident_reports#reverse_geocode", as: :reverse_geocode_public_incident_report
   get "incidents/notification", to: "incidents#notification", as: :incident_notification
   post "incidents", to: "incidents#create", as: :incidents
   patch "incidents/:id", to: "incidents#update", as: :incident

@@ -97,9 +97,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   const importedDatasetLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
-    style:new ol.style.Style({
-      image:new ol.style.Circle({radius:8,fill:new ol.style.Fill({color:"#7c3aed"}),stroke:new ol.style.Stroke({color:"#fff",width:2})})
-    })
+    style:feature=>feature.get("data_type")==="agencies"
+      ? placeMarkerStyle(placeConfig.government)(feature)
+      : new ol.style.Style({image:new ol.style.Circle({radius:8,fill:new ol.style.Fill({color:"#7c3aed"}),stroke:new ol.style.Stroke({color:"#fff",width:2})})})
   });
   const villageBoundaryLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
@@ -168,19 +168,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   const overviewPage=document.querySelector(".page-overview");
   if(overviewPage){
-    const taskItems=[
-      {level:"urgent",title:"น้ำท่วมขังในซอยหมู่ที่ 5",place:"ม.5 บ้านเนิน · ซอยโพธิ์",time:"แจ้งเมื่อ 15:45 น.",reporter:"นายสมชาย ใจดี · 08X-XXX-2481",team:"ทีมป้องกันและบรรเทาสาธารณภัย ชุด A",impact:"ประชาชนประมาณ 86 คน · 24 ครัวเรือน · ถนนชุมชน 1 สาย",detail:"พบปัญหาน้ำขังในพื้นที่ ส่งผลต่อการเดินทางและบ้านเรือนใกล้เคียง ต้องส่งเจ้าหน้าที่เข้าตรวจสอบและกั้นพื้นที่โดยเร็ว",next:"ตรวจสอบระดับน้ำของเขตต้นเหตุ, ช่วยเหลือประชาชนกลุ่มเปราะบางก่อน, จัดรถสูบน้ำและวางแนวกั้นน้ำ"},
-      {level:"urgent",title:"ต้นไม้ใหญ่โค่นขวางทางสัญจร",place:"ม.7 บ้านโคก · ถนนสายเก่า",time:"แจ้งเมื่อ 09:20 น.",reporter:"นางสาวจิราภา แก้วคำ · 08X-XXX-5762",team:"ทีมช่างโยธาและงานป้องกันฯ",impact:"ประชาชน 42 คน · ถนนชุมชน 1 สาย",detail:"ต้นไม้โค่นกีดขวางเส้นทางหลักของชุมชน ต้องตัดกิ่งและเปิดเส้นทางเพื่อให้รถฉุกเฉินผ่านได้",next:"กั้นจุดเสี่ยง, ประสานรถกระเช้า, ตรวจสอบสายไฟบริเวณใกล้เคียง"},
-      {level:"watch",title:"ไฟฟ้าขัดข้องบริเวณสี่แยกหมู่ที่ 3",place:"ม.3 ตำบลบางพลี",time:"แจ้งเมื่อ 11:05 น.",reporter:"ศูนย์รับแจ้งเหตุเทศบาล · 191",team:"ประสานการไฟฟ้าส่วนภูมิภาค",impact:"ไฟส่องสว่างสาธารณะ 12 จุด",detail:"ระบบไฟส่องสว่างริมถนนขัดข้องในช่วงฝนตก กำลังรอเจ้าหน้าที่เข้าตรวจสอบตู้ควบคุม",next:"ประสานผู้รับผิดชอบ, ตั้งป้ายเตือนผู้ใช้ถนน, ติดตามการแก้ไข"},
-      {level:"normal",title:"ตรวจสอบฝนสะสมพื้นที่ลุ่มต่ำ",place:"ม.2 บ้านริมน้ำ",time:"อัปเดตเมื่อ 13:10 น.",reporter:"สถานีวัดน้ำและฝนในพื้นที่",team:"ทีมเฝ้าระวังน้ำท่วม",impact:"พื้นที่เฝ้าระวัง 3 จุด",detail:"ปริมาณฝนสะสมสูงกว่าค่าเฉลี่ยเล็กน้อย ยังไม่พบผลกระทบต่อชุมชน",next:"ติดตามระดับน้ำทุก 30 นาที, แจ้งเตือนผู้นำชุมชนหากระดับสูงขึ้น"},
-      {level:"watch",title:"ตรวจสอบท่อระบายน้ำอุดตัน",place:"ม.4 บ้านตลาด · ถนนสายหลัก",time:"แจ้งเมื่อ 12:35 น.",reporter:"นายธนพล ศรีสุข · 08X-XXX-9124",team:"ทีมช่างโยธา",impact:"เสี่ยงน้ำขังบริเวณตลาดและทางแยก",detail:"พบเศษวัสดุอุดตันบริเวณตะแกรงรับน้ำ ต้องเร่งทำความสะอาดก่อนฝนตกช่วงเย็น",next:"ส่งทีมตรวจสอบพื้นที่, นำเครื่องมือทำความสะอาด, รายงานผลหลังดำเนินการ"},
-      {level:"normal",title:"ติดตามการจัดส่งน้ำดื่มชุมชน",place:"ม.6 บ้านคลอง · ศูนย์ชุมชน",time:"อัปเดตเมื่อ 10:40 น.",reporter:"เจ้าหน้าที่ศูนย์ประสานงาน",team:"ทีมสาธารณสุขและอาสาสมัคร",impact:"ครัวเรือนกลุ่มเปราะบาง 18 ครัวเรือน",detail:"เตรียมจัดส่งน้ำดื่มสำหรับผู้สูงอายุและผู้ป่วยติดเตียงตามแผนช่วยเหลือประจำวัน",next:"ยืนยันรายการรับน้ำดื่ม, ประสานอาสาสมัคร, บันทึกผลการส่งมอบ"}
-    ];
+    const overviewData=JSON.parse(document.querySelector("#overview-dashboard-data")?.textContent || "{}");
+    const taskItems=overviewData.tasks || [];
+    const taskFilterLabels={pending:"รอรับเรื่อง",assessing:"กำลังประเมิน",in_progress:"กำลังดำเนินการ"};
+    const escapeOverview=(value)=>String(value ?? "").replace(/[&<>'"]/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[character]);
     const mapSection=document.querySelector("#map-section");
     if(mapSection){
       const taskPanel=document.createElement("section");
       taskPanel.className="overview-task-panel";
-      taskPanel.innerHTML=`<div class="overview-panel-heading"><div><h2>งานที่ต้องดำเนินการ</h2><p>เรียงตามระดับความเร่งด่วน</p></div><b>${taskItems.length} งาน</b></div><div class="overview-task-filters"><button class="active" data-task-filter="all">ทั้งหมด</button><button data-task-filter="urgent">ฉุกเฉิน</button><button data-task-filter="watch">ด่วน</button><button data-task-filter="normal">เฝ้าระวัง</button></div><div class="overview-task-list">${taskItems.map((task,index)=>`<button type="button" class="overview-task ${task.level}" data-task-index="${index}"><span class="task-status-dot"></span><span><b>${task.title}</b><small>⌖ ${task.place}</small><small>${task.time}</small></span><em>${task.level==="urgent"?"ฉุกเฉิน":task.level==="watch"?"ด่วน":"เฝ้าระวัง"}</em></button>`).join("")}</div>`;
+      const taskRows=taskItems.length ? taskItems.map((task,index)=>`<button type="button" class="overview-task ${task.level}" data-task-status="${task.status}" data-task-index="${index}"><span class="task-status-dot"></span><span class="task-content"><b>${escapeOverview(task.title)}</b><small class="task-location"><span class="material-symbols-outlined">location_on</span><span data-task-address>${escapeOverview(task.place)}</span></small><small class="task-time">แจ้งเมื่อ ${escapeOverview(task.time)}</small></span><span class="task-card-meta"><em class="task-severity ${task.level}">${escapeOverview(task.severity_label)}</em><strong class="task-state">${escapeOverview(task.status_label)}</strong></span></button>`).join("") : '<div class="overview-task-empty"><span class="material-symbols-outlined">task_alt</span><b>ไม่มีงานที่รอดำเนินการ</b><small>เหตุการณ์ทั้งหมดดำเนินการเรียบร้อยแล้ว</small></div>';
+      const taskFilters=Object.entries(taskFilterLabels).map(([status,label])=>`<button data-task-filter="${status}">${label} (${taskItems.filter(task=>task.status===status).length})</button>`).join("");
+      taskPanel.innerHTML=`<div class="overview-panel-heading"><div><h2>งานที่ต้องดำเนินการ</h2><p>รอรับเรื่องก่อน แล้วเรียงตามระดับความเร่งด่วน</p></div><b>${taskItems.length} งาน</b></div><div class="overview-task-filters"><button class="active" data-task-filter="all">ทั้งหมด (${taskItems.length})</button>${taskFilters}</div><div class="overview-task-list">${taskRows}</div>`;
       mapSection.prepend(taskPanel);
       taskPanel.classList.toggle("has-scroll",taskItems.length>4);
       if(taskItems.length>4){
@@ -194,67 +192,47 @@ document.addEventListener("DOMContentLoaded", () => {
         requestAnimationFrame(syncTaskPanelHeight);
         window.ResizeObserver && mapWrap && new ResizeObserver(syncTaskPanelHeight).observe(mapWrap);
       }
-      const taskStates=[
-        {name:"emergency",label:"ฉุกเฉิน"},
-        {name:"priority",label:"เร่งด่วน"},
-        {name:"watch",label:"เฝ้าระวัง"},
-        {name:"normal",label:"รอได้"},
-        {name:"priority",label:"เร่งด่วน"},
-        {name:"normal",label:"รอได้"}
-      ];
-      taskPanel.querySelector(".overview-task-filters").innerHTML='<button class="active" data-task-filter="all">ทั้งหมด</button><button data-task-filter="emergency">ฉุกเฉิน</button><button data-task-filter="priority">เร่งด่วน</button><button data-task-filter="watch">เฝ้าระวัง</button><button data-task-filter="normal">รอได้</button>';
-      taskPanel.querySelectorAll(".overview-task").forEach((button,index)=>{
-        const state=taskStates[index];
-        button.classList.remove("urgent","watch","normal");
-        button.classList.add(state.name);
-        button.dataset.taskState=state.name;
-        button.querySelector("em").textContent=state.label;
-        const taskContent=button.querySelector(".task-status-dot + span");
-        const taskDetails=taskContent?.querySelectorAll("small");
-        if(taskDetails?.length===2){
-          taskDetails[0].classList.add("task-location");
-          taskDetails[0].textContent=`สถานที่: ${taskItems[index].place}`;
-          taskDetails[1].classList.add("task-time");
-          const taskMeta=document.createElement("span");
-          taskMeta.className="task-meta";
-          const taskLevel=button.querySelector("em");
-          taskLevel.classList.add("task-level");
-          taskMeta.append(taskDetails[1]);
-          button.append(taskMeta,taskLevel);
-        }
-      });
       mapSection.classList.add("overview-map-workspace");
       const baseline=document.createElement("section");
       baseline.className="overview-baseline";
-      baseline.innerHTML=`<div class="overview-baseline-heading"><div><h2>ข้อมูลพื้นฐานของตำบล</h2><p>ข้อมูลสำหรับวางแผนและจัดสรรกำลัง</p></div><span>ข้อมูลสาธิต</span></div><div class="overview-baseline-grid"><article class="area-facts"><h3>ข้อมูลทั่วไปของตำบลบางนาค</h3><div class="fact-kpis"><div><b>48.7</b><small>ตร.กม.</small></div><div><b>18</b><small>หมู่บ้าน</small></div><div><b>2,310</b><small>ครัวเรือน</small></div></div><dl><div><dt>ประเภทพื้นที่</dt><dd>องค์การบริหารส่วนตำบล</dd></div><div><dt>อำเภอ</dt><dd>อำเภอเมืองนราธิวาส</dd></div></dl></article><article class="population-facts"><h3>ประชาชนและกลุ่มเปราะบาง</h3><strong>8,420 <small>คน</small></strong><div><span>ผู้สูงอายุ <b>1,245 คน</b></span><i class="amber" style="--value:74%"></i><span>ผู้ป่วยติดเตียง <b>92 คน</b></span><i class="red" style="--value:20%"></i><span>ผู้พิการ <b>134 คน</b></span><i class="purple" style="--value:32%"></i></div></article><article class="resource-facts"><h3>ทรัพยากรในตำบล</h3><div class="resource-status-grid"><div><span>💧 เครื่องสูบน้ำ</span><b>10 <small>/ 12 พร้อม</small></b><em>ไม่พร้อม 2</em></div><div><span>🚜 รถบรรทุกน้ำ</span><b>3 <small>/ 4 พร้อม</small></b><em>ไม่พร้อม 1</em></div><div><span>🚑 รถพยาบาล</span><b>2 <small>/ 3 พร้อม</small></b><em>ไม่พร้อม 1</em></div><div><span>⚡ เครื่องปั่นไฟ</span><b>5 <small>/ 6 พร้อม</small></b><em>ไม่พร้อม 1</em></div></div></article><article class="team-facts"><h3>ทีมงานในพื้นที่</h3><ul><li><span>ทีมกู้ภัย</span><b>42 <small>พร้อม 38 · ไม่พร้อม 4</small></b></li><li><span>ทีมสาธารณสุข</span><b>28 <small>พร้อม 26 · ไม่พร้อม 2</small></b></li><li><span>อาสาสมัคร อปพร.</span><b>36 <small>พร้อม 31 · ไม่พร้อม 5</small></b></li></ul></article></div>`;
-      baseline.querySelector(".resource-facts").innerHTML='<h3>ทรัพยากรในตำบล</h3><div class="resource-status-grid"><div><span>💧 เครื่องสูบน้ำ</span><b>พร้อมใช้งาน 10 เครื่อง</b><em>ไม่พร้อมใช้งาน 2 เครื่อง</em></div><div><span>🚜 รถบรรทุกน้ำ</span><b>พร้อมใช้งาน 3 คัน</b><em>ไม่พร้อมใช้งาน 1 คัน</em></div><div><span>🚑 รถพยาบาล</span><b>พร้อมใช้งาน 2 คัน</b><em>ไม่พร้อมใช้งาน 1 คัน</em></div><div><span>⚡ เครื่องปั่นไฟ</span><b>พร้อมใช้งาน 5 เครื่อง</b><em>ไม่พร้อมใช้งาน 1 เครื่อง</em></div></div>';
-      baseline.querySelector(".team-facts").innerHTML='<h3>ทีมงานในพื้นที่</h3><ul><li><span>ทีมกู้ภัย</span><b>พร้อมทำงาน 38 คน<small>ไม่พร้อมทำงาน 4 คน · รวม 42 คน</small></b></li><li><span>ทีมสาธารณสุข</span><b>พร้อมทำงาน 26 คน<small>ไม่พร้อมทำงาน 2 คน · รวม 28 คน</small></b></li><li><span>อาสาสมัคร อปพร.</span><b>พร้อมทำงาน 31 คน<small>ไม่พร้อมทำงาน 5 คน · รวม 36 คน</small></b></li></ul>';
-      baseline.querySelector(".resource-facts").innerHTML='<h3>ทรัพยากรในตำบล</h3><ul><li><span>💧 เครื่องสูบน้ำ</span><b><strong>10 พร้อม</strong><small>2 ไม่พร้อม</small></b></li><li><span>🚜 รถบรรทุกน้ำ</span><b><strong>3 พร้อม</strong><small>1 ไม่พร้อม</small></b></li><li><span>🚑 รถพยาบาล</span><b><strong>2 พร้อม</strong><small>1 ไม่พร้อม</small></b></li><li><span>⚡ เครื่องปั่นไฟ</span><b><strong>5 พร้อม</strong><small>1 ไม่พร้อม</small></b></li></ul>';
-      [12,4,3,6].forEach((total,index)=>{
-        const summary=baseline.querySelectorAll(".resource-facts li b")[index];
-        if(summary){ const totalLabel=document.createElement("span"); totalLabel.className="resource-total"; totalLabel.textContent=`ทั้งหมด ${total}`; summary.prepend(totalLabel); }
-      });
-      baseline.querySelector(".team-facts").innerHTML='<h3>ทีมงานในพื้นที่</h3><ul><li><span>ทีมกู้ภัย</span><b><span class="team-total">ทั้งหมด 42</span><strong>38 พร้อม</strong><small>4 ไม่พร้อม</small></b></li><li><span>ทีมสาธารณสุข</span><b><span class="team-total">ทั้งหมด 28</span><strong>26 พร้อม</strong><small>2 ไม่พร้อม</small></b></li><li><span>อาสาสมัคร อปพร.</span><b><span class="team-total">ทั้งหมด 36</span><strong>31 พร้อม</strong><small>5 ไม่พร้อม</small></b></li></ul>';
+      const overviewAreaName=overviewPage.dataset.areaName || "พื้นที่รับผิดชอบ";
+      const baselineData=overviewData.baseline || {};
+      const numberText=(value)=>Number(value || 0).toLocaleString("th-TH");
+      const populationAreas=baselineData.population_by_area || [];
+      const districtNames=[...new Set(populationAreas.map(area=>area.district_name).filter(Boolean))];
+      const subdistrictNames=[...new Set(populationAreas.map(area=>area.subdistrict_name).filter(Boolean))];
+      const villageNames=populationAreas.flatMap(area=>(area.villages || []).map(village=>`${village.village_number ? `หมู่ ${numberText(village.village_number)} ` : ""}${village.village_name || "ไม่ระบุชื่อหมู่บ้าน"}`));
+      const jurisdictionRows=`<div><dt>อำเภอ</dt><dd>${districtNames.length ? districtNames.map(escapeOverview).join(", ") : "ไม่ระบุ"}</dd></div><div><dt>ตำบล</dt><dd>${subdistrictNames.length ? subdistrictNames.map(escapeOverview).join(", ") : "ไม่ระบุ"}</dd></div><div><dt>หมู่บ้าน</dt><dd>${villageNames.length ? villageNames.map(escapeOverview).join(", ") : "ยังไม่มีข้อมูลหมู่บ้าน"}</dd></div>`;
+      const populationAreaRows=populationAreas.map((area,areaIndex)=>{const villages=area.villages || [];const maxVillagePopulation=Math.max(...villages.map(village=>Number(village.population)||0),1);return `<details class="population-subdistrict" ${areaIndex===0?"open":""}><summary><span><small>ตำบล</small><b>${escapeOverview(area.subdistrict_name)}</b></span><strong>${numberText(area.population)} <small>คน</small></strong><i class="material-symbols-outlined">expand_more</i></summary><div class="population-subdistrict-bars">${villages.map((village,index)=>`<div class="population-bar-row"><div><span>${village.village_number ? `หมู่ ${numberText(village.village_number)} · ` : ""}${escapeOverview(village.village_name)}</span><b>${numberText(village.population)} <small>คน</small></b></div><span class="population-bar-track"><i class="bar-color-${index%5}" style="width:${Math.max(2,(Number(village.population)||0)/maxVillagePopulation*100)}%"></i></span></div>`).join("")}</div></details>`}).join("") || '<p class="overview-data-empty">ยังไม่มีชุดข้อมูลประชากรที่นำเข้า</p>';
+      const resourceRows=(baselineData.resources || []).map(row=>`<li><span>${escapeOverview(row.name)}</span><b><span class="resource-total">ทั้งหมด ${numberText(row.total)} ${escapeOverview(row.unit)}</span><small>ไม่พร้อม ${numberText(row.unavailable)} ${escapeOverview(row.unit)}</small><strong>พร้อม ${numberText(row.ready)} ${escapeOverview(row.unit)}</strong></b></li>`).join("") || '<li class="overview-data-empty">ยังไม่มีข้อมูลทรัพยากร</li>';
+      const teamRows=(baselineData.teams || []).map(row=>`<li><span>${escapeOverview(row.name)}</span><b><span class="team-total">ทั้งหมด ${numberText(row.total)} คน</span><small>ไม่พร้อม ${numberText(row.unavailable)} คน</small><strong>พร้อม ${numberText(row.ready)} คน</strong></b></li>`).join("") || '<li class="overview-data-empty">ยังไม่มีข้อมูลทีมปฏิบัติงาน</li>';
+      baseline.innerHTML=`<div class="overview-baseline-heading"><div><h2>ข้อมูลพื้นฐานของตำบล</h2><p>ข้อมูลจริงจากชุดข้อมูลที่เปิดใช้งานล่าสุด</p></div></div><div class="overview-baseline-grid"><article class="area-facts"><h3 data-overview-area-heading>ข้อมูลทั่วไปของพื้นที่</h3><div class="fact-kpis"><div><b>${numberText(baselineData.area_sq_km)}</b><small>ตร.กม.<br>พื้นที่ทั้งหมด</small></div><div><b>${numberText((baselineData.population_by_area || []).length)}</b><small>ตำบล<br>ที่มีข้อมูลประชากร</small></div><div><b>${numberText(baselineData.villages)}</b><small>หมู่บ้าน<br>พื้นที่ดูแล</small></div></div><dl><div><dt>ประเภทพื้นที่</dt><dd>องค์การบริหารส่วนตำบล (อบต.)</dd></div><div><dt>พื้นที่ติดต่อ</dt><dd data-overview-area-name></dd></div>${jurisdictionRows}</dl></article><article class="population-facts population-dashboard"><h3>ประชากรในพื้นที่รับผิดชอบ</h3><strong class="population-grand-total">${numberText(baselineData.population)} <small>คนทั้งหมด</small></strong><div class="population-bar-list">${populationAreaRows}</div></article><article class="resource-facts"><h3>ทรัพยากรในตำบล</h3><ul>${resourceRows}</ul></article><article class="team-facts"><h3>ทีมงานในพื้นที่</h3><ul>${teamRows}</ul></article></div>`;
+      baseline.querySelector("[data-overview-area-heading]").textContent=`ข้อมูลทั่วไปของ${overviewAreaName}`;
+      baseline.querySelector("[data-overview-area-name]").textContent=overviewAreaName;
       const dailyStatus=document.createElement("section");
       dailyStatus.className="daily-status-card";
-      dailyStatus.innerHTML='<div class="daily-status-heading"><div><h2>สถานะภัยในพื้นที่ตอนนี้</h2><p>สรุปภาพรวมภัยที่ต้องติดตามในเขตรับผิดชอบ</p></div><button type="button">ดูรายละเอียดทั้งหมด →</button></div><div class="daily-status-list"><article class="danger"><i>≋</i><div><b>น้ำท่วม</b><small>2 จุดต้องเฝ้าระวัง</small><em>มีเหตุการณ์</em></div></article><article class="safe"><i>♨</i><div><b>ไฟป่า</b><small>ไม่มีรายงานเหตุ</small><em>ปกติ</em></div></article><article class="watch"><i>≋</i><div><b>พายุ</b><small>1 จุดกำลังเฝ้าระวัง</small><em>มีเหตุการณ์</em></div></article><article class="safe"><i>△</i><div><b>ดินถล่ม</b><small>ไม่มีพื้นที่เสี่ยง</small><em>ปกติ</em></div></article><article class="safe"><i>☀</i><div><b>ภัยแล้ง</b><small>ไม่มีพื้นที่เสี่ยง</small><em>ปกติ</em></div></article><article class="safe"><i>⌁</i><div><b>อื่น ๆ</b><small>ไม่มีรายงานเหตุ</small><em>ปกติ</em></div></article></div>';
-      mapSection.after(dailyStatus);
-      dailyStatus.after(baseline);
+      const hazardRows=(overviewData.hazards || []).map(hazard=>`<article class="${hazard.tone}"><i class="material-symbols-outlined">${hazard.icon}</i><div><b>${escapeOverview(hazard.name)}</b><small>${escapeOverview(hazard.detail || (hazard.count ? `${numberText(hazard.count)} เหตุการณ์` : "ไม่มีรายงานเหตุ"))}</small><em>${escapeOverview(hazard.status_label || (hazard.count ? "มีเหตุการณ์" : "ปกติ"))}</em></div></article>`).join("");
+      dailyStatus.innerHTML=`<div class="daily-status-heading"><div><h2>สถานะภัยในพื้นที่ตอนนี้</h2><p>สรุปจากเหตุการณ์ที่ยังไม่เสร็จสิ้นในเขตรับผิดชอบ</p></div></div><div class="daily-status-list">${hazardRows}</div>`;
+      mapSection.before(dailyStatus);
+      mapSection.after(baseline);
       const dialog=document.createElement("dialog");
       dialog.className="overview-task-dialog";
       document.body.append(dialog);
-      const showTask=(task)=>{dialog.innerHTML=`<button type="button" class="overview-dialog-close" aria-label="ปิด">×</button><header><span class="${task.level}">${task.level==="urgent"?"ฉุกเฉิน":task.level==="watch"?"ด่วน":"เฝ้าระวัง"}</span><small>รหัสเหตุการณ์ INC-2569-${String(taskItems.indexOf(task)+1).padStart(3,"0")}</small><h2>${task.title}</h2><p>⌖ ${task.place} · ${task.time}</p></header><div class="overview-dialog-grid"><section><h3>รายละเอียดเหตุที่ได้รับแจ้ง</h3><dl><div><dt>ผู้แจ้งเหตุ</dt><dd>${task.reporter}</dd></div><div><dt>ช่องทางรับแจ้ง</dt><dd>สายด่วน อบต. / เจ้าหน้าที่บันทึกเข้าระบบ</dd></div><div><dt>รายละเอียด</dt><dd>${task.detail}</dd></div><div><dt>ผลกระทบเบื้องต้น</dt><dd>${task.impact}</dd></div></dl></section><section><h3>การดำเนินงาน</h3><dl><div><dt>สถานะ</dt><dd>รอรับเรื่อง</dd></div><div><dt>ผู้รับผิดชอบหลัก</dt><dd>${task.team}</dd></div></dl><h4>สิ่งที่ต้องทำต่อ</h4><ul>${task.next.split(", ").map(item=>`<li>${item}</li>`).join("")}</ul></section></div>`;dialog.showModal();dialog.querySelector(".overview-dialog-close")?.addEventListener("click",()=>dialog.close())};
+      const showTask=(task)=>{dialog.innerHTML=`<button type="button" class="overview-dialog-close" aria-label="ปิด">×</button><header><span class="${task.level}">${escapeOverview(task.severity_label)}</span><small>รหัสเหตุการณ์ ${escapeOverview(task.reference_code)}</small><h2>${escapeOverview(task.title)}</h2><p>ที่อยู่โดยประมาณ: ${escapeOverview(task.place)} · ${escapeOverview(task.time)}</p></header><div class="overview-dialog-grid"><section><h3>รายละเอียดเหตุที่ได้รับแจ้ง</h3><dl><div><dt>ผู้แจ้งเหตุ</dt><dd>${escapeOverview(task.reporter)}</dd></div><div><dt>รายละเอียด</dt><dd>${escapeOverview(task.detail)}</dd></div><div><dt>ผลกระทบเบื้องต้น</dt><dd>${escapeOverview(task.impact)}</dd></div></dl></section><section><h3>การดำเนินงาน</h3><dl><div><dt>สถานะ</dt><dd>${escapeOverview(task.status_label)}</dd></div><div><dt>ผู้รับผิดชอบหลัก</dt><dd>${escapeOverview(task.team)}</dd></div></dl><h4>สิ่งที่ต้องทำต่อ</h4><ul>${(task.next || []).map(item=>`<li>${escapeOverview(item)}</li>`).join("")}</ul></section></div>`;dialog.showModal();dialog.querySelector(".overview-dialog-close")?.addEventListener("click",()=>dialog.close())};
       taskPanel.querySelectorAll(".overview-task").forEach(button=>button.addEventListener("click",()=>showTask(taskItems[Number(button.dataset.taskIndex)])));
-      taskPanel.addEventListener("click",event=>{
-        const button=event.target.closest(".overview-task");
-        if(!button) return;
-        const state=taskStates[Number(button.dataset.taskIndex)];
-        window.setTimeout(()=>{
-          const status=dialog.querySelector("header>span");
-          if(status){ status.className=state.name; status.textContent=state.label; }
-        });
+      taskPanel.querySelectorAll("[data-task-filter]").forEach(button=>button.addEventListener("click",()=>{taskPanel.querySelectorAll("[data-task-filter]").forEach(item=>item.classList.toggle("active",item===button));taskPanel.querySelectorAll(".overview-task").forEach(task=>task.hidden=button.dataset.taskFilter!=="all"&&task.dataset.taskStatus!==button.dataset.taskFilter)}));
+      taskItems.forEach(async(task,index)=>{
+        if(task.approximate_address || !Number.isFinite(Number(task.latitude)) || !Number.isFinite(Number(task.longitude))) return;
+        try{
+          const response=await fetch(`/api/reverse_geocode?lat=${encodeURIComponent(task.latitude)}&lon=${encodeURIComponent(task.longitude)}`,{headers:{Accept:"application/json"}});
+          const result=await response.json();
+          if(!response.ok || !result.address) return;
+          task.place=result.address;
+          task.approximate_address=true;
+          const location=taskPanel.querySelector(`.overview-task[data-task-index="${index}"] [data-task-address]`);
+          if(location) location.textContent=result.address;
+        }catch(_error){ /* Keep the stored location text when reverse geocoding is unavailable. */ }
       });
-      taskPanel.querySelectorAll("[data-task-filter]").forEach(button=>button.addEventListener("click",()=>{taskPanel.querySelectorAll("[data-task-filter]").forEach(item=>item.classList.toggle("active",item===button));taskPanel.querySelectorAll(".overview-task").forEach(task=>task.hidden=button.dataset.taskFilter!=="all"&&task.classList.contains(button.dataset.taskFilter)===false)}));
     }
   }
   const terrainSourceNotice=document.createElement("a");
@@ -1320,13 +1298,20 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     if(areaSelectionToolActive) return;
-    const feature = map.forEachFeatureAtPixel(event.pixel, item => (item.get("place") || item.get("water_station")) ? item : null);
+    const feature = map.forEachFeatureAtPixel(event.pixel, item => (item.get("place") || item.get("water_station") || item.get("data_type")==="agencies") ? item : null);
     const place = feature?.get("place");
     const waterStation=feature?.get("water_station");
+    const agency=feature?.get("data_type")==="agencies" ? feature.getProperties() : null;
     if(waterStation){
       const waterLevel=waterStation.water_level_m_msl == null ? "ไม่มีข้อมูล" : `${Number(waterStation.water_level_m_msl).toFixed(2)} ม.รทก.`;
       const rainfall=waterStation.rainfall_value == null ? "ไม่มีข้อมูล" : `${Number(waterStation.rainfall_value).toFixed(1)} มม.`;
       popupElement.innerHTML=`<strong>${escapeHtml(waterStation.name)}</strong><p>ระดับน้ำ: ${waterLevel}</p><p>ปริมาณฝน: ${rainfall}</p>${waterStation.code ? `<p>รหัสสถานี: ${escapeHtml(waterStation.code)}</p>` : ""}`;
+      popupElement.hidden=false; popup.setPosition(feature.getGeometry().getCoordinates());
+      return;
+    }
+    if(agency){
+      const address=agency.address || [agency.road,agency.subdistrict&&`ต.${agency.subdistrict}`,agency.district&&`อ.${agency.district}`,agency.province&&`จ.${agency.province}`,agency.postcode].filter(Boolean).join(" ");
+      popupElement.innerHTML=`<strong>${escapeHtml(agency.agency_name || "หน่วยงาน")}</strong>${agency.agency_type ? `<p>${escapeHtml(agency.agency_type)}</p>` : ""}${address ? `<p>${escapeHtml(address)}</p>` : ""}${agency.contact_person ? `<p>ผู้ประสานงาน: ${escapeHtml(agency.contact_person)}</p>` : ""}${agency.phone ? `<p>โทร. ${escapeHtml(agency.phone)}</p>` : ""}${agency.email ? `<p>อีเมล: ${escapeHtml(agency.email)}</p>` : ""}${agency.agency_code ? `<p>รหัสหน่วยงาน: ${escapeHtml(agency.agency_code)}</p>` : ""}`;
       popupElement.hidden=false; popup.setPosition(feature.getGeometry().getCoordinates());
       return;
     }
