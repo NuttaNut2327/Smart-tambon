@@ -1,4 +1,4 @@
-<main class="public-report-page" data-public-report-page>
+<main class="public-report-page" data-public-report-page data-reverse-geocode-url="<%= reverse_geocode_public_incident_report_path(token: params[:token]) %>">
   <script type="application/json" data-public-boundary><%= raw json_escape(@report_boundary_feature.to_json) %></script>
   <script type="application/json" data-public-important-places><%= raw json_escape(@important_places.to_json) %></script>
   <header class="public-report-header">
@@ -18,7 +18,8 @@
         <div class="public-report-grid">
           <div class="wide public-report-area"><small>พื้นที่เกิดเหตุ</small><strong><%= @report_area_name %></strong></div>
           <label class="wide"><span class="public-required-label"><b>*</b> ชื่อเหตุการณ์</span><%= form.text_field :title, required: true, maxlength: 150, placeholder: "เช่น ต้นไม้ล้มกีดขวางถนน" %></label>
-          <label>ประเภทเหตุการณ์<%= form.text_field :incident_type, maxlength: 100, placeholder: "เช่น ถนน ไฟฟ้า อุบัติเหตุ" %></label>
+          <label><span class="public-required-label"><b>*</b> ประเภทเหตุการณ์</span><%= form.select :incident_type, Incident::DISASTER_INCIDENT_TYPES, { include_blank: "เลือกประเภทเหตุการณ์" }, required: true, data: { incident_type_select: true } %></label>
+          <label class="wide" data-incident-type-other <%= "hidden" unless @incident.incident_type == "อื่น ๆ" %>><span class="public-required-label"><b>*</b> ระบุประเภทเหตุการณ์อื่น ๆ</span><%= form.text_field :incident_type_other, required: @incident.incident_type == "อื่น ๆ", disabled: @incident.incident_type != "อื่น ๆ", maxlength: 100, placeholder: "เช่น ถนนชำรุด ไฟฟ้าขัดข้อง หรืออุบัติเหตุ", data: { incident_type_other_input: true } %></label>
           <label><span class="public-required-label"><b>*</b> ระดับความเร่งด่วน</span><%= form.select :severity, [["วิกฤต", "critical"], ["เร่งด่วนมาก", "very_urgent"], ["เร่งด่วน", "urgent"], ["ไม่เร่งด่วน", "non_urgent"], ["ทั่วไป", "general"]], { selected: @incident.severity || "general" }, required: true %></label>
           <label class="wide"><span class="public-required-label"><b>*</b> รายละเอียดเหตุการณ์</span><%= form.text_area :description, required: true, rows: 5, maxlength: 2000, placeholder: "อธิบายสิ่งที่เกิดขึ้นและสภาพเหตุการณ์ปัจจุบัน" %></label>
           <label class="wide">ผลกระทบเบื้องต้น<%= form.text_area :initial_impact, rows: 3, maxlength: 1000, placeholder: "เช่น การจราจรติดขัด บ้านเรือนได้รับความเสียหาย" %></label>
@@ -31,9 +32,10 @@
         <div class="public-report-map" data-public-report-map data-latitude="<%= @incident.latitude %>" data-longitude="<%= @incident.longitude %>"></div>
         <div class="public-report-map-legend"><span><i class="boundary"></i>ขอบเขตพื้นที่รับแจ้ง</span><span><i class="place"></i>สถานที่สำคัญ</span></div>
         <p class="public-report-coordinate" data-public-coordinate><%= @incident.latitude.present? ? "#{@incident.latitude}, #{@incident.longitude}" : "ยังไม่ได้ปักหมุด — แตะบนแผนที่เพื่อเลือกตำแหน่ง" %></p>
+        <p class="public-report-address" data-public-address><%= @incident.location_name.presence || "เมื่อปักหมุด ระบบจะแสดงที่อยู่โดยประมาณตรงนี้" %></p>
         <%= form.hidden_field :latitude, data: { public_latitude: true } %>
         <%= form.hidden_field :longitude, data: { public_longitude: true } %>
-        <%= form.hidden_field :location_name, value: @incident.location_name %>
+        <%= form.hidden_field :location_name, value: @incident.location_name, data: { public_location_name: true } %>
       </section>
 
       <section class="public-report-card">

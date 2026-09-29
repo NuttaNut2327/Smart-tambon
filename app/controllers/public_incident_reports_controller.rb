@@ -3,10 +3,25 @@ class PublicIncidentReportsController < ApplicationController
   skip_before_action :require_access_configuration!
 
   before_action :load_report_scope
-  before_action :load_subdistrict_options
+  before_action :load_subdistrict_options, only: %i[show create]
 
   def show
     @incident = Incident.new
+  end
+
+  def reverse_geocode
+    latitude = Float(params[:lat], exception: false)
+    longitude = Float(params[:lon], exception: false)
+    return render json: { error: "พิกัดไม่ถูกต้อง" }, status: :unprocessable_entity unless latitude&.between?(-90, 90) && longitude&.between?(-180, 180)
+
+    point = @report_boundary.factory.point(longitude, latitude)
+    return render json: { error: "ตำแหน่งอยู่นอกพื้นที่รับแจ้ง" }, status: :unprocessable_entity unless @report_boundary.contains?(point)
+
+    render json: ReverseGeocoder.call(latitude: latitude, longitude: longitude)
+  rescue ReverseGeocoder::ConfigurationError => error
+    render json: { error: error.message }, status: :service_unavailable
+  rescue ReverseGeocoder::Error => error
+    render json: { error: error.message }, status: :bad_gateway
   end
 
   def create
@@ -84,7 +99,7 @@ class PublicIncidentReportsController < ApplicationController
 
   def public_incident_params
     params.require(:incident).permit(
-      :incident_type, :title, :description, :severity, :reporter_name, :reporter_contact,
+      :incident_type, :incident_type_other, :title, :description, :severity, :reporter_name, :reporter_contact,
       :location_name, :longitude, :latitude, :initial_impact
     )
   end

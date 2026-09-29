@@ -101,17 +101,21 @@ class DashboardController < ApplicationController
     incidents.select { |incident| status_rank.key?(incident.status) }
       .sort_by { |incident| [status_rank.fetch(incident.status), severity_rank.fetch(incident.severity, 9), -(incident.created_at&.to_i || 0)] }
       .map do |incident|
-        status_group = incident.status == "pending" ? "pending" : "in_progress"
+        status_group = incident.status
+        status_labels = { "pending" => "รอรับเรื่อง", "assessing" => "กำลังประเมิน", "in_progress" => "กำลังดำเนินการ" }
+        location_name = incident.location_name.presence || "ไม่ระบุสถานที่"
         {
           id: incident.id.to_s, reference_code: incident.reference_code,
-          title: incident.title, place: incident.location_name.presence || "ไม่ระบุสถานที่",
+          title: incident.title, place: location_name,
+          longitude: incident.longitude, latitude: incident.latitude,
+          approximate_address: location_name.present? && !location_name.start_with?("ตำแหน่งที่") && location_name != "ไม่ระบุสถานที่",
           time: incident.created_at&.in_time_zone&.strftime("%d/%m/%Y %H:%M น."),
           reporter: [incident.reporter_name, incident.reporter_contact].compact_blank.join(" · ").presence || incident.report_source_label,
           team: incident.assigned_to.presence || "ยังไม่มอบหมายผู้รับผิดชอบ",
           impact: incident.initial_impact.presence || "ยังไม่มีข้อมูลผลกระทบเบื้องต้น",
           detail: incident.description.presence || "ไม่มีรายละเอียดเพิ่มเติม",
           next: status_group == "pending" ? ["ตรวจสอบรายละเอียดและยืนยันรับเรื่อง", "มอบหมายทีมรับผิดชอบ"] : ["ติดตามความคืบหน้าจากทีมรับผิดชอบ", "บันทึกผลการดำเนินงาน"],
-          status: status_group, status_label: status_group == "pending" ? "รอรับเรื่อง" : "กำลังดำเนินการ",
+          status: status_group, status_label: status_labels.fetch(status_group),
           level: severity_class.fetch(incident.severity, "normal"), severity_label: severity_label.fetch(incident.severity, "ทั่วไป")
         }
       end
@@ -119,13 +123,17 @@ class DashboardController < ApplicationController
 
   def overview_hazards(incidents)
     active = incidents.reject { |incident| incident.status == "completed" }
-    [
-      ["น้ำท่วม", "flood"], ["ไฟป่า", "forest"], ["พายุ", "air"],
-      ["ดินถล่ม", "landslide"], ["อากาศร้อน", "sunny"], ["ฝนตกหนัก", "rainy"]
+    incident_hazards = [
+      ["น้ำท่วม", "flood"], ["ไฟป่า", "local_fire_department"], ["พายุ", "air"],
+      ["ดินถล่ม", "landslide"], ["ภัยแล้ง", "landscape"]
     ].map do |name, icon|
       count = active.count { |incident| incident.incident_type == name }
       { name:, icon:, count:, tone: count.positive? ? (name == "น้ำท่วม" ? "danger" : "watch") : "safe" }
     end
+    incident_hazards + [
+      { name: "อากาศร้อน", icon: "sunny", count: nil, tone: "safe", detail: "รอเชื่อมต่อข้อมูลภายนอก", status_label: "รอข้อมูล" },
+      { name: "ฝนตกหนัก", icon: "rainy", count: nil, tone: "safe", detail: "รอเชื่อมต่อข้อมูลภายนอก", status_label: "รอข้อมูล" }
+    ]
   end
 
   def overview_baseline
@@ -135,9 +143,14 @@ class DashboardController < ApplicationController
     team_records = registry.select { |dataset| dataset.data_type == "teams" }.flat_map { |dataset| Array(dataset.current_version&.records) }
     workforce_records = registry.select { |dataset| dataset.data_type == "workforce" }.flat_map { |dataset| Array(dataset.current_version&.records) }
     population = population_records.sum { |record| record["population_total"].to_i }
+    accessible_subdistricts = Subdistrict.where(id: current_user.accessible_subdistrict_ids)
+      .select(:code, :name_th, :district_name_th).to_a
+    subdistrict_by_code = accessible_subdistricts.index_by { |subdistrict| subdistrict.code.to_s }
+    subdistrict_by_name = accessible_subdistricts.index_by { |subdistrict| subdistrict.name_th.to_s.strip }
     population_by_area = population_records.group_by do |record|
       [record["subdistrict_code"].to_s, record["subdistrict"].presence || "ไม่ระบุตำบล"]
     end.map do |(subdistrict_code, subdistrict_name), records|
+      administrative_area = subdistrict_by_code[subdistrict_code] || subdistrict_by_name[subdistrict_name.to_s.strip]
       villages = records.map do |record|
         {
           village_code: record["village_code"], village_number: record["village_number"].to_i,
@@ -147,7 +160,7 @@ class DashboardController < ApplicationController
         }
       end.sort_by { |record| [record[:village_number].zero? ? 9_999 : record[:village_number], record[:village_name]] }
       {
-        subdistrict_code:, subdistrict_name:,
+        subdistrict_code:, subdistrict_name:, district_name: administrative_area&.district_name_th.presence || "ไม่ระบุ",
         male: villages.sum { |village| village[:male] }, female: villages.sum { |village| village[:female] },
         population: villages.sum { |village| village[:population] },
         households: villages.sum { |village| village[:households] }, villages:

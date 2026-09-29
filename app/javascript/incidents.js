@@ -1,4 +1,19 @@
 document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("[data-incident-type-select]").forEach((select) => {
+    const form = select.closest("form");
+    const otherField = form?.querySelector("[data-incident-type-other]");
+    const otherInput = otherField?.querySelector("[data-incident-type-other-input]");
+    if (!otherField || !otherInput) return;
+    const syncOtherType = () => {
+      const show = select.value === "อื่น ๆ";
+      otherField.hidden = !show;
+      otherInput.disabled = !show;
+      otherInput.required = show;
+    };
+    select.addEventListener("change", syncOtherType);
+    syncOtherType();
+  });
+
   document.querySelectorAll("[data-incident-backdated-toggle]").forEach((toggle) => {
     const form = toggle.closest("form");
     const dateField = form?.querySelector("[data-incident-occurred-on]");
@@ -330,6 +345,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const mapElement = picker.querySelector("[data-picker-map]");
       const latitudeInput = picker.querySelector("[data-picker-latitude]");
       const longitudeInput = picker.querySelector("[data-picker-longitude]");
+      const locationNameInput = picker.querySelector("[data-picker-location]");
       const coordinateLabel = picker.querySelector("[data-picker-coordinate]");
       const savedLongitude = Number(mapElement.dataset.longitude);
       const savedLatitude = Number(mapElement.dataset.latitude);
@@ -366,6 +382,25 @@ document.addEventListener("DOMContentLoaded", () => {
         style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(12, 29, 48, 0.58)" }) })
       });
       let accessBoundary = null;
+      let addressRequestId = 0;
+
+      const updateApproximateAddress = async (longitude, latitude) => {
+        const requestId = ++addressRequestId;
+        locationNameInput.value = "ตำแหน่งที่ปักหมุดบนแผนที่";
+        coordinateLabel.textContent = "กำลังค้นหาที่อยู่โดยประมาณ...";
+        try {
+          const response = await fetch(`/api/reverse_geocode?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`, { headers: { Accept: "application/json" } });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "ไม่สามารถค้นหาที่อยู่ได้");
+          if (requestId !== addressRequestId) return;
+          const address = result.address?.trim();
+          locationNameInput.value = address || "ตำแหน่งที่ปักหมุดบนแผนที่";
+          coordinateLabel.textContent = address ? `${address} · ${latitude.toFixed(6)}, ${longitude.toFixed(6)}` : `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+        } catch (_error) {
+          if (requestId !== addressRequestId) return;
+          coordinateLabel.textContent = `${latitude.toFixed(6)}, ${longitude.toFixed(6)} · ไม่สามารถค้นหาที่อยู่โดยประมาณได้`;
+        }
+      };
 
       const setMarker = (longitude, latitude) => {
         markerSource.clear();
@@ -377,6 +412,7 @@ document.addEventListener("DOMContentLoaded", () => {
         latitudeInput.value = latitude.toFixed(6);
         longitudeInput.value = longitude.toFixed(6);
         coordinateLabel.textContent = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+        updateApproximateAddress(longitude, latitude);
       };
 
       const pickerMap = new ol.Map({
@@ -541,6 +577,35 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     window.addEventListener("scroll", repositionOpenMenus, true);
     window.addEventListener("resize", repositionOpenMenus);
+  });
+
+  const addressRequests = new Map();
+  const lookupAddress = (latitude, longitude) => {
+    const key = `${latitude},${longitude}`;
+    if (!addressRequests.has(key)) {
+      addressRequests.set(key, fetch(`/api/reverse_geocode?lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}`, { headers: { Accept: "application/json" } })
+        .then(async(response) => {
+          const result = await response.json();
+          if (!response.ok || !result.address) throw new Error(result.error || "address unavailable");
+          return result.address;
+        }));
+    }
+    return addressRequests.get(key);
+  };
+  document.querySelectorAll("[data-incident-address]").forEach((label) => {
+    if (label.dataset.addressResolved === "true") return;
+    const latitudeText = label.dataset.latitude;
+    const longitudeText = label.dataset.longitude;
+    const latitude = Number(latitudeText);
+    const longitude = Number(longitudeText);
+    if (!latitudeText || !longitudeText || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      label.textContent = "ไม่ระบุที่อยู่โดยประมาณ";
+      return;
+    }
+    label.textContent = "กำลังค้นหาที่อยู่โดยประมาณ...";
+    lookupAddress(latitude, longitude)
+      .then((address) => { label.textContent = address; label.dataset.addressResolved = "true"; })
+      .catch(() => { label.textContent = "ไม่สามารถค้นหาที่อยู่โดยประมาณได้"; });
   });
 
   const element = document.querySelector("[data-incident-map]");

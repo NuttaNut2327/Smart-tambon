@@ -11,11 +11,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const importantPlaces = readJson("[data-public-important-places]", []);
   const latitudeInput = page.querySelector("[data-public-latitude]");
   const longitudeInput = page.querySelector("[data-public-longitude]");
+  const locationNameInput = page.querySelector("[data-public-location-name]");
   const coordinateLabel = page.querySelector("[data-public-coordinate]");
+  const addressLabel = page.querySelector("[data-public-address]");
   const submit = page.querySelector("[data-public-report-submit]");
   const submitHint = page.querySelector("[data-public-submit-hint]");
   const consent = page.querySelector("[data-public-report-consent]");
   const form = page.querySelector(".public-report-form");
+  const incidentTypeSelect = page.querySelector("[data-incident-type-select]");
+  const incidentTypeOtherField = page.querySelector("[data-incident-type-other]");
+  const incidentTypeOtherInput = page.querySelector("[data-incident-type-other-input]");
   const geoJson = new ol.format.GeoJSON();
   const boundaryFeatures = boundaryData ? geoJson.readFeatures(boundaryData, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" }) : [];
   const boundarySource = new ol.source.Vector({ features: boundaryFeatures });
@@ -57,6 +62,40 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
   const markerLayer = new ol.layer.Vector({ source: markerSource });
+  let addressRequestId = 0;
+
+  const updateApproximateAddress = async (lon, lat) => {
+    const requestId = ++addressRequestId;
+    locationNameInput.value = "ตำแหน่งที่ผู้แจ้งเหตุปักหมุด";
+    addressLabel.textContent = "กำลังค้นหาที่อยู่โดยประมาณ...";
+    addressLabel.classList.add("loading");
+    try {
+      const url = new URL(page.dataset.reverseGeocodeUrl, window.location.origin);
+      url.searchParams.set("lat", lat);
+      url.searchParams.set("lon", lon);
+      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "ไม่สามารถค้นหาที่อยู่ได้");
+      if (requestId !== addressRequestId) return;
+      const address = result.address?.trim();
+      locationNameInput.value = address || "ตำแหน่งที่ผู้แจ้งเหตุปักหมุด";
+      addressLabel.textContent = address || "ไม่พบรายละเอียดที่อยู่ ระบบจะบันทึกพิกัดที่ปักหมุดแทน";
+    } catch (_error) {
+      if (requestId !== addressRequestId) return;
+      addressLabel.textContent = "ไม่สามารถค้นหาที่อยู่ได้ ระบบจะบันทึกพิกัดที่ปักหมุดแทน";
+    } finally {
+      if (requestId === addressRequestId) addressLabel.classList.remove("loading");
+    }
+  };
+
+  const syncOtherIncidentType = () => {
+    const show = incidentTypeSelect?.value === "อื่น ๆ";
+    if (!incidentTypeOtherField || !incidentTypeOtherInput) return;
+    incidentTypeOtherField.hidden = !show;
+    incidentTypeOtherInput.disabled = !show;
+    incidentTypeOtherInput.required = show;
+    updateSubmitState();
+  };
 
   importantPlaces.forEach((place) => {
     const lon = Number(place.lon ?? place.longitude);
@@ -103,12 +142,15 @@ document.addEventListener("DOMContentLoaded", () => {
     markerSource.addFeature(marker);
     coordinateLabel.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
     coordinateLabel.classList.remove("error");
+    updateApproximateAddress(lon, lat);
     updateSubmitState();
     if (center) map.getView().animate({ center: coordinate, zoom: 16, duration: 350 });
     return true;
   };
 
   if (mapElement.dataset.latitude && mapElement.dataset.longitude) setLocation(initialLon, initialLat);
+  incidentTypeSelect?.addEventListener("change", syncOtherIncidentType);
+  syncOtherIncidentType();
   consent?.addEventListener("change", updateSubmitState);
   form?.addEventListener("input", updateSubmitState);
   form?.addEventListener("change", updateSubmitState);

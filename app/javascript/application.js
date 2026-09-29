@@ -97,9 +97,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   const importedDatasetLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
-    style:new ol.style.Style({
-      image:new ol.style.Circle({radius:8,fill:new ol.style.Fill({color:"#7c3aed"}),stroke:new ol.style.Stroke({color:"#fff",width:2})})
-    })
+    style:feature=>feature.get("data_type")==="agencies"
+      ? placeMarkerStyle(placeConfig.government)(feature)
+      : new ol.style.Style({image:new ol.style.Circle({radius:8,fill:new ol.style.Fill({color:"#7c3aed"}),stroke:new ol.style.Stroke({color:"#fff",width:2})})})
   });
   const villageBoundaryLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
@@ -170,13 +170,15 @@ document.addEventListener("DOMContentLoaded", () => {
   if(overviewPage){
     const overviewData=JSON.parse(document.querySelector("#overview-dashboard-data")?.textContent || "{}");
     const taskItems=overviewData.tasks || [];
+    const taskFilterLabels={pending:"รอรับเรื่อง",assessing:"กำลังประเมิน",in_progress:"กำลังดำเนินการ"};
     const escapeOverview=(value)=>String(value ?? "").replace(/[&<>'"]/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[character]);
     const mapSection=document.querySelector("#map-section");
     if(mapSection){
       const taskPanel=document.createElement("section");
       taskPanel.className="overview-task-panel";
-      const taskRows=taskItems.length ? taskItems.map((task,index)=>`<button type="button" class="overview-task ${task.level}" data-task-status="${task.status}" data-task-index="${index}"><span class="task-status-dot"></span><span><b>${escapeOverview(task.title)}</b><small>⌖ ${escapeOverview(task.place)}</small><small>${escapeOverview(task.time)}</small></span><em>${escapeOverview(task.status_label)}</em></button>`).join("") : '<div class="overview-task-empty"><span class="material-symbols-outlined">task_alt</span><b>ไม่มีงานที่รอดำเนินการ</b><small>เหตุการณ์ทั้งหมดดำเนินการเรียบร้อยแล้ว</small></div>';
-      taskPanel.innerHTML=`<div class="overview-panel-heading"><div><h2>งานที่ต้องดำเนินการ</h2><p>รอรับเรื่องก่อน แล้วเรียงตามระดับความเร่งด่วน</p></div><b>${taskItems.length} งาน</b></div><div class="overview-task-filters"><button class="active" data-task-filter="all">ทั้งหมด</button><button data-task-filter="pending">รอรับเรื่อง</button><button data-task-filter="in_progress">กำลังดำเนินการ</button></div><div class="overview-task-list">${taskRows}</div>`;
+      const taskRows=taskItems.length ? taskItems.map((task,index)=>`<button type="button" class="overview-task ${task.level}" data-task-status="${task.status}" data-task-index="${index}"><span class="task-status-dot"></span><span class="task-content"><b>${escapeOverview(task.title)}</b><small class="task-location"><span class="material-symbols-outlined">location_on</span><span data-task-address>${escapeOverview(task.place)}</span></small><small class="task-time">แจ้งเมื่อ ${escapeOverview(task.time)}</small></span><span class="task-card-meta"><em class="task-severity ${task.level}">${escapeOverview(task.severity_label)}</em><strong class="task-state">${escapeOverview(task.status_label)}</strong></span></button>`).join("") : '<div class="overview-task-empty"><span class="material-symbols-outlined">task_alt</span><b>ไม่มีงานที่รอดำเนินการ</b><small>เหตุการณ์ทั้งหมดดำเนินการเรียบร้อยแล้ว</small></div>';
+      const taskFilters=Object.entries(taskFilterLabels).map(([status,label])=>`<button data-task-filter="${status}">${label} (${taskItems.filter(task=>task.status===status).length})</button>`).join("");
+      taskPanel.innerHTML=`<div class="overview-panel-heading"><div><h2>งานที่ต้องดำเนินการ</h2><p>รอรับเรื่องก่อน แล้วเรียงตามระดับความเร่งด่วน</p></div><b>${taskItems.length} งาน</b></div><div class="overview-task-filters"><button class="active" data-task-filter="all">ทั้งหมด (${taskItems.length})</button>${taskFilters}</div><div class="overview-task-list">${taskRows}</div>`;
       mapSection.prepend(taskPanel);
       taskPanel.classList.toggle("has-scroll",taskItems.length>4);
       if(taskItems.length>4){
@@ -190,21 +192,6 @@ document.addEventListener("DOMContentLoaded", () => {
         requestAnimationFrame(syncTaskPanelHeight);
         window.ResizeObserver && mapWrap && new ResizeObserver(syncTaskPanelHeight).observe(mapWrap);
       }
-      taskPanel.querySelectorAll(".overview-task").forEach((button,index)=>{
-        const taskContent=button.querySelector(".task-status-dot + span");
-        const taskDetails=taskContent?.querySelectorAll("small");
-        if(taskDetails?.length===2){
-          taskDetails[0].classList.add("task-location");
-          taskDetails[0].textContent=`สถานที่: ${taskItems[index].place}`;
-          taskDetails[1].classList.add("task-time");
-          const taskMeta=document.createElement("span");
-          taskMeta.className="task-meta";
-          const taskLevel=button.querySelector("em");
-          taskLevel.classList.add("task-level");
-          taskMeta.append(taskDetails[1]);
-          button.append(taskMeta,taskLevel);
-        }
-      });
       mapSection.classList.add("overview-map-workspace");
       const baseline=document.createElement("section");
       baseline.className="overview-baseline";
@@ -212,24 +199,40 @@ document.addEventListener("DOMContentLoaded", () => {
       const baselineData=overviewData.baseline || {};
       const numberText=(value)=>Number(value || 0).toLocaleString("th-TH");
       const populationAreas=baselineData.population_by_area || [];
+      const districtNames=[...new Set(populationAreas.map(area=>area.district_name).filter(Boolean))];
+      const subdistrictNames=[...new Set(populationAreas.map(area=>area.subdistrict_name).filter(Boolean))];
+      const villageNames=populationAreas.flatMap(area=>(area.villages || []).map(village=>`${village.village_number ? `หมู่ ${numberText(village.village_number)} ` : ""}${village.village_name || "ไม่ระบุชื่อหมู่บ้าน"}`));
+      const jurisdictionRows=`<div><dt>อำเภอ</dt><dd>${districtNames.length ? districtNames.map(escapeOverview).join(", ") : "ไม่ระบุ"}</dd></div><div><dt>ตำบล</dt><dd>${subdistrictNames.length ? subdistrictNames.map(escapeOverview).join(", ") : "ไม่ระบุ"}</dd></div><div><dt>หมู่บ้าน</dt><dd>${villageNames.length ? villageNames.map(escapeOverview).join(", ") : "ยังไม่มีข้อมูลหมู่บ้าน"}</dd></div>`;
       const populationAreaRows=populationAreas.map((area,areaIndex)=>{const villages=area.villages || [];const maxVillagePopulation=Math.max(...villages.map(village=>Number(village.population)||0),1);return `<details class="population-subdistrict" ${areaIndex===0?"open":""}><summary><span><small>ตำบล</small><b>${escapeOverview(area.subdistrict_name)}</b></span><strong>${numberText(area.population)} <small>คน</small></strong><i class="material-symbols-outlined">expand_more</i></summary><div class="population-subdistrict-bars">${villages.map((village,index)=>`<div class="population-bar-row"><div><span>${village.village_number ? `หมู่ ${numberText(village.village_number)} · ` : ""}${escapeOverview(village.village_name)}</span><b>${numberText(village.population)} <small>คน</small></b></div><span class="population-bar-track"><i class="bar-color-${index%5}" style="width:${Math.max(2,(Number(village.population)||0)/maxVillagePopulation*100)}%"></i></span></div>`).join("")}</div></details>`}).join("") || '<p class="overview-data-empty">ยังไม่มีชุดข้อมูลประชากรที่นำเข้า</p>';
       const resourceRows=(baselineData.resources || []).map(row=>`<li><span>${escapeOverview(row.name)}</span><b><span class="resource-total">ทั้งหมด ${numberText(row.total)} ${escapeOverview(row.unit)}</span><small>ไม่พร้อม ${numberText(row.unavailable)} ${escapeOverview(row.unit)}</small><strong>พร้อม ${numberText(row.ready)} ${escapeOverview(row.unit)}</strong></b></li>`).join("") || '<li class="overview-data-empty">ยังไม่มีข้อมูลทรัพยากร</li>';
       const teamRows=(baselineData.teams || []).map(row=>`<li><span>${escapeOverview(row.name)}</span><b><span class="team-total">ทั้งหมด ${numberText(row.total)} คน</span><small>ไม่พร้อม ${numberText(row.unavailable)} คน</small><strong>พร้อม ${numberText(row.ready)} คน</strong></b></li>`).join("") || '<li class="overview-data-empty">ยังไม่มีข้อมูลทีมปฏิบัติงาน</li>';
-      baseline.innerHTML=`<div class="overview-baseline-heading"><div><h2>ข้อมูลพื้นฐานของตำบล</h2><p>ข้อมูลจริงจากชุดข้อมูลที่เปิดใช้งานล่าสุด</p></div><span>ดูข้อมูลพื้นที่ทั้งหมด →</span></div><div class="overview-baseline-grid"><article class="area-facts"><h3 data-overview-area-heading>ข้อมูลทั่วไปของพื้นที่</h3><div class="fact-kpis"><div><b>${numberText(baselineData.area_sq_km)}</b><small>ตร.กม.<br>พื้นที่ทั้งหมด</small></div><div><b>${numberText((baselineData.population_by_area || []).length)}</b><small>ตำบล<br>ที่มีข้อมูลประชากร</small></div><div><b>${numberText(baselineData.villages)}</b><small>หมู่บ้าน<br>พื้นที่ดูแล</small></div></div><dl><div><dt>ประเภทพื้นที่</dt><dd>องค์การบริหารส่วนตำบล (อบต.)</dd></div><div><dt>พื้นที่ติดต่อ</dt><dd data-overview-area-name></dd></div></dl></article><article class="population-facts population-dashboard"><h3>ประชากรในพื้นที่รับผิดชอบ</h3><strong class="population-grand-total">${numberText(baselineData.population)} <small>คนทั้งหมด</small></strong><div class="population-bar-list">${populationAreaRows}</div></article><article class="resource-facts"><h3>ทรัพยากรในตำบล</h3><ul>${resourceRows}</ul></article><article class="team-facts"><h3>ทีมงานในพื้นที่</h3><ul>${teamRows}</ul></article></div>`;
+      baseline.innerHTML=`<div class="overview-baseline-heading"><div><h2>ข้อมูลพื้นฐานของตำบล</h2><p>ข้อมูลจริงจากชุดข้อมูลที่เปิดใช้งานล่าสุด</p></div></div><div class="overview-baseline-grid"><article class="area-facts"><h3 data-overview-area-heading>ข้อมูลทั่วไปของพื้นที่</h3><div class="fact-kpis"><div><b>${numberText(baselineData.area_sq_km)}</b><small>ตร.กม.<br>พื้นที่ทั้งหมด</small></div><div><b>${numberText((baselineData.population_by_area || []).length)}</b><small>ตำบล<br>ที่มีข้อมูลประชากร</small></div><div><b>${numberText(baselineData.villages)}</b><small>หมู่บ้าน<br>พื้นที่ดูแล</small></div></div><dl><div><dt>ประเภทพื้นที่</dt><dd>องค์การบริหารส่วนตำบล (อบต.)</dd></div><div><dt>พื้นที่ติดต่อ</dt><dd data-overview-area-name></dd></div>${jurisdictionRows}</dl></article><article class="population-facts population-dashboard"><h3>ประชากรในพื้นที่รับผิดชอบ</h3><strong class="population-grand-total">${numberText(baselineData.population)} <small>คนทั้งหมด</small></strong><div class="population-bar-list">${populationAreaRows}</div></article><article class="resource-facts"><h3>ทรัพยากรในตำบล</h3><ul>${resourceRows}</ul></article><article class="team-facts"><h3>ทีมงานในพื้นที่</h3><ul>${teamRows}</ul></article></div>`;
       baseline.querySelector("[data-overview-area-heading]").textContent=`ข้อมูลทั่วไปของ${overviewAreaName}`;
       baseline.querySelector("[data-overview-area-name]").textContent=overviewAreaName;
       const dailyStatus=document.createElement("section");
       dailyStatus.className="daily-status-card";
-      const hazardRows=(overviewData.hazards || []).map(hazard=>`<article class="${hazard.tone}"><i class="material-symbols-outlined">${hazard.icon}</i><div><b>${escapeOverview(hazard.name)}</b><small>${hazard.count ? `${numberText(hazard.count)} เหตุที่กำลังดำเนินการ` : "ไม่มีรายงานเหตุ"}</small><em>${hazard.count ? "มีเหตุการณ์" : "ปกติ"}</em></div></article>`).join("");
-      dailyStatus.innerHTML=`<div class="daily-status-heading"><div><h2>สถานะภัยในพื้นที่ตอนนี้</h2><p>สรุปจากเหตุการณ์ที่ยังไม่เสร็จสิ้นในเขตรับผิดชอบ</p></div><button type="button">ดูรายละเอียดทั้งหมด →</button></div><div class="daily-status-list">${hazardRows}</div>`;
-      mapSection.after(dailyStatus);
-      dailyStatus.after(baseline);
+      const hazardRows=(overviewData.hazards || []).map(hazard=>`<article class="${hazard.tone}"><i class="material-symbols-outlined">${hazard.icon}</i><div><b>${escapeOverview(hazard.name)}</b><small>${escapeOverview(hazard.detail || (hazard.count ? `${numberText(hazard.count)} เหตุการณ์` : "ไม่มีรายงานเหตุ"))}</small><em>${escapeOverview(hazard.status_label || (hazard.count ? "มีเหตุการณ์" : "ปกติ"))}</em></div></article>`).join("");
+      dailyStatus.innerHTML=`<div class="daily-status-heading"><div><h2>สถานะภัยในพื้นที่ตอนนี้</h2><p>สรุปจากเหตุการณ์ที่ยังไม่เสร็จสิ้นในเขตรับผิดชอบ</p></div></div><div class="daily-status-list">${hazardRows}</div>`;
+      mapSection.before(dailyStatus);
+      mapSection.after(baseline);
       const dialog=document.createElement("dialog");
       dialog.className="overview-task-dialog";
       document.body.append(dialog);
-      const showTask=(task)=>{dialog.innerHTML=`<button type="button" class="overview-dialog-close" aria-label="ปิด">×</button><header><span class="${task.level}">${escapeOverview(task.severity_label)}</span><small>รหัสเหตุการณ์ ${escapeOverview(task.reference_code)}</small><h2>${escapeOverview(task.title)}</h2><p>⌖ ${escapeOverview(task.place)} · ${escapeOverview(task.time)}</p></header><div class="overview-dialog-grid"><section><h3>รายละเอียดเหตุที่ได้รับแจ้ง</h3><dl><div><dt>ผู้แจ้งเหตุ</dt><dd>${escapeOverview(task.reporter)}</dd></div><div><dt>รายละเอียด</dt><dd>${escapeOverview(task.detail)}</dd></div><div><dt>ผลกระทบเบื้องต้น</dt><dd>${escapeOverview(task.impact)}</dd></div></dl></section><section><h3>การดำเนินงาน</h3><dl><div><dt>สถานะ</dt><dd>${escapeOverview(task.status_label)}</dd></div><div><dt>ผู้รับผิดชอบหลัก</dt><dd>${escapeOverview(task.team)}</dd></div></dl><h4>สิ่งที่ต้องทำต่อ</h4><ul>${(task.next || []).map(item=>`<li>${escapeOverview(item)}</li>`).join("")}</ul></section></div>`;dialog.showModal();dialog.querySelector(".overview-dialog-close")?.addEventListener("click",()=>dialog.close())};
+      const showTask=(task)=>{dialog.innerHTML=`<button type="button" class="overview-dialog-close" aria-label="ปิด">×</button><header><span class="${task.level}">${escapeOverview(task.severity_label)}</span><small>รหัสเหตุการณ์ ${escapeOverview(task.reference_code)}</small><h2>${escapeOverview(task.title)}</h2><p>ที่อยู่โดยประมาณ: ${escapeOverview(task.place)} · ${escapeOverview(task.time)}</p></header><div class="overview-dialog-grid"><section><h3>รายละเอียดเหตุที่ได้รับแจ้ง</h3><dl><div><dt>ผู้แจ้งเหตุ</dt><dd>${escapeOverview(task.reporter)}</dd></div><div><dt>รายละเอียด</dt><dd>${escapeOverview(task.detail)}</dd></div><div><dt>ผลกระทบเบื้องต้น</dt><dd>${escapeOverview(task.impact)}</dd></div></dl></section><section><h3>การดำเนินงาน</h3><dl><div><dt>สถานะ</dt><dd>${escapeOverview(task.status_label)}</dd></div><div><dt>ผู้รับผิดชอบหลัก</dt><dd>${escapeOverview(task.team)}</dd></div></dl><h4>สิ่งที่ต้องทำต่อ</h4><ul>${(task.next || []).map(item=>`<li>${escapeOverview(item)}</li>`).join("")}</ul></section></div>`;dialog.showModal();dialog.querySelector(".overview-dialog-close")?.addEventListener("click",()=>dialog.close())};
       taskPanel.querySelectorAll(".overview-task").forEach(button=>button.addEventListener("click",()=>showTask(taskItems[Number(button.dataset.taskIndex)])));
       taskPanel.querySelectorAll("[data-task-filter]").forEach(button=>button.addEventListener("click",()=>{taskPanel.querySelectorAll("[data-task-filter]").forEach(item=>item.classList.toggle("active",item===button));taskPanel.querySelectorAll(".overview-task").forEach(task=>task.hidden=button.dataset.taskFilter!=="all"&&task.dataset.taskStatus!==button.dataset.taskFilter)}));
+      taskItems.forEach(async(task,index)=>{
+        if(task.approximate_address || !Number.isFinite(Number(task.latitude)) || !Number.isFinite(Number(task.longitude))) return;
+        try{
+          const response=await fetch(`/api/reverse_geocode?lat=${encodeURIComponent(task.latitude)}&lon=${encodeURIComponent(task.longitude)}`,{headers:{Accept:"application/json"}});
+          const result=await response.json();
+          if(!response.ok || !result.address) return;
+          task.place=result.address;
+          task.approximate_address=true;
+          const location=taskPanel.querySelector(`.overview-task[data-task-index="${index}"] [data-task-address]`);
+          if(location) location.textContent=result.address;
+        }catch(_error){ /* Keep the stored location text when reverse geocoding is unavailable. */ }
+      });
     }
   }
   const terrainSourceNotice=document.createElement("a");
@@ -1295,13 +1298,20 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     if(areaSelectionToolActive) return;
-    const feature = map.forEachFeatureAtPixel(event.pixel, item => (item.get("place") || item.get("water_station")) ? item : null);
+    const feature = map.forEachFeatureAtPixel(event.pixel, item => (item.get("place") || item.get("water_station") || item.get("data_type")==="agencies") ? item : null);
     const place = feature?.get("place");
     const waterStation=feature?.get("water_station");
+    const agency=feature?.get("data_type")==="agencies" ? feature.getProperties() : null;
     if(waterStation){
       const waterLevel=waterStation.water_level_m_msl == null ? "ไม่มีข้อมูล" : `${Number(waterStation.water_level_m_msl).toFixed(2)} ม.รทก.`;
       const rainfall=waterStation.rainfall_value == null ? "ไม่มีข้อมูล" : `${Number(waterStation.rainfall_value).toFixed(1)} มม.`;
       popupElement.innerHTML=`<strong>${escapeHtml(waterStation.name)}</strong><p>ระดับน้ำ: ${waterLevel}</p><p>ปริมาณฝน: ${rainfall}</p>${waterStation.code ? `<p>รหัสสถานี: ${escapeHtml(waterStation.code)}</p>` : ""}`;
+      popupElement.hidden=false; popup.setPosition(feature.getGeometry().getCoordinates());
+      return;
+    }
+    if(agency){
+      const address=agency.address || [agency.road,agency.subdistrict&&`ต.${agency.subdistrict}`,agency.district&&`อ.${agency.district}`,agency.province&&`จ.${agency.province}`,agency.postcode].filter(Boolean).join(" ");
+      popupElement.innerHTML=`<strong>${escapeHtml(agency.agency_name || "หน่วยงาน")}</strong>${agency.agency_type ? `<p>${escapeHtml(agency.agency_type)}</p>` : ""}${address ? `<p>${escapeHtml(address)}</p>` : ""}${agency.contact_person ? `<p>ผู้ประสานงาน: ${escapeHtml(agency.contact_person)}</p>` : ""}${agency.phone ? `<p>โทร. ${escapeHtml(agency.phone)}</p>` : ""}${agency.email ? `<p>อีเมล: ${escapeHtml(agency.email)}</p>` : ""}${agency.agency_code ? `<p>รหัสหน่วยงาน: ${escapeHtml(agency.agency_code)}</p>` : ""}`;
       popupElement.hidden=false; popup.setPosition(feature.getGeometry().getCoordinates());
       return;
     }

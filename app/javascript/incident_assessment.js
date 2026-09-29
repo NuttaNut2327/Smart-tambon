@@ -33,8 +33,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 42 52"><path d="M21 1C10 1 2 9.5 2 20c0 14.2 19 30.4 19 30.4S40 34.2 40 20C40 9.5 32 1 21 1z" fill="#ef3340" stroke="#facc15" stroke-width="3"/></svg>';
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   };
-  const datasetColors = { agencies: "#7c3aed", resources: "#0f766e", workforce: "#2563eb", teams: "#ea580c", consumables: "#16a34a", population: "#475569", custom: "#9333ea" };
-  const datasetIcons = { agencies: "domain", resources: "construction", workforce: "person", teams: "groups", consumables: "inventory_2", population: "home", custom: "location_on" };
+  const datasetColors = { agencies: "#2563eb", resources: "#0f766e", workforce: "#2563eb", teams: "#ea580c", consumables: "#16a34a", population: "#475569", custom: "#9333ea" };
+  const datasetIcons = { agencies: "account_balance", resources: "construction", workforce: "person", teams: "groups", consumables: "inventory_2", population: "home", custom: "location_on" };
   const importedDatasetLayers = new Map([...page.querySelectorAll("[data-city-dataset-toggle]")].map((input) => {
     const source = new ol.source.Vector();
     const color = datasetColors[input.dataset.datasetType] || "#7c3aed";
