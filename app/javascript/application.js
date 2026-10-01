@@ -228,7 +228,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const sourceRank=row=>row.rain_source==="dwr"?0:1;
         return sourceRank(a)-sourceRank(b)||Number(b.rain_24h_mm)-Number(a.rain_24h_mm);
       });
-      const pm25Status=(value)=>value>75?["มีผลกระทบต่อสุขภาพมาก","danger"]:value>37.5?["มีผลกระทบต่อสุขภาพ","danger"]:value>25?["ปานกลาง","watch"]:value>15?["ดี","safe"]:["ดีมาก","safe"];
+      const pm25Status=(value)=>value>75?["มีผลกระทบต่อสุขภาพมาก","pm-danger"]:value>37.5?["มีผลกระทบต่อสุขภาพ","pm-unhealthy"]:value>25?["ปานกลาง","pm-moderate"]:value>15?["ดี","pm-good"]:["ดีมาก","pm-very-good"];
       const temperatureStatus=(value)=>value>=40?["ร้อนจัด","danger"]:value>=35?["อากาศร้อน","watch"]:["ปกติ","safe"];
       const rainStatus=(value)=>value>90?["ฝนตกหนักมาก","danger"]:value>35?["ฝนตกหนัก","danger"]:value>10?["ฝนปานกลาง","watch"]:value>0?["ฝนเล็กน้อย","safe"]:["ไม่มีฝน","safe"];
       const environmentMetric=(options)=>{

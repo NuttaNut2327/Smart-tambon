@@ -179,15 +179,21 @@ class DatasetVersionImportService
   def cast(value, type)
     return nil if value.blank?
     case type
-    when "number" then Float(value)
+    when "number" then Float(normalized_numeric_value(value))
     when "integer"
-      number = Float(value)
+      number = Float(normalized_numeric_value(value))
       raise ArgumentError unless number.finite? && number == number.to_i
       number.to_i
     when "boolean" then ActiveModel::Type::Boolean.new.cast(value)
     when "date" then Date.parse(value.to_s).iso8601
     else value.to_s.strip
     end
+  end
+
+  def normalized_numeric_value(value)
+    return value unless value.is_a?(String)
+
+    value.strip.delete(",")
   end
 
   def validate_location(record, index, errors)

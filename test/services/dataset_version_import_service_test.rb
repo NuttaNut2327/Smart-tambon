@@ -25,6 +25,21 @@ class DatasetVersionImportServiceTest < ActiveSupport::TestCase
     assert_match "พิกัดไม่ถูกต้อง", error.message
   end
 
+  test "accepts comma thousands separators in numeric columns" do
+    dataset = ImportedDataset.create!(user: @user, name: "ข้อมูลประชากร", data_type: "custom",
+      geometry_type: "none", map_enabled: false, schema_definition: [
+        { "key" => "population", "label" => "ประชากร", "type" => "integer", "required" => true },
+        { "key" => "budget", "label" => "งบประมาณ", "type" => "number", "required" => true }
+      ])
+
+    version = DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [
+      { "population" => "1,223", "budget" => "12,345.50" }
+    ]).import!
+
+    assert_equal 1_223, version.records.first["population"]
+    assert_equal 12_345.5, version.records.first["budget"]
+  end
+
   test "generates and preserves device tokens" do
     device = ImportedDataset.create!(user: @user, name: "กล้องวงจรปิด", data_type: "cctv_devices",
       geometry_type: "point", map_enabled: true,
