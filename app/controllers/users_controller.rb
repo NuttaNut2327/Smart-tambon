@@ -70,7 +70,7 @@ class UsersController < ApplicationController
   end
 
   def access_area_params
-    params.fetch(:access_area, {}).permit(:name, :boundary_file, :selected_subdistrict_count, subdistrict_ids: [])
+    params.fetch(:access_area, {}).permit(:name, :organization_type, :boundary_file, :selected_subdistrict_count, subdistrict_ids: [])
   end
 
   def save_user_and_access_area
@@ -126,7 +126,9 @@ class UsersController < ApplicationController
       raise ArgumentError, "จำนวนตำบลที่ส่งมาไม่ครบ (เลือก #{expected_count} แต่ได้รับ #{submitted_ids.size}) กรุณาเลือกใหม่แล้วบันทึกอีกครั้ง"
     end
 
-    area = UserAccessAreaService.new(user: @user, name: access_area_params[:name], subdistrict_ids: selected_ids, boundary_file: access_area_params[:boundary_file]).save!
+    area = UserAccessAreaService.new(user: @user, name: access_area_params[:name],
+      organization_type: access_area_params[:organization_type], subdistrict_ids: selected_ids,
+      boundary_file: access_area_params[:boundary_file]).save!
     if mode == "subdistricts" && area.subdistrict_ids.map(&:to_i).sort != submitted_ids.sort
       raise ArgumentError, "บันทึกรายการตำบลไม่ครบ กรุณาลองอีกครั้ง"
     end
@@ -146,7 +148,7 @@ class UsersController < ApplicationController
 
     area = @user.access_area || @user.build_access_area
     area.assign_attributes(name: source.name, source: source.source,
-      subdistrict_ids: source.subdistrict_ids, boundary: source.boundary)
+      organization_type: source.organization_type, subdistrict_ids: source.subdistrict_ids, boundary: source.boundary)
     area.save!
   end
 

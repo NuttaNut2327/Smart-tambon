@@ -1,7 +1,8 @@
 namespace :water_stations do
-  desc "Fetch DWR water-level and rainfall stations into PostGIS"
+  desc "Cache nationwide DWR and ThaiWater stations for spatial queries"
   task sync: :environment do
-    imported = DwrStationSync.new.call
-    puts "Imported #{imported} DWR stations"
+    dwr = DwrStationSync.new.call
+    thaiwater = ThaiwaterStationSync.new.call
+    puts "Cached #{dwr} DWR and #{thaiwater} ThaiWater stations nationwide"
   end
 end

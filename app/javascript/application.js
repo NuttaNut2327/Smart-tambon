@@ -199,22 +199,80 @@ document.addEventListener("DOMContentLoaded", () => {
       const baselineData=overviewData.baseline || {};
       const numberText=(value)=>Number(value || 0).toLocaleString("th-TH");
       const populationAreas=baselineData.population_by_area || [];
-      const districtNames=[...new Set(populationAreas.map(area=>area.district_name).filter(Boolean))];
-      const subdistrictNames=[...new Set(populationAreas.map(area=>area.subdistrict_name).filter(Boolean))];
+      const jurisdictionAreas=baselineData.jurisdiction || [];
+      const districtNames=[...new Set(jurisdictionAreas.map(area=>area.district_name).filter(Boolean))];
+      const subdistrictNames=[...new Set(jurisdictionAreas.flatMap(area=>(area.subdistricts || []).map(subdistrict=>subdistrict.name)).filter(Boolean))];
+      const jurisdictionSubdistrictCount=jurisdictionAreas.reduce((total,area)=>total+(area.subdistricts || []).length,0);
       const villageNames=populationAreas.flatMap(area=>(area.villages || []).map(village=>`${village.village_number ? `หมู่ ${numberText(village.village_number)} ` : ""}${village.village_name || "ไม่ระบุชื่อหมู่บ้าน"}`));
       const jurisdictionRows=`<div><dt>อำเภอ</dt><dd>${districtNames.length ? districtNames.map(escapeOverview).join(", ") : "ไม่ระบุ"}</dd></div><div><dt>ตำบล</dt><dd>${subdistrictNames.length ? subdistrictNames.map(escapeOverview).join(", ") : "ไม่ระบุ"}</dd></div><div><dt>หมู่บ้าน</dt><dd>${villageNames.length ? villageNames.map(escapeOverview).join(", ") : "ยังไม่มีข้อมูลหมู่บ้าน"}</dd></div>`;
-      const populationAreaRows=populationAreas.map((area,areaIndex)=>{const villages=area.villages || [];const maxVillagePopulation=Math.max(...villages.map(village=>Number(village.population)||0),1);return `<details class="population-subdistrict" ${areaIndex===0?"open":""}><summary><span><small>ตำบล</small><b>${escapeOverview(area.subdistrict_name)}</b></span><strong>${numberText(area.population)} <small>คน</small></strong><i class="material-symbols-outlined">expand_more</i></summary><div class="population-subdistrict-bars">${villages.map((village,index)=>`<div class="population-bar-row"><div><span>${village.village_number ? `หมู่ ${numberText(village.village_number)} · ` : ""}${escapeOverview(village.village_name)}</span><b>${numberText(village.population)} <small>คน</small></b></div><span class="population-bar-track"><i class="bar-color-${index%5}" style="width:${Math.max(2,(Number(village.population)||0)/maxVillagePopulation*100)}%"></i></span></div>`).join("")}</div></details>`}).join("") || '<p class="overview-data-empty">ยังไม่มีชุดข้อมูลประชากรที่นำเข้า</p>';
+      const populationAreaRows=populationAreas.map((area,areaIndex)=>{const villages=area.villages || [];const totalSubdistrictPopulation=Math.max(Number(area.population)||0,1);return `<details class="population-subdistrict" ${areaIndex===0?"open":""}><summary><span><small>ตำบล</small><b>${escapeOverview(area.subdistrict_name)}</b></span><strong>${numberText(area.population)} <small>คน</small></strong><i class="material-symbols-outlined">expand_more</i></summary><div class="population-subdistrict-bars">${villages.map((village,index)=>`<div class="population-bar-row"><div><span>${village.village_number ? `หมู่ ${numberText(village.village_number)} · ` : ""}${escapeOverview(village.village_name)}</span><b>${numberText(village.population)} <small>คน</small></b></div><span class="population-bar-track"><i class="bar-color-${index%5}" style="width:${Math.max(2,(Number(village.population)||0)/totalSubdistrictPopulation*100)}%"></i></span></div>`).join("")}</div></details>`}).join("") || '<p class="overview-data-empty">ยังไม่มีชุดข้อมูลประชากรที่นำเข้า</p>';
       const resourceRows=(baselineData.resources || []).map(row=>`<li><span>${escapeOverview(row.name)}</span><b><span class="resource-total">ทั้งหมด ${numberText(row.total)} ${escapeOverview(row.unit)}</span><small>ไม่พร้อม ${numberText(row.unavailable)} ${escapeOverview(row.unit)}</small><strong>พร้อม ${numberText(row.ready)} ${escapeOverview(row.unit)}</strong></b></li>`).join("") || '<li class="overview-data-empty">ยังไม่มีข้อมูลทรัพยากร</li>';
       const teamRows=(baselineData.teams || []).map(row=>`<li><span>${escapeOverview(row.name)}</span><b><span class="team-total">ทั้งหมด ${numberText(row.total)} คน</span><small>ไม่พร้อม ${numberText(row.unavailable)} คน</small><strong>พร้อม ${numberText(row.ready)} คน</strong></b></li>`).join("") || '<li class="overview-data-empty">ยังไม่มีข้อมูลทีมปฏิบัติงาน</li>';
-      baseline.innerHTML=`<div class="overview-baseline-heading"><div><h2>ข้อมูลพื้นฐานของตำบล</h2><p>ข้อมูลจริงจากชุดข้อมูลที่เปิดใช้งานล่าสุด</p></div></div><div class="overview-baseline-grid"><article class="area-facts"><h3 data-overview-area-heading>ข้อมูลทั่วไปของพื้นที่</h3><div class="fact-kpis"><div><b>${numberText(baselineData.area_sq_km)}</b><small>ตร.กม.<br>พื้นที่ทั้งหมด</small></div><div><b>${numberText((baselineData.population_by_area || []).length)}</b><small>ตำบล<br>ที่มีข้อมูลประชากร</small></div><div><b>${numberText(baselineData.villages)}</b><small>หมู่บ้าน<br>พื้นที่ดูแล</small></div></div><dl><div><dt>ประเภทพื้นที่</dt><dd>องค์การบริหารส่วนตำบล (อบต.)</dd></div><div><dt>พื้นที่ติดต่อ</dt><dd data-overview-area-name></dd></div>${jurisdictionRows}</dl></article><article class="population-facts population-dashboard"><h3>ประชากรในพื้นที่รับผิดชอบ</h3><strong class="population-grand-total">${numberText(baselineData.population)} <small>คนทั้งหมด</small></strong><div class="population-bar-list">${populationAreaRows}</div></article><article class="resource-facts"><h3>ทรัพยากรในตำบล</h3><ul>${resourceRows}</ul></article><article class="team-facts"><h3>ทีมงานในพื้นที่</h3><ul>${teamRows}</ul></article></div>`;
+      baseline.innerHTML=`<div class="overview-baseline-heading"><div><h2>ข้อมูลพื้นฐานของตำบล</h2><p>ข้อมูลจริงจากชุดข้อมูลที่เปิดใช้งานล่าสุด</p></div></div><div class="overview-baseline-grid"><article class="area-facts"><h3 data-overview-area-heading>ข้อมูลทั่วไปของพื้นที่</h3><div class="fact-kpis"><div><b>${numberText(baselineData.area_sq_km)}</b><small>ตร.กม.<br>พื้นที่ทั้งหมด</small></div><div><b>${numberText(jurisdictionSubdistrictCount)}</b><small>ตำบล<br>พื้นที่รับผิดชอบ</small></div><div><b>${numberText(baselineData.villages)}</b><small>หมู่บ้าน<br>พื้นที่ดูแล</small></div></div><dl><div><dt>ประเภทองค์กร</dt><dd>${escapeOverview(baselineData.organization_type || "ยังไม่ระบุ")}</dd></div><div><dt>พื้นที่ติดต่อ</dt><dd data-overview-area-name></dd></div>${jurisdictionRows}</dl></article><article class="population-facts population-dashboard"><h3>ประชากรในพื้นที่รับผิดชอบ</h3><strong class="population-grand-total">${numberText(baselineData.population)} <small>คนทั้งหมด</small></strong><div class="population-bar-list">${populationAreaRows}</div></article><article class="resource-facts"><h3>ทรัพยากรในตำบล</h3><ul>${resourceRows}</ul></article><article class="team-facts"><h3>ทีมงานในพื้นที่</h3><ul>${teamRows}</ul></article></div>`;
       baseline.querySelector("[data-overview-area-heading]").textContent=`ข้อมูลทั่วไปของ${overviewAreaName}`;
       baseline.querySelector("[data-overview-area-name]").textContent=overviewAreaName;
+      const environmentData=overviewData.environment || [];
+      const observedTime=(value)=>{
+        if(!value) return "ไม่ระบุเวลา";
+        const parts=Object.fromEntries(new Intl.DateTimeFormat("th-TH-u-nu-latn",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hourCycle:"h23",timeZone:"Asia/Bangkok"}).formatToParts(new Date(value)).map(part=>[part.type,part.value]));
+        return `${parts.day} ${parts.month} ${parts.year} ${parts.hour}:${parts.minute} น.`;
+      };
+      const hasMetricValue=(row,key)=>row[key]!==null&&row[key]!==undefined&&row[key]!==""&&Number.isFinite(Number(row[key]));
+      const metricSummary=(key)=>environmentData.filter(row=>hasMetricValue(row,key)).sort((a,b)=>Number(b[key])-Number(a[key]));
+      const pm25Rows=environmentData.filter(row=>hasMetricValue(row,"pm25")).sort((a,b)=>{
+        const sourceRank=row=>({own_sensor:0,thaiwater:1,gistda:2}[row.pm25_source]??3);
+        return sourceRank(a)-sourceRank(b)||Number(b.pm25)-Number(a.pm25);
+      });
+      const temperatureRows=metricSummary("temperature_c");
+      const rainRows=environmentData.filter(row=>hasMetricValue(row,"rain_24h_mm")).sort((a,b)=>{
+        const sourceRank=row=>row.rain_source==="dwr"?0:1;
+        return sourceRank(a)-sourceRank(b)||Number(b.rain_24h_mm)-Number(a.rain_24h_mm);
+      });
+      const pm25Status=(value)=>value>75?["มีผลกระทบต่อสุขภาพมาก","danger"]:value>37.5?["มีผลกระทบต่อสุขภาพ","danger"]:value>25?["ปานกลาง","watch"]:value>15?["ดี","safe"]:["ดีมาก","safe"];
+      const temperatureStatus=(value)=>value>=40?["ร้อนจัด","danger"]:value>=35?["อากาศร้อน","watch"]:["ปกติ","safe"];
+      const rainStatus=(value)=>value>90?["ฝนตกหนักมาก","danger"]:value>35?["ฝนตกหนัก","danger"]:value>10?["ฝนปานกลาง","watch"]:value>0?["ฝนเล็กน้อย","safe"]:["ไม่มีฝน","safe"];
+      const environmentMetric=(options)=>{
+        const rows=options.rows, highest=rows[0];
+        if(!highest) return `<article class="environment-summary-card unavailable"><span class="material-symbols-outlined">${options.icon}</span><div><h3>${options.title}</h3><strong>ยังไม่มีข้อมูล</strong><p>ระบบจะลองดึงข้อมูลอีกครั้งในรอบถัดไป</p></div></article>`;
+        const [status,tone]=options.status(Number(highest[options.key]));
+        const stationName=options.stationKey&&highest[options.stationKey];
+        const measuredSource=options.sourceKey&&["dwr","thaiwater","own_sensor"].includes(highest[options.sourceValueKey]);
+        const areaLabel=measuredSource ? `สถานีในตำบล${escapeOverview(highest.subdistrict_name)}` : environmentData.length===1 ? `ตำบล${escapeOverview(highest.subdistrict_name)}` : `สูงสุดที่ตำบล${escapeOverview(highest.subdistrict_name)}`;
+        const sourceLabel=options.sourceKey&&highest[options.sourceKey] ? `<small class="environment-source">${escapeOverview(highest[options.sourceKey])}${stationName?` · ${escapeOverview(stationName)}`:""}</small>` : "";
+        const viewAll=environmentData.length>1 ? `<button type="button" class="environment-view-all" data-environment-metric="${options.key}">ดูข้อมูลทั้งหมด <i class="material-symbols-outlined">arrow_forward</i></button>` : "";
+        return `<article class="environment-summary-card ${tone}"><span class="material-symbols-outlined">${options.icon}</span><div class="environment-card-content"><h3>${options.title}</h3><strong>${numberText(highest[options.key])} <small>${options.unit}</small></strong><p>${areaLabel}</p>${sourceLabel}</div><aside class="environment-card-meta"><em>${status}</em><small class="environment-updated">อัปเดต ${observedTime(highest[options.timeKey])}${highest.stale&&highest.rain_source!=="dwr"?" · ข้อมูลล่าสุดที่มี":""}</small></aside>${viewAll}</article>`;
+      };
+      const environmentMetrics=[
+        {title:"PM2.5 ชั่วโมงล่าสุด",icon:"air",rows:pm25Rows,key:"pm25",unit:"µg/m³",timeKey:"pm25_observed_at",sourceKey:"pm25_source_label",sourceValueKey:"pm25_source",stationKey:"pm25_station_name",status:pm25Status},
+        {title:"อุณหภูมิ",icon:"thermostat",rows:temperatureRows,key:"temperature_c",unit:"°C",timeKey:"temperature_observed_at",sourceKey:"temperature_source_label",sourceValueKey:"temperature_source",stationKey:"temperature_station_name",status:temperatureStatus},
+        {title:"ปริมาณฝน",icon:"rainy",rows:rainRows,key:"rain_24h_mm",unit:"มม.",timeKey:"rain_observed_at",sourceKey:"rain_source_label",sourceValueKey:"rain_source",stationKey:"rain_station_name",status:rainStatus}
+      ];
+      const environmentalSection=document.createElement("section");
+      environmentalSection.className="overview-environment";
+      environmentalSection.innerHTML=`<div class="overview-environment-heading"><div><h2>สภาพอากาศและคุณภาพอากาศในพื้นที่</h2><p>ข้อมูลรายตำบล อัปเดตทุก 15 นาที</p></div><small>แหล่งข้อมูลระบุแยกในการ์ดแต่ละรายการ</small></div><div class="overview-environment-grid">${environmentMetrics.map(environmentMetric).join("")}</div>`;
+      const environmentDialog=document.createElement("dialog");
+      environmentDialog.className="environment-dialog";
+      document.body.append(environmentDialog);
+      environmentDialog.addEventListener("click",event=>{
+        if(event.target!==environmentDialog)return;
+        const bounds=environmentDialog.getBoundingClientRect();
+        const clickedOutside=event.clientX<bounds.left||event.clientX>bounds.right||event.clientY<bounds.top||event.clientY>bounds.bottom;
+        if(clickedOutside)environmentDialog.close();
+      });
+      const showEnvironmentDetails=(metric)=>{
+        const rows=[...environmentData].sort((a,b)=>String(a.subdistrict_name).localeCompare(String(b.subdistrict_name),"th"));
+        environmentDialog.innerHTML=`<div class="environment-dialog-heading"><div><span class="material-symbols-outlined">${metric.icon}</span><div><h2>${metric.title}</h2><p>ข้อมูลทุกตำบลในพื้นที่รับผิดชอบ</p></div></div><button type="button" aria-label="ปิด">×</button></div><div class="environment-dialog-list">${rows.map(row=>{const available=hasMetricValue(row,metric.key);const value=available?Number(row[metric.key]):null;const status=available?metric.status(value):["ไม่มีข้อมูล","unavailable"];const stationName=metric.stationKey&&row[metric.stationKey];const stationId=metric.key==="pm25"?row.pm25_station_id:row.rain_station_code;const source=metric.sourceKey&&row[metric.sourceKey]?`<small class="environment-dialog-source">${escapeOverview(row[metric.sourceKey])}${stationName?` · ${escapeOverview(stationName)}${stationId?` (${escapeOverview(stationId)})`:""}`:""}</small>`:"";return `<article><div><b>ตำบล${escapeOverview(row.subdistrict_name)}</b><small>อัปเดต ${observedTime(row[metric.timeKey])}${row.stale&&!["dwr","thaiwater","own_sensor"].includes(row[metric.sourceValueKey])?" · ข้อมูลล่าสุดที่มี":""}</small>${source}</div><strong>${available?numberText(value):"—"} <small>${available?metric.unit:""}</small></strong><em class="${status[1]}">${status[0]}</em></article>`}).join("")}</div>`;
+        environmentDialog.showModal();
+        environmentDialog.querySelector(".environment-dialog-heading button")?.addEventListener("click",()=>environmentDialog.close());
+      };
+      environmentalSection.querySelectorAll("[data-environment-metric]").forEach(button=>button.addEventListener("click",()=>{const metric=environmentMetrics.find(item=>item.key===button.dataset.environmentMetric);if(metric)showEnvironmentDetails(metric)}));
       const dailyStatus=document.createElement("section");
       dailyStatus.className="daily-status-card";
       const hazardRows=(overviewData.hazards || []).map(hazard=>`<article class="${hazard.tone}"><i class="material-symbols-outlined">${hazard.icon}</i><div><b>${escapeOverview(hazard.name)}</b><small>${escapeOverview(hazard.detail || (hazard.count ? `${numberText(hazard.count)} เหตุการณ์` : "ไม่มีรายงานเหตุ"))}</small><em>${escapeOverview(hazard.status_label || (hazard.count ? "มีเหตุการณ์" : "ปกติ"))}</em></div></article>`).join("");
-      dailyStatus.innerHTML=`<div class="daily-status-heading"><div><h2>สถานะภัยในพื้นที่ตอนนี้</h2><p>สรุปจากเหตุการณ์ที่ยังไม่เสร็จสิ้นในเขตรับผิดชอบ</p></div></div><div class="daily-status-list">${hazardRows}</div>`;
+      dailyStatus.innerHTML=`<div class="daily-status-heading"><div><h2>สถานะภัยในพื้นที่ตอนนี้</h2></div></div><div class="daily-status-list">${hazardRows}</div>`;
       mapSection.before(dailyStatus);
       mapSection.after(baseline);
+      mapSection.after(environmentalSection);
       const dialog=document.createElement("dialog");
       dialog.className="overview-task-dialog";
       document.body.append(dialog);
@@ -1305,7 +1363,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if(waterStation){
       const waterLevel=waterStation.water_level_m_msl == null ? "ไม่มีข้อมูล" : `${Number(waterStation.water_level_m_msl).toFixed(2)} ม.รทก.`;
       const rainfall=waterStation.rainfall_value == null ? "ไม่มีข้อมูล" : `${Number(waterStation.rainfall_value).toFixed(1)} มม.`;
-      popupElement.innerHTML=`<strong>${escapeHtml(waterStation.name)}</strong><p>ระดับน้ำ: ${waterLevel}</p><p>ปริมาณฝน: ${rainfall}</p>${waterStation.code ? `<p>รหัสสถานี: ${escapeHtml(waterStation.code)}</p>` : ""}`;
+      const sourceNames={own:"เซนเซอร์ของระบบ",dwr:"กรมทรัพยากรน้ำ (DWR)",thaiwater:"ThaiWater"};
+      const sourceName=waterStation.sources?.map(source=>sourceNames[source] || source).join(" · ") || waterStation.source_label || sourceNames[waterStation.source] || waterStation.source;
+      const owner=waterStation.owner && waterStation.owner!==sourceName ? `<p>เจ้าของสถานี: ${escapeHtml(waterStation.owner)}</p>` : "";
+      const observedTimes=[waterStation.water_level_observed_at,waterStation.rainfall_observed_at].filter(Boolean).map(value=>new Date(value)).filter(value=>!Number.isNaN(value.getTime()));
+      const latestTime=observedTimes.length ? new Date(Math.max(...observedTimes.map(value=>value.getTime()))).toLocaleString("th-TH",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"}) : null;
+      popupElement.innerHTML=`<strong>${escapeHtml(waterStation.name)}</strong><p>ระดับน้ำ: ${waterLevel}</p><p>ปริมาณฝนสะสม 24 ชั่วโมง: ${rainfall}</p>${waterStation.code ? `<p>รหัสสถานี: ${escapeHtml(waterStation.code)}</p>` : ""}<p>สถานะข้อมูล: ${escapeHtml(waterStation.data_status || "ไม่ทราบสถานะ")}</p><p>แหล่งข้อมูล: ${escapeHtml(sourceName || "ไม่ระบุ")}</p>${owner}${latestTime ? `<p>อัปเดต: ${escapeHtml(latestTime)} น.</p>` : ""}`;
       popupElement.hidden=false; popup.setPosition(feature.getGeometry().getCoordinates());
       return;
     }

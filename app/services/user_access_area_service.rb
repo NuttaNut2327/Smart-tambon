@@ -1,9 +1,10 @@
 class UserAccessAreaService
-  def initialize(user:, name:, subdistrict_ids:, boundary_file:)
+  def initialize(user:, name:, subdistrict_ids:, boundary_file:, organization_type: nil)
     @user = user
     @name = name.to_s.strip
     @subdistrict_ids = Array(subdistrict_ids).reject(&:blank?).map { |id| Integer(id.to_s, 10) }.uniq
     @boundary_file = boundary_file
+    @organization_type = organization_type.to_s.presence
   end
 
   def save!
@@ -12,9 +13,14 @@ class UserAccessAreaService
     area = @user.access_area || @user.build_access_area
     if @boundary_file.present?
       boundary, source = uploaded_boundary
+      detected_subdistrict_ids = subdistrict_ids_for_boundary(boundary)
+      if detected_subdistrict_ids.empty?
+        raise ArgumentError, "ไม่พบตำบลที่อยู่ภายในขอบเขตไฟล์ กรุณาตรวจสอบว่าพิกัดเป็น WGS84 (EPSG:4326) และอยู่ในพื้นที่ประเทศไทย"
+      end
       source_label = { "kmz" => "KMZ", "kml" => "KML", "geojson" => "GeoJSON", "shapefile" => "Shapefile" }.fetch(source)
       label = @name.presence || "ขอบเขตที่กำหนดจาก #{source_label}"
-      area.assign_attributes(name: label, source: source, subdistrict_ids: @subdistrict_ids, boundary: boundary)
+      area.assign_attributes(name: label, source: source, subdistrict_ids: detected_subdistrict_ids, boundary: boundary,
+        organization_type: resolved_organization_type(area))
     else
       subdistricts = Subdistrict.where(id: @subdistrict_ids).index_by(&:id)
       raise ArgumentError, "กรุณาเลือกตำบลอย่างน้อย 1 ตำบล หรืออัปโหลด KMZ" if subdistricts.empty?
@@ -24,13 +30,43 @@ class UserAccessAreaService
       subdistricts = @subdistrict_ids.map { |id| subdistricts.fetch(id) }
 
       area.assign_attributes(name: @name.presence || subdistricts.map(&:name_th).join(", "), source: "subdistricts",
-        subdistrict_ids: @subdistrict_ids, boundary: merged_boundary(subdistricts))
+        subdistrict_ids: @subdistrict_ids, boundary: merged_boundary(subdistricts), organization_type: resolved_organization_type(area))
     end
     area.save!
     area
   end
 
   private
+
+  def resolved_organization_type(area)
+    @organization_type || area.organization_type.presence || "subdistrict_administrative_organization"
+  end
+
+  def subdistrict_ids_for_boundary(boundary)
+    geometry_wkt = boundary.as_text
+    sql = Subdistrict.sanitize_sql_array([
+      <<~SQL.squish,
+        WITH uploaded AS (
+          SELECT ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_GeomFromText(?, 4326)), 3)) AS geometry
+        )
+        SELECT subdistricts.id
+        FROM subdistricts, uploaded
+        WHERE subdistricts.boundary IS NOT NULL
+          AND NOT ST_IsEmpty(uploaded.geometry)
+          AND ST_Intersects(subdistricts.boundary, uploaded.geometry)
+          AND ST_Area(ST_Intersection(subdistricts.boundary, uploaded.geometry)::geography) > 0
+          AND (
+            ST_Area(ST_Intersection(subdistricts.boundary, uploaded.geometry)::geography) /
+              NULLIF(ST_Area(subdistricts.boundary::geography), 0) >= 0.10
+            OR ST_Covers(uploaded.geometry, ST_PointOnSurface(subdistricts.boundary))
+            OR ST_Covers(subdistricts.boundary, ST_PointOnSurface(uploaded.geometry))
+          )
+        ORDER BY subdistricts.code
+      SQL
+      geometry_wkt
+    ])
+    Subdistrict.connection.select_values(sql).map(&:to_i)
+  end
 
   def merged_boundary(subdistricts)
     missing_boundaries = subdistricts.select { |subdistrict| subdistrict.boundary.blank? }

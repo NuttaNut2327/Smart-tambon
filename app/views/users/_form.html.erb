@@ -4,6 +4,7 @@
 
     <% if current_user.system_admin? %>
       <label>ชื่อขอบเขตพื้นที่ดูแล<input type="text" name="access_area[name]" value="<%= user.access_area&.name %>" placeholder="เช่น พื้นที่รับผิดชอบ อบต.บ้านแป้น"><small>ชื่อนี้จะแสดงเป็นหัวข้อพื้นที่บนแผนที่</small></label>
+      <label>ประเภทองค์กร<select name="access_area[organization_type]" required><% UserAccessArea::ORGANIZATION_TYPES.each do |value, label| %><option value="<%= value %>" <%= "selected" if (user.access_area&.organization_type.presence || "subdistrict_administrative_organization") == value %>><%= label %></option><% end %></select><small>ใช้แสดงประเภทองค์กรในหน้าภาพรวมและใช้ร่วมกันทุกบัญชีภายในองค์กร</small></label>
       <label>สิทธิ์ผู้ใช้งาน<%= form.select :role, [["ผู้ดูแลระบบ", "system_admin"], ["ผู้ดูแลประจำ อบต.", "subdistrict_admin"], ["เจ้าหน้าที่ประจำ อบต.", "subdistrict_user"]] %></label>
 
       <% selected_ids = user.access_area&.subdistrict_ids.presence || [user.subdistrict_id].compact %>

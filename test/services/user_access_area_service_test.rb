@@ -33,6 +33,25 @@ class UserAccessAreaServiceTest < ActiveSupport::TestCase
     assert_match "ไม่พบตำบลที่เลือก", error.message
   end
 
+  test "detects and stores subdistricts covered by an uploaded KML boundary" do
+    file = Tempfile.new(["access-area", ".kml"])
+    file.write(<<~KML)
+      <?xml version="1.0" encoding="UTF-8"?>
+      <kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><Polygon><outerBoundaryIs><LinearRing>
+      <coordinates>99.99,13.99 100.11,13.99 100.11,14.11 99.99,14.11 99.99,13.99</coordinates>
+      </LinearRing></outerBoundaryIs></Polygon></Placemark></Document></kml>
+    KML
+    file.rewind
+    upload = ActionDispatch::Http::UploadedFile.new(filename: "พื้นที่ทดสอบ.kml", type: "application/vnd.google-earth.kml+xml", tempfile: file)
+
+    area = UserAccessAreaService.new(user: @user, name: "พื้นที่จาก KML",
+      subdistrict_ids: [], boundary_file: upload).save!
+
+    assert_equal [@first.id], area.reload.subdistrict_ids.map(&:to_i)
+  ensure
+    file&.close!
+  end
+
   private
 
   def create_subdistrict(code, name, longitude)

@@ -1,8 +1,21 @@
 class UserAccessArea < ApplicationRecord
+  ORGANIZATION_TYPES = {
+    "subdistrict_administrative_organization" => "องค์การบริหารส่วนตำบล (อบต.)",
+    "subdistrict_municipality" => "เทศบาลตำบล",
+    "town_municipality" => "เทศบาลเมือง",
+    "city_municipality" => "เทศบาลนคร",
+    "special_local_government" => "องค์กรปกครองส่วนท้องถิ่นรูปแบบพิเศษ"
+  }.freeze
+
   belongs_to :user
 
   validates :name, :source, presence: true
+  validates :organization_type, inclusion: { in: ORGANIZATION_TYPES.keys }
   validate :has_boundary
+
+  def organization_type_label
+    ORGANIZATION_TYPES.fetch(organization_type, "ยังไม่ระบุประเภทองค์กร")
+  end
 
   def as_geojson
     {

@@ -1,6 +1,7 @@
 default: &default
   adapter: postgis
   encoding: unicode
+  schema_search_path: public
   pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
   url: <%= ENV["DATABASE_URL"] %>
 development:

@@ -14,7 +14,7 @@ class DwrStationSync
   def call
     markers = fetch_markers
     factory = RGeo::Geographic.spherical_factory(srid: 4326)
-    imported = 0
+    seen_source_ids = []
 
     WaterStation.transaction do
       markers.each do |marker|
@@ -28,27 +28,39 @@ class DwrStationSync
         province = marker["provinceInfo"] || address["provinceInfo"] || {}
         district = address["districtInfo"] || {}
         subdistrict = address["subDistrictInfo"] || {}
-        station = WaterStation.find_or_initialize_by(station_id: station_id)
-        station.assign_attributes(
+        station = WaterStation.find_by(source: "dwr", source_station_id: station_id) ||
+          WaterStation.find_or_initialize_by(station_id: station_id)
+        station.station_id ||= station_id
+        water_level_at = timestamp(marker["currWlTimestamp"])
+        rainfall_at = timestamp(marker["currRfTimestamp"])
+        WaterStationMetadataUpdater.call(station, {
           station_code: marker["code"], station_name_th: marker["nameTh"], station_name_en: marker["nameEn"],
           agency: marker["agency"], province_code: province["code"], province_name_th: province["nameTh"],
           district_name_th: district["nameTh"], subdistrict_name_th: subdistrict["nameTh"],
           main_basin_code: marker.dig("mainBasinInfo", "code"), main_basin_name_th: marker.dig("mainBasinInfo", "nameTh"),
           sub_basin_code: marker.dig("subBasinInfo", "code"), sub_basin_name_th: marker.dig("subBasinInfo", "nameTh"),
-          equipment: Array(marker["stnEquipments"]), water_level_m_msl: number(marker["currWaterLevelValue"]),
-          water_level_observed_at: timestamp(marker["currWlTimestamp"]), rainfall_value: number(marker["currRainfallValue"]),
-          rainfall_observed_at: timestamp(marker["currRfTimestamp"]), flow_rate_m3_s: number(marker["currFlowRateValue"]),
-          river_capacity_percent: number(marker["currRiverBasinCapValue"]), source_observed_at: timestamp(marker["currDataTimestamp"]),
-          location: factory.point(longitude, latitude), source_payload: marker
-        )
-        station.save!
-        imported += 1
+          equipment: Array(marker["stnEquipments"]), location: factory.point(longitude, latitude), source_payload: marker,
+          source: "dwr", source_station_id: station_id, agency_name: "กรมทรัพยากรน้ำ",
+          source_metadata: { provider: "DWR", owner: "กรมทรัพยากรน้ำ" },
+          canonical_station_key: WaterStationCanonicalizer.key(agency: marker["agency"], code: marker["code"],
+            name: marker["nameTh"], longitude:, latitude:),
+          sync_status: "online", missing_sync_count: 0
+        })
+        WaterStationReadingUpdater.call(station:, payload: marker, attributes: {
+          water_level_m_msl: number(marker["currWaterLevelValue"]), water_level_observed_at: water_level_at,
+          water_level_source: "dwr", rainfall_value: number(marker["currRainfallValue"]),
+          rainfall_observed_at: rainfall_at, rainfall_source: "dwr",
+          flow_rate_m3_s: number(marker["currFlowRateValue"]), river_capacity_percent: number(marker["currRiverBasinCapValue"]),
+          source_observed_at: timestamp(marker["currDataTimestamp"])
+        })
+        seen_source_ids << station_id
       rescue ArgumentError, TypeError
         next
       end
     end
 
-    imported
+    mark_missing("dwr", seen_source_ids)
+    seen_source_ids.size
   end
 
   private
@@ -72,5 +84,10 @@ class DwrStationSync
     Time.zone.parse(value.to_s)
   rescue ArgumentError
     nil
+  end
+
+  def mark_missing(source, seen_source_ids)
+    scope = WaterStation.where(source:).where.not(source_station_id: seen_source_ids)
+    scope.update_all("missing_sync_count = missing_sync_count + 1, sync_status = CASE WHEN missing_sync_count + 1 >= 3 THEN 'disconnected' ELSE sync_status END")
   end
 end

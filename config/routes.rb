@@ -70,6 +70,7 @@ Rails.application.routes.draw do
     resources :dynamic_layers, only: :index
     resources :imported_datasets, only: %i[index show]
     resources :water_stations, only: :index
+    resources :pm25_readings, only: :create
     resource :access_area, only: :show
     resources :places, only: :index do
       get :usage, on: :collection

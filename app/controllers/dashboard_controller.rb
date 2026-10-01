@@ -88,6 +88,7 @@ class DashboardController < ApplicationController
     @overview_dashboard_data = {
       tasks: overview_tasks(incidents),
       hazards: overview_hazards(incidents),
+      environment: overview_environment,
       baseline: overview_baseline
     }
   end
@@ -130,13 +131,55 @@ class DashboardController < ApplicationController
       count = active.count { |incident| incident.incident_type == name }
       { name:, icon:, count:, tone: count.positive? ? (name == "น้ำท่วม" ? "danger" : "watch") : "safe" }
     end
-    incident_hazards + [
-      { name: "อากาศร้อน", icon: "sunny", count: nil, tone: "safe", detail: "รอเชื่อมต่อข้อมูลภายนอก", status_label: "รอข้อมูล" },
-      { name: "ฝนตกหนัก", icon: "rainy", count: nil, tone: "safe", detail: "รอเชื่อมต่อข้อมูลภายนอก", status_label: "รอข้อมูล" }
-    ]
+    incident_hazards
+  end
+
+  def overview_environment
+    return [] if global_viewer?
+
+    subdistricts = Subdistrict.where(id: current_user.accessible_subdistrict_ids).to_a
+    snapshots = EnvironmentalSnapshotService.for(subdistricts)
+    snapshots_by_code = snapshots.index_by { |snapshot| snapshot.subdistrict_code.to_s }
+    pm25_by_code = Pm25SourceResolver.resolve(user: current_user, subdistricts:, snapshots:)
+    rainfall_by_code = SubdistrictRainfallService.resolve(subdistricts, snapshots)
+
+    subdistricts.map do |subdistrict|
+      snapshot = snapshots_by_code[subdistrict.code.to_s]
+      pm25 = pm25_by_code[subdistrict.code.to_s]
+      rainfall = rainfall_by_code[subdistrict.code.to_s]
+      {
+        subdistrict_code: subdistrict.code.to_s,
+        subdistrict_name: subdistrict.name_th,
+        pm25: pm25[:value],
+        pm25_avg_24h: pm25[:avg_24h],
+        pm25_source: pm25[:source],
+        pm25_source_label: pm25[:source_label],
+        pm25_station_name: pm25[:station_name],
+        pm25_station_id: pm25[:station_id],
+        pm25_station_agency: pm25[:agency],
+        temperature_c: snapshot&.temperature_c&.round(1),
+        temperature_source: snapshot&.temperature_source,
+        temperature_source_label: snapshot&.temperature_source_label,
+        temperature_observed_at: snapshot&.temperature_observed_at&.in_time_zone&.iso8601,
+        temperature_station_id: snapshot&.temperature_station_id,
+        temperature_station_name: snapshot&.temperature_station_name,
+        temperature_station_agency: snapshot&.temperature_station_agency,
+        rain_24h_mm: rainfall[:value],
+        rain_observed_at: rainfall[:observed_at]&.in_time_zone&.iso8601,
+        rain_source: rainfall[:source],
+        rain_source_label: rainfall[:source_label],
+        rain_station_name: rainfall[:station_name],
+        rain_station_code: rainfall[:station_code],
+        pm25_observed_at: pm25[:observed_at]&.in_time_zone&.iso8601,
+        weather_observed_at: snapshot&.weather_observed_at&.in_time_zone&.iso8601,
+        stale: snapshot ? !snapshot.fresh? : true
+      }
+    end
   end
 
   def overview_baseline
+    return empty_overview_baseline if global_viewer?
+
     registry = ImportedDataset.visible_to(current_user).where(:data_type.in => %w[population resources teams workforce]).to_a
     population_records = registry.select { |dataset| dataset.data_type == "population" }.flat_map { |dataset| Array(dataset.current_version&.records) }
     resource_records = registry.select { |dataset| dataset.data_type == "resources" }.flat_map { |dataset| Array(dataset.current_version&.records) }
@@ -145,6 +188,14 @@ class DashboardController < ApplicationController
     population = population_records.sum { |record| record["population_total"].to_i }
     accessible_subdistricts = Subdistrict.where(id: current_user.accessible_subdistrict_ids)
       .select(:code, :name_th, :district_name_th).to_a
+    jurisdiction = accessible_subdistricts.group_by { |subdistrict| subdistrict.district_name_th.presence || "ไม่ระบุอำเภอ" }
+      .map do |district_name, subdistricts|
+        {
+          district_name:,
+          subdistricts: subdistricts.sort_by { |subdistrict| [subdistrict.name_th.to_s, subdistrict.code.to_s] }
+            .map { |subdistrict| { code: subdistrict.code, name: subdistrict.name_th } }
+        }
+      end.sort_by { |district| district[:district_name] }
     subdistrict_by_code = accessible_subdistricts.index_by { |subdistrict| subdistrict.code.to_s }
     subdistrict_by_name = accessible_subdistricts.index_by { |subdistrict| subdistrict.name_th.to_s.strip }
     population_by_area = population_records.group_by do |record|
@@ -188,12 +239,29 @@ class DashboardController < ApplicationController
 
     {
       area_sq_km: overview_area_sq_km, population:,
+      organization_type: current_user.access_area&.organization_type_label || "องค์การบริหารส่วนตำบล (อบต.)",
       population_male: population_records.sum { |record| record["population_male"].to_i },
       population_female: population_records.sum { |record| record["population_female"].to_i },
       villages: population_records.map { |record| [record["subdistrict_code"], record["village_code"], record["village_number"]] }.uniq.size,
       households: population_records.sum { |record| record["household_count"].to_i },
-      population_by_area:,
+      population_by_area:, jurisdiction:,
       resources:, teams: teams.sort_by { |row| [-row[:total], row[:name].to_s] }.first(8)
+    }
+  end
+
+  def empty_overview_baseline
+    {
+      area_sq_km: 0,
+      population: 0,
+      organization_type: "ผู้ดูแลระบบ",
+      population_male: 0,
+      population_female: 0,
+      villages: 0,
+      households: 0,
+      population_by_area: [],
+      jurisdiction: [],
+      resources: [],
+      teams: []
     }
   end
 
