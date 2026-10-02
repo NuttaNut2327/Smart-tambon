@@ -163,6 +163,8 @@ class IncidentsController < ApplicationController
   end
 
   def create
+    uploads = IncidentPhotoUploadService.uploads_from(params)
+    IncidentPhotoUploadService.validate!(uploads)
     incident = Incident.new(incident_attributes)
     incident.category = "general"
     incident.status = "pending"
@@ -177,7 +179,17 @@ class IncidentsController < ApplicationController
     end
 
     incident.save!
+    begin
+      IncidentPhotoUploadService.attach!(incident: incident, uploads: uploads)
+    rescue StandardError => error
+      Rails.logger.error("Incident photo upload failed: #{error.class}: #{error.message}")
+      IncidentPhotoUploadService.purge_for(incident)
+      incident.destroy
+      return redirect_to general_incidents_path, alert: "อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+    end
     redirect_to general_incidents_path(incident_id: incident.id), notice: "บันทึกเหตุการณ์ใหม่เรียบร้อยแล้ว"
+  rescue IncidentPhotoUploadService::InvalidUpload => error
+    redirect_to general_incidents_path, alert: error.message
   rescue Mongoid::Errors::Validations => error
     redirect_to general_incidents_path, alert: error.document.errors.full_messages.join(" · ")
   end
@@ -203,6 +215,20 @@ class IncidentsController < ApplicationController
     redirect_to redirect_path, notice: "ลบข้อมูลเหตุการณ์ออกจากหน้าระบบแล้ว"
   rescue Mongoid::Errors::DocumentNotFound
     redirect_to general_incidents_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
+  end
+
+  def photo
+    incident = find_incident
+    photo = Array(incident.photos).find { |item| item["id"] == params[:photo_id] }
+    return head :not_found unless photo
+
+    object = IncidentPhotoUploadService.download(photo)
+    send_data object.body.read,
+      filename: photo["filename"].presence || "incident-photo",
+      type: photo["content_type"].presence || object.content_type,
+      disposition: "inline"
+  rescue Mongoid::Errors::DocumentNotFound, IncidentPhotoUploadService::ObjectNotFound
+    head :not_found
   end
 
   def add_progress

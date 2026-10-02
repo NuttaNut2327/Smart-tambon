@@ -23,6 +23,38 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  minio:
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin123}
+    volumes: [minio_data:/data]
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  minio_setup:
+    image: smart-tambon-web:latest
+    entrypoint: /bin/sh
+    command: -c "bin/rails storage:prepare"
+    environment:
+      DATABASE_URL: postgis://smart_city:smart_city@db:5432/smart_city_development
+      MONGODB_URI: mongodb://mongo:27017/smart_city_development
+      RAILS_ENV: development
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-smart-tambon-incidents}
+    volumes: [.:/rails, bundle_data:/usr/local/bundle]
+    depends_on:
+      minio: { condition: service_healthy }
+      db: { condition: service_healthy }
+      mongo: { condition: service_healthy }
   web:
     build: .
     image: smart-tambon-web:latest
@@ -34,11 +66,16 @@ services:
       LONGDO_MAP_KEY: ${LONGDO_MAP_KEY:-}
       LONGDO_CACHE_TTL: ${LONGDO_CACHE_TTL:-86400}
       SAMPLE_USER_PASSWORD: ${SAMPLE_USER_PASSWORD:-}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-smart-tambon-incidents}
     ports: ["3000:3000"]
     volumes: [.:/rails, bundle_data:/usr/local/bundle]
     depends_on:
       db: { condition: service_healthy }
       mongo: { condition: service_healthy }
+      minio_setup: { condition: service_completed_successfully }
   water_station_sync:
     image: smart-tambon-web:latest
     command: >
@@ -59,6 +96,7 @@ services:
     image: smart-tambon-web:latest
     command: >
       sh -c 'while true; do
+        bin/rails dataset_import_drafts:cleanup || echo "Dataset import draft cleanup failed; retrying in 15 minutes";
         bin/rails environmental_snapshots:sync || echo "Environmental sync failed; retrying in 15 minutes";
         sleep 900;
       done'
@@ -75,3 +113,4 @@ volumes:
   postgres_data:
   mongo_data:
   bundle_data:
+  minio_data:

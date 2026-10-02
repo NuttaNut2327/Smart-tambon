@@ -1,5 +1,5 @@
 <dialog id="new-incident-dialog" class="incident-dialog">
-  <%= form_with url: incidents_path, method: :post, scope: :incident, local: true do |form| %>
+  <%= form_with url: incidents_path, method: :post, scope: :incident, local: true, html: { multipart: true } do |form| %>
     <header><div><small>จัดการเหตุการณ์</small><h2>บันทึกเหตุการณ์ใหม่</h2></div><button type="button" data-close-incident-dialog aria-label="ปิด">×</button></header>
     <div class="incident-form-grid">
       <label>ชื่อเหตุการณ์<%= form.text_field :title, required: true %></label>
@@ -20,6 +20,7 @@
         <%= form.hidden_field :longitude, data: { picker_longitude: true } %>
       </div>
       <label class="wide">ผลกระทบเบื้องต้น<%= form.text_area :initial_impact, rows: 4, placeholder: "ระบุผลกระทบต่อประชาชน บ้านเรือน การเดินทาง หรือทรัพย์สิน" %></label>
+      <label class="wide incident-photo-field">รูปภาพประกอบเหตุการณ์<%= form.file_field :photos, multiple: true, accept: "image/jpeg,image/png,image/webp" %><small>เลือกได้สูงสุด 8 รูป · JPG, PNG หรือ WebP · ไม่เกิน 10 MB ต่อรูป</small></label>
     </div>
     <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "บันทึกเหตุการณ์", class: "incident-primary-action" %></footer>
   <% end %>

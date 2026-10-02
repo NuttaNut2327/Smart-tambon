@@ -31,6 +31,7 @@ class Incident
   field :affected_people, type: Integer, default: 0
   field :affected_households, type: Integer, default: 0
   field :initial_impact, type: String
+  field :photos, type: Array, default: []
   field :assigned_to, type: String
   field :received_by, type: String
   field :received_by_user_id, type: Integer
