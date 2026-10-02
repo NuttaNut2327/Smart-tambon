@@ -13,10 +13,185 @@ section.assessment-area-tools .assessment-distance-control output{color:#176fe5}
 .assessment-map-toolbar:has(.city-place-controls){justify-content:flex-start}.city-place-controls{display:flex!important;gap:6px!important;min-width:0;overflow-x:auto}.assessment-map-toolbar .city-place-controls button{flex:0 0 auto;justify-content:center;height:34px;padding:0 9px;border:0;color:#fff;opacity:.35;white-space:nowrap}.assessment-map-toolbar .city-place-controls button.active{opacity:1}.assessment-map-toolbar .city-place-controls .city-place-label{font-size:10px}.city-place-controls .government{background:#2563eb}.city-place-controls .education{background:#f59e0b}.city-place-controls .health{background:#e11d48}.city-place-controls .culture{background:#8b5cf6}.city-place-controls .tourism{background:#f97316}.city-place-controls .transport{background:#0ea5a4}.city-place-controls .service{background:#ec4899}.city-place-controls .emergency{background:#dc2626}.city-place-detail{position:absolute;z-index:7;top:12px;right:12px;display:grid;grid-template-columns:42px minmax(0,1fr);gap:11px;width:min(330px,calc(100% - 24px));padding:14px 38px 14px 14px;border:1px solid #d9e4ee;border-radius:11px;background:rgba(255,255,255,.97);box-shadow:0 8px 24px rgba(22,48,73,.18)}.city-place-detail[hidden]{display:none}.city-place-detail>button{position:absolute;top:7px;right:9px;border:0;background:transparent;color:#72869a;font-size:22px;cursor:pointer}.city-place-detail>[data-place-detail-icon]{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;color:#fff}.city-place-detail small{color:#75899d;font-size:10px}.city-place-detail h3{margin:2px 0 5px;color:#203d58;font-size:15px}.city-place-detail p{margin:3px 0;color:#60768a;font-size:11px}.city-place-detail a{display:inline-block;margin-top:6px;color:#176fe5;font-size:11px;text-decoration:none}@media(max-width:1450px){.city-place-label{display:none}.assessment-map-toolbar .city-place-controls button{flex-basis:34px;width:34px;padding:0}}@media(max-width:620px){.city-place-controls{order:2}.city-place-detail{top:68px}.assessment-map-toolbar .city-place-controls button{flex-basis:32px;width:32px;height:32px}}
 .incident-assessment-page.mode-map .assessment-scenario-card,.incident-assessment-page.mode-map .assessment-results{display:none}.incident-assessment-page.mode-map .assessment-workspace{grid-template-columns:minmax(0,1fr)}.incident-assessment-page.mode-map .assessment-map,.incident-assessment-page.mode-map .assessment-cesium-map{height:max(650px,calc(100vh - 285px))}
 .assessment-simulation-panel .simulation-fields{grid-template-columns:minmax(0,1fr)}.assessment-simulation-panel .simulation-fields label{width:100%}.assessment-simulation-panel .simulation-fields input{box-sizing:border-box;width:100%}.assessment-simulation-panel [data-clear-simulation]{margin-top:8px}
-.incident-assessment-page .assessment-workspace{grid-template-columns:minmax(0,1fr)}.incident-assessment-page .assessment-results{position:static;top:auto}.incident-assessment-page .assessment-map,.incident-assessment-page .assessment-cesium-map{height:max(620px,calc(100vh - 330px))}.incident-assessment-page .assessment-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.incident-assessment-page .assessment-area-modes{grid-template-columns:repeat(3,minmax(120px,220px));justify-content:start}.incident-assessment-page .assessment-simulation-panel,.incident-assessment-page section.assessment-area-tools{max-width:none}@media(max-width:900px){.incident-assessment-page .assessment-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.incident-assessment-page .assessment-map,.incident-assessment-page .assessment-cesium-map{height:520px}}@media(max-width:620px){.incident-assessment-page .assessment-kpis{grid-template-columns:1fr}.incident-assessment-page .assessment-area-modes{grid-template-columns:repeat(3,1fr)}.incident-assessment-page .assessment-map,.incident-assessment-page .assessment-cesium-map{height:420px}}
+.incident-assessment-page .assessment-workspace{grid-template-columns:minmax(0,1fr) 370px}.incident-assessment-page .assessment-results{position:sticky;top:14px}.incident-assessment-page .assessment-map,.incident-assessment-page .assessment-cesium-map{height:max(620px,calc(100vh - 330px))}.incident-assessment-page .assessment-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.incident-assessment-page .assessment-area-modes{grid-template-columns:repeat(3,minmax(0,1fr));justify-content:stretch}.incident-assessment-page .assessment-simulation-panel,.incident-assessment-page section.assessment-area-tools{max-width:none}@media(max-width:1150px){.incident-assessment-page .assessment-workspace{grid-template-columns:minmax(0,1fr) 320px}}@media(max-width:900px){.incident-assessment-page .assessment-workspace{grid-template-columns:1fr}.incident-assessment-page .assessment-results{position:static;top:auto}.incident-assessment-page .assessment-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.incident-assessment-page .assessment-map,.incident-assessment-page .assessment-cesium-map{height:520px}}@media(max-width:620px){.incident-assessment-page .assessment-kpis{grid-template-columns:1fr}.incident-assessment-page .assessment-area-modes{grid-template-columns:repeat(3,1fr)}.incident-assessment-page .assessment-map,.incident-assessment-page .assessment-cesium-map{height:420px}}
 .assessment-affected-places{margin-top:16px;padding-top:16px;border-top:1px solid #e5ecf3}.assessment-affected-places>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:12px}.assessment-affected-places h3{margin:0;color:#203d58;font-size:15px}.assessment-affected-places>div:first-child span{padding:4px 8px;border-radius:999px;background:#eaf3ff;color:#176fe5;font-size:10px;font-weight:600}.assessment-affected-places>[data-affected-places]{margin-top:9px;border-bottom:1px solid #e5ecf3}.assessment-affected-places article{display:grid;grid-template-columns:28px minmax(0,1fr);align-items:center;gap:9px;padding:10px 0;border-top:1px solid #e5ecf3}.assessment-affected-places article>.material-symbols-outlined{display:grid;place-items:center;width:28px;height:28px;border-radius:7px;background:#eaf3ff;color:#176fe5;font-size:18px}.assessment-affected-places b,.assessment-affected-places small{display:block}.assessment-affected-places b{color:#284762;font-size:12px}.assessment-affected-places small{margin-top:3px;color:#71869a;font-size:10px}.assessment-affected-places p{margin:0;padding:10px 0;color:#8092a4;font-size:12px}
 .affected-place-group{border-top:1px solid #e5ecf3}.affected-place-group>summary{display:grid;grid-template-columns:30px minmax(0,1fr) auto 20px;align-items:center;gap:9px;padding:11px 0;cursor:pointer;list-style:none}.affected-place-group>summary::-webkit-details-marker{display:none}.affected-place-group>summary>span{display:grid;place-items:center;width:28px;height:28px;border-radius:7px;background:#eaf3ff;color:#176fe5;font-size:18px}.affected-place-group>summary>b{font-size:13px}.affected-place-group>summary>small{margin:0;padding:4px 8px;border-radius:999px;background:#f1f5f9;color:#60768a;font-size:10px}.affected-place-group>summary>i{color:#71869a;font-size:19px;transition:transform .18s}.affected-place-group:not([open])>summary>i{transform:rotate(-90deg)}.affected-place-group>div{padding-left:39px}.affected-place-group article:first-child{border-top:1px solid #edf2f6}.affected-place-group article>.material-symbols-outlined{background:#f3f7fb;color:#5d7891}
 .assessment-affected-places>[data-affected-places]{display:grid;gap:8px;border-bottom:0}.affected-place-group{border:0;border-radius:9px;background:#f7f9fc;overflow:hidden}.affected-place-group>summary{padding:10px 12px}.affected-place-group>summary>span{background:#fff}.affected-place-group>div{display:grid;gap:2px;padding:0 12px 10px 49px}.affected-place-group article,.affected-place-group article:first-child{display:block;padding:8px 0;border:0}.affected-place-group article+article{margin-top:2px}.affected-place-group article b{font-size:12px}.affected-place-group article small{line-height:1.45}
 .assessment-resource-table{overflow:hidden;border:1px solid #e1e9f1;border-radius:9px}.assessment-resource-head,.assessment-resource-table article{display:grid;grid-template-columns:minmax(180px,1.5fr) minmax(120px,.75fr) minmax(120px,.75fr) minmax(150px,.9fr);align-items:center;gap:12px}.assessment-resource-head{padding:8px 12px;background:#f3f7fb;color:#71869a;font-size:10px;font-weight:600}.assessment-resource-table article{padding:11px 12px!important;border-top:1px solid #e5ecf3!important}.assessment-resource-table article>b{color:#284762;font-size:13px}.resource-amount{display:grid;gap:2px}.resource-amount small{margin:0!important;color:#8496a8!important;font-size:9px!important}.resource-amount strong{color:#24425e;font-size:15px}.resource-amount strong em{color:#71869a;font-size:10px;font-style:normal;font-weight:500}.resource-amount.available strong{color:#176fe5}.assessment-resource-result .resource-comparison{display:grid;justify-self:start;gap:2px;min-width:112px;padding:6px 10px;border-radius:8px}.assessment-resource-result .resource-comparison b{font-size:11px}.assessment-resource-result .resource-comparison small{margin:0;font-size:9px}.assessment-resource-result .resource-comparison.enough{background:#e5f7ee;color:#178158}.assessment-resource-result .resource-comparison.shortage{background:#ffe9eb;color:#d33f4d}@media(max-width:720px){.assessment-resource-head{display:none}.assessment-resource-table article{grid-template-columns:minmax(0,1fr) 1fr 1fr}.assessment-resource-table article>b{grid-column:1/-1}.assessment-resource-result .resource-comparison{grid-column:1/-1;width:100%;box-sizing:border-box}}
 .assessment-resource-result .resource-comparison b{font-size:13px}
 .assessment-resource-table{overflow-x:auto}.assessment-resource-head,.assessment-resource-table article{min-width:680px;grid-template-columns:minmax(220px,1.6fr) minmax(120px,.75fr) minmax(120px,.75fr) minmax(180px,1fr)}.assessment-resource-head{padding:11px 14px;color:#405d77;font-size:12px;font-weight:700}.assessment-resource-head span:nth-child(n+2){text-align:center}.assessment-resource-table article{min-height:56px;padding:10px 14px!important}.resource-amount{display:flex;align-items:baseline;justify-content:center}.resource-amount strong{font-size:16px;line-height:1.2}.resource-amount strong em{margin-left:3px;font-size:10px}.assessment-resource-result .resource-comparison{justify-self:center;justify-items:center;min-width:128px;box-sizing:border-box;text-align:center}.assessment-resource-result .resource-comparison b{font-size:12px;line-height:1.25;white-space:nowrap}@media(max-width:720px){.assessment-resource-head{display:grid}.assessment-resource-table article{grid-template-columns:minmax(220px,1.6fr) minmax(120px,.75fr) minmax(120px,.75fr) minmax(180px,1fr)}.assessment-resource-table article>b{grid-column:auto}.assessment-resource-result .resource-comparison{grid-column:auto;width:auto}}
+
+/* Readable assessment sidebar: keep the map visible without compressing results. */
+.incident-assessment-page .assessment-workspace {
+  grid-template-columns: minmax(0, 1fr) clamp(420px, 27vw, 460px);
+  gap: 18px;
+}
+
+.incident-assessment-page .assessment-results {
+  position: static;
+  top: auto;
+  box-sizing: border-box;
+  padding: 20px;
+  overflow: visible;
+}
+
+.incident-assessment-page section.assessment-area-tools {
+  padding: 16px;
+  border: 1px solid #dce8f5;
+  border-radius: 11px;
+  background: #f7faff;
+}
+
+.incident-assessment-page section.assessment-area-tools h3 {
+  margin-top: 0;
+  font-size: 19px;
+}
+
+.incident-assessment-page .assessment-result-heading {
+  margin-top: 20px;
+  padding-top: 18px !important;
+  border-top: 1px solid #dfe7ef !important;
+}
+
+.incident-assessment-page .assessment-result-heading h2 {
+  font-size: 19px;
+}
+
+.incident-assessment-page .assessment-kpis {
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.incident-assessment-page .assessment-kpis article {
+  min-height: 74px;
+  box-sizing: border-box;
+  padding: 13px 14px;
+  border: 1px solid #e2eaf2;
+  border-radius: 10px;
+  background: #f6f9fc;
+}
+
+.incident-assessment-page .assessment-kpis small {
+  color: #667d92;
+  font-size: 11px;
+}
+
+.incident-assessment-page .assessment-kpis b {
+  margin-top: 7px;
+  color: #163e63;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.incident-assessment-page .assessment-resource-result,
+.incident-assessment-page .assessment-affected-places {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #dfe7ef;
+}
+
+.incident-assessment-page .assessment-resource-result h3,
+.incident-assessment-page .assessment-affected-places h3 {
+  font-size: 16px;
+}
+
+.incident-assessment-page .assessment-resource-table {
+  display: grid;
+  gap: 8px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+}
+
+.incident-assessment-page .assessment-resource-head {
+  display: none;
+}
+
+.incident-assessment-page .assessment-resource-table article {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px !important;
+  border: 1px solid #e0e8f0 !important;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.incident-assessment-page .assessment-resource-table article > b {
+  grid-column: 1 / -1;
+  font-size: 13px;
+}
+
+.incident-assessment-page .resource-amount {
+  display: grid;
+  justify-content: start;
+  gap: 4px;
+}
+
+.incident-assessment-page .resource-amount::before {
+  color: #7c8fa2;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.incident-assessment-page .resource-amount.required::before {
+  content: "ต้องใช้";
+}
+
+.incident-assessment-page .resource-amount.available::before {
+  content: "พร้อมใช้";
+}
+
+.incident-assessment-page .assessment-resource-result .resource-comparison {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  justify-items: center;
+  width: 100%;
+  min-width: 0;
+  padding: 7px 10px;
+}
+
+.incident-assessment-page .assessment-results form {
+  margin: 20px -20px -20px;
+  padding: 14px 20px 20px;
+  border-top: 1px solid #dfe7ef;
+  background: #fff;
+  box-shadow: 0 -8px 18px rgb(31 61 89 / 7%);
+}
+
+@media (max-width: 1450px) {
+  .incident-assessment-page .assessment-workspace {
+    grid-template-columns: minmax(0, 1fr) 390px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .incident-assessment-page .assessment-workspace {
+    grid-template-columns: minmax(0, 1fr) 350px;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .incident-assessment-page .assessment-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .incident-assessment-page .assessment-results {
+    position: static;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 620px) {
+  .incident-assessment-page .assessment-results {
+    padding: 14px;
+  }
+
+  .incident-assessment-page .assessment-results form {
+    margin: 18px -14px -14px;
+    padding: 12px 14px 14px;
+  }
+}

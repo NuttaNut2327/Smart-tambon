@@ -41,9 +41,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const icon = datasetIcons[input.dataset.datasetType] || "location_on";
     const layer = new ol.layer.Vector({ source, zIndex: 17, style: (feature) => {
       const geometryType = feature.getGeometry()?.getType();
-      if (geometryType === "Polygon" || geometryType === "MultiPolygon") return new ol.style.Style({ stroke: new ol.style.Stroke({ color, width: 2.5 }), fill: new ol.style.Fill({ color: `${color}22` }) });
+      const highlighted = !lastAssessmentGeometry || geometryType !== "Point" || lastAssessmentGeometry.intersectsCoordinate(feature.getGeometry().getCoordinates());
+      const displayColor = highlighted ? color : "#94a3b8";
+      if (geometryType === "Polygon" || geometryType === "MultiPolygon") return new ol.style.Style({ stroke: new ol.style.Stroke({ color: displayColor, width: 2.5 }), fill: new ol.style.Fill({ color: `${displayColor}22` }) });
       return new ol.style.Style({
-        image: new ol.style.Icon({ src: placeMarkerIcon(color), anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
+        image: new ol.style.Icon({ src: placeMarkerIcon(displayColor), anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
         text: new ol.style.Text({ text: icon, font: '18px "Material Symbols Outlined"', fill: new ol.style.Fill({ color: "#fff" }), offsetY: -25 })
       });
     } });
@@ -71,8 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const placesLayer = new ol.layer.Vector({ source: placesSource, declutter: true, style: (feature) => {
     const selectedGeometry = lastAssessmentGeometry;
     const highlighted = !selectedGeometry || selectedGeometry.intersectsCoordinate(feature.getGeometry().getCoordinates());
-    if (isCityMap) return cityPlaceStyle(feature.get("category"), highlighted);
-    return new ol.style.Style({ image: new ol.style.Circle({ radius: 5, fill: new ol.style.Fill({ color: highlighted ? "#176fe5" : "#9aa8b5" }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) }), text: new ol.style.Text({ text: feature.get("name") || "", offsetY: -13, font: '500 11px "Google Sans",sans-serif', fill: new ol.style.Fill({ color: highlighted ? "#173653" : "#7e8c98" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) }) });
+    return cityPlaceStyle(feature.get("category"), highlighted);
   } });
   const waterLayer = new ol.layer.Vector({ source: waterSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 6, fill: new ol.style.Fill({ color: "#0891b2" }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) }) }) });
   const selectionLayer = new ol.layer.Vector({ source: selectionSource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#f97316", width: 3, lineDash: [8, 5] }), fill: new ol.style.Fill({ color: "rgba(249,115,22,.18)" }) }) });
@@ -84,11 +85,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const simulationPointLayer = new ol.layer.Vector({ source: simulationPointSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 7, fill: new ol.style.Fill({ color: "#176fe5" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) }) }) });
   const longitude = Number(mapElement.dataset.incidentLongitude);
   const latitude = Number(mapElement.dataset.incidentLatitude);
-  const incidentMarkerSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="42" height="54" viewBox="0 0 42 54"><path fill="#ef3340" d="M21 1.5C10.2 1.5 1.5 10.2 1.5 21c0 15.2 19.5 31.5 19.5 31.5S40.5 36.2 40.5 21C40.5 10.2 31.8 1.5 21 1.5z"/><path fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round" d="M21 10.5 31 28H11z"/><rect x="19.7" y="15" width="2.6" height="7.5" rx="1.3" fill="#fff"/><circle cx="21" cy="25" r="1.5" fill="#fff"/></svg>';
+  const incidentMarkerSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="56" height="70" viewBox="-7 -7 56 70"><defs><filter id="shadow" x="-60%" y="-50%" width="220%" height="230%"><feDropShadow dx="0" dy="4" stdDeviation="3.5" flood-color="#7f1d1d" flood-opacity=".5"/></filter></defs><circle cx="21" cy="21" r="25" fill="#facc15" opacity=".24"/><path fill="#ef3340" stroke="#fff" stroke-width="6" stroke-linejoin="round" filter="url(#shadow)" d="M21 1.5C10.2 1.5 1.5 10.2 1.5 21c0 15.2 19.5 31.5 19.5 31.5S40.5 36.2 40.5 21C40.5 10.2 31.8 1.5 21 1.5z"/><path fill="#ef3340" stroke="#facc15" stroke-width="2.5" stroke-linejoin="round" d="M21 1.5C10.2 1.5 1.5 10.2 1.5 21c0 15.2 19.5 31.5 19.5 31.5S40.5 36.2 40.5 21C40.5 10.2 31.8 1.5 21 1.5z"/><path fill="#ffffff" stroke="#ffffff" stroke-width="18" stroke-linejoin="round" transform="translate(10 33) scale(.023)" d="M720-440v-80h160v80H720Zm48 280-128-96 48-64 128 96-48 64Zm-80-480-48-64 128-96 48 64-128 96ZM200-200v-160h-40q-33 0-56.5-23.5T80-440v-80q0-33 23.5-56.5T160-600h160l200-120v480L320-360h-40v160h-80Zm240-182v-196l-98 58H160v80h182l98 58Zm120 36v-268q27 24 43.5 58.5T620-480q0 41-16.5 75.5T560-346ZM300-480Z"/></svg>';
   const incidentMarkerUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(incidentMarkerSvg)}`;
   const incidentSource = new ol.source.Vector();
   if (Number.isFinite(longitude) && Number.isFinite(latitude)) incidentSource.addFeature(new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([longitude, latitude]))));
-  const incidentLayer = new ol.layer.Vector({ source: incidentSource, zIndex: 20, style: new ol.style.Style({ image: new ol.style.Icon({ src: incidentMarkerUrl, anchor: [0.5, 1], scale: 0.9 }) }) });
+  const incidentLayer = new ol.layer.Vector({ source: incidentSource, zIndex: 30, style: new ol.style.Style({ image: new ol.style.Icon({ src: incidentMarkerUrl, anchor: [0.5, 1], scale: 1 }) }) });
   const cityIncidentLayers = new Map(incidentSourceNames.map((sourceName, index) => {
     const source = new ol.source.Vector();
     cityIncidents.filter((incident) => (incident.source || "ไม่ระบุแหล่งที่มา") === sourceName).forEach((incident) => {
@@ -130,7 +131,12 @@ document.addEventListener("DOMContentLoaded", () => {
   let cesiumWater = null;
   let cesiumIncidentDataSource = null;
   let placesPayload = [];
+  let importedAgencyPlaces = [];
   let waterPayload = [];
+  const refreshPlaceLayerStyles = () => {
+    placesLayer.changed();
+    importedDatasetLayers.forEach((entry) => entry.layer.changed());
+  };
 
   const areaUnit = page.querySelector("[data-area-unit]");
   const areaResult = page.querySelector("[data-result-area]");
@@ -147,9 +153,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const container = page.querySelector("[data-affected-places]"); const count = page.querySelector("[data-affected-place-count]");
     if (!container || !count) return;
     if (!geometry) { count.textContent = "0 แห่ง"; container.innerHTML = "<p>ยังไม่มีพื้นที่สำหรับตรวจสอบสถานที่</p>"; return; }
-    const affected = placesPayload.filter((place) => {
+    const affected = [...placesPayload, ...importedAgencyPlaces].filter((place, index, allPlaces) => {
       const lon = Number(place.lon); const lat = Number(place.lat);
-      return Number.isFinite(lon) && Number.isFinite(lat) && geometry.intersectsCoordinate(ol.proj.fromLonLat([lon, lat]));
+      const uniqueKey = `${String(place.name || "").trim().toLowerCase()}:${lon.toFixed(5)}:${lat.toFixed(5)}`;
+      const firstIndex = allPlaces.findIndex((candidate) => `${String(candidate.name || "").trim().toLowerCase()}:${Number(candidate.lon).toFixed(5)}:${Number(candidate.lat).toFixed(5)}` === uniqueKey);
+      return firstIndex === index && Number.isFinite(lon) && Number.isFinite(lat) && geometry.intersectsCoordinate(ol.proj.fromLonLat([lon, lat]));
     });
     count.textContent = `${affected.length.toLocaleString("th-TH")} แห่ง`;
     const grouped = Object.entries(placeCategoryLabels).map(([category, label]) => [category, label, affected.filter((place) => place.assessmentCategory === category)]).filter(([, , places]) => places.length);
@@ -293,9 +301,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (villageBoundarySource.getFeatures().length) await syncCesiumVillageBoundaries();
     if (Number.isFinite(longitude) && Number.isFinite(latitude)) {
-      cesiumViewer.entities.add({ name: "ตำแหน่งเกิดเหตุ", position: Cesium.Cartesian3.fromDegrees(longitude, latitude, 4), billboard: { image: incidentMarkerUrl, width: 38, height: 49, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY } });
+      cesiumViewer.entities.add({ name: "ตำแหน่งเกิดเหตุ", position: Cesium.Cartesian3.fromDegrees(longitude, latitude, 4), billboard: { image: incidentMarkerUrl, width: 56, height: 70, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY } });
     }
-    if (isCityMap && cityIncidents.length) {
+    if (cityIncidents.length) {
       cesiumIncidentDataSource = new Cesium.CustomDataSource("reported-incidents");
       cityIncidents.forEach((reportedIncident) => {
         const entity = cesiumIncidentDataSource.entities.add({
@@ -330,7 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const lon = Number(place.lon); const lat = Number(place.lat);
       if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
       const config = placeConfig[place.assessmentCategory] || placeConfig.service;
-      const marker = isCityMap ? { billboard: { image: placeMarkerIcon(config.color), width: 36, height: 44, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY } } : { point: { pixelSize: 10, color: Cesium.Color.fromCssColorString("#176fe5"), outlineColor: Cesium.Color.WHITE, outlineWidth: 2, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY }, label: { text: place.name || "", font: '500 12px "Google Sans"', pixelOffset: new Cesium.Cartesian2(0, -20), fillColor: Cesium.Color.fromCssColorString("#173653"), outlineColor: Cesium.Color.WHITE, outlineWidth: 3, style: Cesium.LabelStyle.FILL_AND_OUTLINE, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY } };
+      const marker = { billboard: { image: placeMarkerIcon(config.color), width: 36, height: 44, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY } };
       const entity = cesiumPlaces.entities.add({ properties: { longitude: lon, latitude: lat, category: place.assessmentCategory }, position: Cesium.Cartesian3.fromDegrees(lon, lat, 3), ...marker });
       entity.assessmentPlace = place;
       entity.show = visiblePlaceCategories.has(place.assessmentCategory);
@@ -350,7 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
     cesiumPlaces.entities.values.forEach((entity) => {
       const lon = Number(entity.properties?.longitude?.getValue(now)); const lat = Number(entity.properties?.latitude?.getValue(now));
       const highlighted = !lastAssessmentGeometry || lastAssessmentGeometry.intersectsCoordinate(ol.proj.fromLonLat([lon, lat]));
-      if (isCityMap && entity.billboard) {
+      if (entity.billboard) {
         const category = entity.properties?.category?.getValue(now);
         entity.billboard.image = placeMarkerIcon(highlighted ? (placeConfig[category] || placeConfig.service).color : "#94a3b8");
         return;
@@ -534,7 +542,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const calculate = async (geometry, ruleId = "", calculationMode = assessmentMode) => {
     lastAssessmentGeometry = geometry;
     if (calculationMode === "simulation") lastSimulationGeometry = geometry; else lastAnalysisGeometry = geometry;
-    placesLayer.changed();
+    refreshPlaceLayerStyles();
     updateCesiumPlaceEmphasis();
     renderAffectedPlaces(geometry);
     const area = geometryArea(geometry);
@@ -612,7 +620,7 @@ document.addEventListener("DOMContentLoaded", () => {
     simulationPointLayer.setVisible(assessmentMode === "simulation");
     const modeGeometry = assessmentMode === "simulation" ? lastSimulationGeometry : assessmentMode === "analysis" ? lastAnalysisGeometry : null;
     lastAssessmentGeometry = modeGeometry;
-    placesLayer.changed(); updateCesiumPlaceEmphasis();
+    refreshPlaceLayerStyles(); updateCesiumPlaceEmphasis();
     page.querySelector("[data-assessment-hint]").textContent = assessmentMode === "simulation" ? "กำหนดค่าจำลองแล้วกดปักจุดบนแผนที่" : "";
     if (modeGeometry) calculate(modeGeometry, "", assessmentMode); else clearDisplayedResults();
     window.setTimeout(() => { map.updateSize(); cesiumViewer?.resize(); }, 0);
@@ -637,7 +645,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!previewGeometry) return;
     selectionSource.clear(); selectionSource.addFeature(new ol.Feature(previewGeometry));
     lastAnalysisGeometry = previewGeometry; lastAssessmentGeometry = previewGeometry;
-    placesLayer.changed();
+    refreshPlaceLayerStyles();
     page.querySelector("[data-area-status]").textContent = "กำลังปรับระยะพื้นที่…";
   });
   page.querySelector("[data-area-distance]").addEventListener("change", () => { if (areaMode === "point" && areaAnchor) useSelectedGeometry(new ol.geom.Circle(areaAnchor, areaDistance())); if (areaMode === "line" && areaLine) useSelectedGeometry(bufferedLineGeometry(areaLine, areaDistance())); if (areaMode === "polygon" && areaPolygon) useSelectedGeometry(bufferedPolygonGeometry(areaPolygon, areaDistance())); });
@@ -645,10 +653,10 @@ document.addEventListener("DOMContentLoaded", () => {
   ruleSelect.addEventListener("change", () => { if (lastAssessmentGeometry && ruleSelect.value) calculate(lastAssessmentGeometry, ruleSelect.value, assessmentMode); });
   disasterTypeSelect?.addEventListener("change", () => { if (assessmentMode !== "simulation") analysisDisasterType = disasterTypeSelect.value; updateSimulationFields(); updateSimulationAvailability(); simulationGridSource.clear(); lastSimulationGeometry = null; if (assessmentMode === "analysis" && lastAnalysisGeometry) calculate(lastAnalysisGeometry, "", "analysis"); });
   page.querySelectorAll("[data-basemap]").forEach((button) => button.addEventListener("click", async () => { const mode = button.dataset.basemap; const is3d = mode === "3d"; mapWrap.classList.toggle("is-3d", is3d); roadLayer.setVisible(mode === "road"); satelliteLayer.setVisible(mode === "satellite"); page.querySelectorAll("[data-basemap]").forEach((item) => item.classList.toggle("active", item === button)); if (is3d) { try { await initializeCesium(); if (lastAssessmentGeometry) { const geometry = lastAssessmentGeometry.getType() === "Circle" ? ol.geom.Polygon.fromCircle(lastAssessmentGeometry, 96) : lastAssessmentGeometry; const geojson = new ol.format.GeoJSON().writeGeometryObject(geometry, { featureProjection: "EPSG:3857", dataProjection: "EPSG:4326" }); await syncCesiumSelection(geojson); } cesiumViewer.resize(); } catch (error) { page.querySelector("[data-assessment-hint]").textContent = error.message; } } else { window.setTimeout(() => map.updateSize(), 0); } }));
-  const clearDisplayedResults = () => { if (cesiumViewer && cesiumSelection) { cesiumViewer.dataSources.remove(cesiumSelection, true); cesiumSelection = null; } selectedAreaSqKm = null; lastAssessmentGeometry = null; renderAffectedPlaces(null); rulePicker.hidden = true; ruleSelect.innerHTML = '<option value="">ยังไม่มีกฎที่ผ่านเงื่อนไข</option>'; ruleSelect.disabled = true; page.querySelectorAll("[data-result-area],[data-result-population],[data-result-households],[data-result-villages]").forEach((element) => { element.textContent = "—"; }); page.querySelector("[data-resource-results]").innerHTML = "<p>ยังไม่มีผลการคำนวณ</p>"; const saveButton = page.querySelector("[data-save-button]"); if (saveButton) saveButton.disabled = true; };
+  const clearDisplayedResults = () => { if (cesiumViewer && cesiumSelection) { cesiumViewer.dataSources.remove(cesiumSelection, true); cesiumSelection = null; } selectedAreaSqKm = null; lastAssessmentGeometry = null; refreshPlaceLayerStyles(); renderAffectedPlaces(null); rulePicker.hidden = true; ruleSelect.innerHTML = '<option value="">ยังไม่มีกฎที่ผ่านเงื่อนไข</option>'; ruleSelect.disabled = true; page.querySelectorAll("[data-result-area],[data-result-population],[data-result-households],[data-result-villages]").forEach((element) => { element.textContent = "—"; }); page.querySelector("[data-resource-results]").innerHTML = "<p>ยังไม่มีผลการคำนวณ</p>"; const saveButton = page.querySelector("[data-save-button]"); if (saveButton) saveButton.disabled = true; };
   page.querySelector("[data-clear-area]").addEventListener("click", () => { selectionSource.clear(); lastAnalysisGeometry = null; areaAnchor = null; areaLine = null; page.querySelector("[data-area-status]").textContent = ""; page.querySelector("[data-clear-area]").disabled = true; clearDisplayedResults(); });
   page.querySelector("[data-clear-simulation]").addEventListener("click", () => { simulationPointSource.clear(); simulationGridSource.clear(); simulationOrigin = null; lastSimulationGeometry = null; simulationRunId += 1; page.querySelector("[data-simulation-grid-legend]").hidden = true; page.querySelector("[data-clear-simulation]").disabled = true; clearDisplayedResults(); page.querySelector("[data-assessment-hint]").textContent = "กำหนดค่าจำลองแล้วกดปักจุดบนแผนที่"; });
-  page.querySelector("[data-clear-area]").addEventListener("click", () => { areaPolygon = null; placesLayer.changed(); updateCesiumPlaceEmphasis(); });
+  page.querySelector("[data-clear-area]").addEventListener("click", () => { areaPolygon = null; refreshPlaceLayerStyles(); updateCesiumPlaceEmphasis(); });
   page.querySelectorAll("[data-layer-toggle]").forEach((input) => input.addEventListener("change", () => {
     ({ boundary: boundaryLayer, "village-boundaries": villageBoundaryLayer, places: placesLayer, water: waterLayer }[input.dataset.layerToggle]).setVisible(input.checked);
     if (input.dataset.layerToggle === "boundary" && cesiumBoundary) cesiumBoundary.show = input.checked;
@@ -694,6 +702,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!data) return;
     const features = new ol.format.GeoJSON().readFeatures(data, { featureProjection: "EPSG:3857" });
     villageBoundarySource.addFeatures(features.filter((feature) => feature.get("data_type") === "village_boundaries"));
+    importedAgencyPlaces = features.filter((feature) => feature.get("data_type") === "agencies" && feature.getGeometry()?.getType() === "Point").map((feature) => {
+      const properties = feature.getProperties();
+      const [lon, lat] = ol.proj.toLonLat(feature.getGeometry().getCoordinates());
+      return {
+        id: `agency:${properties.dataset_id || "dataset"}:${properties.agency_code || properties.agency_name || `${lon}:${lat}`}`,
+        name: properties.agency_name || properties.name || properties.dataset_name || "ไม่ระบุชื่อหน่วยงาน",
+        address: properties.address || properties.location || "",
+        tel: properties.phone || properties.tel || "",
+        lon,
+        lat,
+        assessmentCategory: "government"
+      };
+    });
     features.filter((feature) => feature.get("data_type") !== "village_boundaries").forEach((feature) => {
       const datasetId = String(feature.get("dataset_id") || "");
       const entry = importedDatasetLayers.get(datasetId);
@@ -701,6 +722,8 @@ document.addEventListener("DOMContentLoaded", () => {
       feature.set("importedDataset", { ...feature.getProperties(), geometry: undefined });
       entry.source.addFeature(feature);
     });
+    refreshPlaceLayerStyles();
+    renderAffectedPlaces();
     if (cesiumViewer) syncCesiumVillageBoundaries();
   }).catch((error) => console.warn("Unable to load imported map layers", error));
   const placesByCategory = {};
