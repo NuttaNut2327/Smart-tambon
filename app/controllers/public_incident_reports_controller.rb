@@ -7,6 +7,7 @@ class PublicIncidentReportsController < ApplicationController
 
   def show
     @incident = Incident.new
+    @incident.severity = nil
   end
 
   def reverse_geocode
@@ -27,7 +28,9 @@ class PublicIncidentReportsController < ApplicationController
   def create
     return head :unprocessable_entity if params[:website].present?
 
+    uploads = IncidentPhotoUploadService.uploads_from(params)
     @incident = Incident.new(public_incident_params)
+    @incident.severity = params.dig(:incident, :severity).presence
     @incident.category = "general"
     @incident.status = "pending"
     @incident.owner_user_id = @report_owner&.id || @report_access_area&.user_id
@@ -38,9 +41,16 @@ class PublicIncidentReportsController < ApplicationController
     @incident.subdistrict_id = @report_subdistrict&.id
     @incident.location_name = "ตำแหน่งที่ผู้แจ้งเหตุปักหมุด" if @incident.location_name.blank?
     @incident.errors.add(:description, "กรุณาระบุรายละเอียดเหตุการณ์") if @incident.description.blank?
+    @incident.errors.add(:incident_type, "กรุณาเลือกประเภทเหตุการณ์") if @incident.incident_type.blank?
+    @incident.errors.add(:severity, "กรุณาเลือกระดับความเร่งด่วน") if @incident.severity.blank?
     @incident.errors.add(:reporter_name, "กรุณาระบุชื่อผู้แจ้ง") if @incident.reporter_name.blank?
     @incident.errors.add(:reporter_contact, "กรุณาระบุเบอร์ติดต่อ") if @incident.reporter_contact.blank?
     @incident.errors.add(:base, "กรุณายืนยันว่าข้อมูลที่แจ้งเป็นความจริง") unless params[:consent] == "1"
+    begin
+      IncidentPhotoUploadService.validate!(uploads)
+    rescue IncidentPhotoUploadService::InvalidUpload => error
+      @incident.errors.add(:base, error.message)
+    end
     unless @incident.latitude&.between?(-90, 90) && @incident.longitude&.between?(-180, 180)
       @incident.errors.add(:latitude, "กรุณาปักตำแหน่งที่เกิดเหตุบนแผนที่")
     else
@@ -53,6 +63,16 @@ class PublicIncidentReportsController < ApplicationController
     end
 
     @incident.save!
+    begin
+      IncidentPhotoUploadService.attach!(incident: @incident, uploads: uploads)
+    rescue StandardError => error
+      Rails.logger.error("Incident photo upload failed: #{error.class}: #{error.message}")
+      IncidentPhotoUploadService.purge_for(@incident)
+      @incident.destroy
+      @incident.errors.add(:base, "อัปโหลดรูปไม่สำเร็จ กรุณาลองใหม่อีกครั้ง")
+      load_subdistrict_options
+      return render :show, status: :service_unavailable
+    end
     render :success
   rescue Mongoid::Errors::Validations
     load_subdistrict_options

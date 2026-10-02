@@ -11,18 +11,21 @@
 
     <% if @incident.errors.any? %><div class="public-report-errors"><strong>กรุณาตรวจสอบข้อมูล</strong><ul><% @incident.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul></div><% end %>
 
-    <%= form_with model: @incident, url: public_incident_report_path(token: params[:token]), method: :post, local: true, html: { class: "public-report-form" } do |form| %>
+    <%= form_with model: @incident, url: public_incident_report_path(token: params[:token]), method: :post, local: true, html: { class: "public-report-form", multipart: true } do |form| %>
       <input type="text" name="website" class="public-report-honeypot" tabindex="-1" autocomplete="off" aria-hidden="true">
       <section class="public-report-card">
         <div class="public-report-card-title"><span>1</span><div><h2>ข้อมูลเหตุการณ์</h2><p>ระบุข้อมูลที่ช่วยให้เจ้าหน้าที่เข้าใจสถานการณ์</p></div></div>
         <div class="public-report-grid">
           <div class="wide public-report-area"><small>พื้นที่เกิดเหตุ</small><strong><%= @report_area_name %></strong></div>
           <label class="wide"><span class="public-required-label"><b>*</b> ชื่อเหตุการณ์</span><%= form.text_field :title, required: true, maxlength: 150, placeholder: "เช่น ต้นไม้ล้มกีดขวางถนน" %></label>
-          <label><span class="public-required-label"><b>*</b> ประเภทเหตุการณ์</span><%= form.select :incident_type, Incident::DISASTER_INCIDENT_TYPES, { include_blank: "เลือกประเภทเหตุการณ์" }, required: true, data: { incident_type_select: true } %></label>
+          <label><span class="public-required-label"><b>*</b> ประเภทเหตุการณ์</span><span class="public-custom-select <%= 'is-empty' if @incident.incident_type.blank? %>" data-public-custom-select data-public-select-placeholder data-empty="<%= @incident.incident_type.blank? %>"><%= form.select :incident_type, Incident::DISASTER_INCIDENT_TYPES, { selected: @incident.incident_type, include_blank: false }, data: { incident_type_select: true } %><button type="button" data-public-custom-select-trigger aria-haspopup="listbox" aria-expanded="false"><span><%= @incident.incident_type.presence || "เลือกประเภทเหตุการณ์" %></span></button><span class="public-custom-select-menu" data-public-custom-select-menu role="listbox" hidden><% Incident::DISASTER_INCIDENT_TYPES.each do |type| %><button type="button" role="option" data-value="<%= type %>" aria-selected="<%= @incident.incident_type == type %>"><%= type %></button><% end %></span></span></label>
+          <% severity_options = [["วิกฤต", "critical"], ["เร่งด่วนมาก", "very_urgent"], ["เร่งด่วน", "urgent"], ["ไม่เร่งด่วน", "non_urgent"], ["ทั่วไป", "general"]] %>
+          <label><span class="public-required-label"><b>*</b> ระดับความเร่งด่วน</span><span class="public-custom-select <%= 'is-empty' if @incident.severity.blank? %>" data-public-custom-select data-public-severity-placeholder data-empty="<%= @incident.severity.blank? %>"><%= form.select :severity, severity_options, { selected: @incident.severity, include_blank: false }, data: { public_severity_select: true } %><button type="button" data-public-custom-select-trigger aria-haspopup="listbox" aria-expanded="false"><span><%= severity_options.to_h.key(@incident.severity) || "เลือกระดับความเร่งด่วน" %></span></button><span class="public-custom-select-menu" data-public-custom-select-menu role="listbox" hidden><% severity_options.each do |label, value| %><button type="button" role="option" data-value="<%= value %>" aria-selected="<%= @incident.severity == value %>"><%= label %></button><% end %></span></span></label>
           <label class="wide" data-incident-type-other <%= "hidden" unless @incident.incident_type == "อื่น ๆ" %>><span class="public-required-label"><b>*</b> ระบุประเภทเหตุการณ์อื่น ๆ</span><%= form.text_field :incident_type_other, required: @incident.incident_type == "อื่น ๆ", disabled: @incident.incident_type != "อื่น ๆ", maxlength: 100, placeholder: "เช่น ถนนชำรุด ไฟฟ้าขัดข้อง หรืออุบัติเหตุ", data: { incident_type_other_input: true } %></label>
-          <label><span class="public-required-label"><b>*</b> ระดับความเร่งด่วน</span><%= form.select :severity, [["วิกฤต", "critical"], ["เร่งด่วนมาก", "very_urgent"], ["เร่งด่วน", "urgent"], ["ไม่เร่งด่วน", "non_urgent"], ["ทั่วไป", "general"]], { selected: @incident.severity || "general" }, required: true %></label>
           <label class="wide"><span class="public-required-label"><b>*</b> รายละเอียดเหตุการณ์</span><%= form.text_area :description, required: true, rows: 5, maxlength: 2000, placeholder: "อธิบายสิ่งที่เกิดขึ้นและสภาพเหตุการณ์ปัจจุบัน" %></label>
           <label class="wide">ผลกระทบเบื้องต้น<%= form.text_area :initial_impact, rows: 3, maxlength: 1000, placeholder: "เช่น การจราจรติดขัด บ้านเรือนได้รับความเสียหาย" %></label>
+          <label class="wide public-report-photo-field"><span>รูปภาพประกอบเหตุการณ์</span><span class="public-photo-upload-control"><span class="public-photo-upload-icon material-symbols-outlined">add_photo_alternate</span><span class="public-photo-upload-copy"><b>เลือกรูปภาพ</b><small>กดเพื่อเลือกรูปจากอุปกรณ์</small></span><span class="public-photo-upload-action">เพิ่มรูป</span><%= form.file_field :photos, multiple: true, accept: "image/jpeg,image/png,image/webp", data: { public_photo_input: true } %></span><small>เลือกเพิ่มได้หลายครั้ง สูงสุด 8 รูป รองรับ JPG, PNG และ WebP ขนาดไม่เกิน 10 MB ต่อรูป</small><span class="public-photo-message" data-public-photo-message></span></label>
+          <div class="wide public-photo-preview" data-public-photo-preview hidden></div>
         </div>
       </section>
 
@@ -51,4 +54,9 @@
       <p class="public-report-submit-hint" data-public-submit-hint>กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน</p>
     <% end %>
   </div>
+
+  <dialog class="public-photo-lightbox" data-public-photo-lightbox>
+    <button type="button" class="public-photo-lightbox-close" data-public-photo-lightbox-close aria-label="ปิดภาพ">×</button>
+    <img data-public-photo-lightbox-image alt="ภาพตัวอย่างขนาดใหญ่">
+  </dialog>
 </main>

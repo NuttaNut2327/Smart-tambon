@@ -19,8 +19,113 @@ document.addEventListener("DOMContentLoaded", () => {
   const consent = page.querySelector("[data-public-report-consent]");
   const form = page.querySelector(".public-report-form");
   const incidentTypeSelect = page.querySelector("[data-incident-type-select]");
+  const incidentTypePlaceholder = page.querySelector("[data-public-select-placeholder]");
+  const severitySelect = page.querySelector("[data-public-severity-select]");
+  const severityPlaceholder = page.querySelector("[data-public-severity-placeholder]");
   const incidentTypeOtherField = page.querySelector("[data-incident-type-other]");
   const incidentTypeOtherInput = page.querySelector("[data-incident-type-other-input]");
+  const photoInput = page.querySelector("[data-public-photo-input]");
+  const photoPreview = page.querySelector("[data-public-photo-preview]");
+  const photoMessage = page.querySelector("[data-public-photo-message]");
+  const photoLightbox = page.querySelector("[data-public-photo-lightbox]");
+  const photoLightboxImage = page.querySelector("[data-public-photo-lightbox-image]");
+  let selectedPhotos = [];
+  let previewUrls = [];
+
+  const syncIncidentTypePlaceholder = () => {
+    incidentTypePlaceholder?.classList.toggle("is-empty", !incidentTypeSelect?.value);
+  };
+  if (incidentTypePlaceholder?.dataset.empty === "true" && incidentTypeSelect) incidentTypeSelect.selectedIndex = -1;
+  incidentTypeSelect?.addEventListener("change", syncIncidentTypePlaceholder);
+  syncIncidentTypePlaceholder();
+  const syncSeverityPlaceholder = () => severityPlaceholder?.classList.toggle("is-empty", !severitySelect?.value);
+  if (severityPlaceholder?.dataset.empty === "true" && severitySelect) severitySelect.selectedIndex = -1;
+  severitySelect?.addEventListener("change", syncSeverityPlaceholder);
+  syncSeverityPlaceholder();
+  page.querySelectorAll("[data-public-custom-select]").forEach((wrapper) => {
+    const select = wrapper.querySelector("select");
+    const trigger = wrapper.querySelector("[data-public-custom-select-trigger]");
+    const triggerText = trigger.querySelector("span");
+    const menu = wrapper.querySelector("[data-public-custom-select-menu]");
+    const options = [...menu.querySelectorAll("[data-value]")];
+    const placeholder = triggerText.textContent;
+    const close = () => { menu.hidden = true; trigger.setAttribute("aria-expanded", "false"); wrapper.classList.remove("is-open"); };
+    trigger.addEventListener("click", () => {
+      const willOpen = menu.hidden;
+      page.querySelectorAll("[data-public-custom-select-menu]").forEach((other) => { other.hidden = true; });
+      page.querySelectorAll("[data-public-custom-select-trigger]").forEach((other) => other.setAttribute("aria-expanded", "false"));
+      page.querySelectorAll("[data-public-custom-select]").forEach((other) => other.classList.remove("is-open"));
+      menu.hidden = !willOpen;
+      trigger.setAttribute("aria-expanded", String(willOpen));
+      wrapper.classList.toggle("is-open", willOpen);
+    });
+    options.forEach((option) => option.addEventListener("click", () => {
+      select.value = option.dataset.value;
+      triggerText.textContent = option.textContent;
+      wrapper.classList.remove("is-empty");
+      options.forEach((item) => item.setAttribute("aria-selected", String(item === option)));
+      close();
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }));
+    document.addEventListener("click", (event) => { if (!wrapper.contains(event.target)) close(); });
+    trigger.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
+    if (!select.value) { wrapper.classList.add("is-empty"); triggerText.textContent = placeholder; }
+  });
+
+  const syncPhotoInput = () => {
+    const transfer = new DataTransfer();
+    selectedPhotos.forEach((file) => transfer.items.add(file));
+    photoInput.files = transfer.files;
+  };
+  const renderPhotoPreviews = () => {
+    previewUrls.forEach((url) => URL.revokeObjectURL(url));
+    previewUrls = selectedPhotos.map((file) => URL.createObjectURL(file));
+    photoPreview.innerHTML = "";
+    photoPreview.hidden = selectedPhotos.length === 0;
+    selectedPhotos.forEach((file, index) => {
+      const item = document.createElement("article");
+      item.innerHTML = `<button type="button" class="public-photo-preview-open"><img alt=""></button><div><span></span><small></small></div><button type="button" class="public-photo-preview-remove"><span class="material-symbols-outlined">close</span></button>`;
+      const openButton = item.querySelector(".public-photo-preview-open");
+      const removeButton = item.querySelector(".public-photo-preview-remove");
+      openButton.setAttribute("aria-label", `เปิดดู ${file.name}`);
+      openButton.querySelector("img").src = previewUrls[index];
+      openButton.querySelector("img").alt = `ภาพตัวอย่าง ${index + 1}`;
+      item.querySelector("div span").textContent = index + 1;
+      item.querySelector("div small").textContent = file.name;
+      removeButton.setAttribute("aria-label", `ลบ ${file.name}`);
+      openButton.addEventListener("click", () => {
+        photoLightboxImage.src = previewUrls[index];
+        photoLightboxImage.alt = file.name;
+        photoLightbox.showModal();
+      });
+      removeButton.addEventListener("click", () => {
+        selectedPhotos.splice(index, 1);
+        syncPhotoInput();
+        renderPhotoPreviews();
+      });
+      photoPreview.append(item);
+    });
+    photoMessage.textContent = selectedPhotos.length ? `เลือกแล้ว ${selectedPhotos.length} จาก 8 รูป` : "";
+  };
+  photoInput?.addEventListener("change", () => {
+    const incoming = [...photoInput.files];
+    const known = new Set(selectedPhotos.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
+    const valid = incoming.filter((file) => file.size <= 10 * 1024 * 1024 && ["image/jpeg", "image/png", "image/webp"].includes(file.type));
+    let overLimit = false;
+    valid.forEach((file) => {
+      const key = `${file.name}:${file.size}:${file.lastModified}`;
+      if (!known.has(key) && selectedPhotos.length < 8) {
+        selectedPhotos.push(file);
+        known.add(key);
+      } else if (!known.has(key)) overLimit = true;
+    });
+    syncPhotoInput();
+    renderPhotoPreviews();
+    if (incoming.length !== valid.length) photoMessage.textContent += " · มีไฟล์ที่ไม่รองรับหรือใหญ่เกิน 10 MB";
+    else if (overLimit) photoMessage.textContent += " · เลือกได้สูงสุด 8 รูป";
+  });
+  photoLightbox?.querySelector("[data-public-photo-lightbox-close]")?.addEventListener("click", () => photoLightbox.close());
+  photoLightbox?.addEventListener("click", (event) => { if (event.target === photoLightbox) photoLightbox.close(); });
   const geoJson = new ol.format.GeoJSON();
   const boundaryFeatures = boundaryData ? geoJson.readFeatures(boundaryData, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" }) : [];
   const boundarySource = new ol.source.Vector({ features: boundaryFeatures });
@@ -122,12 +227,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const updateSubmitState = () => {
     const hasLocation = latitudeInput.value !== "" && longitudeInput.value !== "";
     const hasConsent = consent?.checked === true;
+    const hasIncidentType = incidentTypeSelect?.value !== "";
+    const hasSeverity = severitySelect?.value !== "";
     const requiredFields = [...form.querySelectorAll("input[required], select[required], textarea[required]")].filter((field) => field !== consent);
     const hasRequiredFields = requiredFields.every((field) => field.value.trim() !== "" && field.checkValidity());
-    const ready = hasLocation && hasConsent && hasRequiredFields;
+    const ready = hasLocation && hasConsent && hasIncidentType && hasSeverity && hasRequiredFields;
     submit.disabled = !ready;
     submitHint.hidden = ready;
-    if (!hasRequiredFields) submitHint.textContent = "กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน";
+    if (!hasIncidentType || !hasSeverity || !hasRequiredFields) submitHint.textContent = "กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน";
     else if (!hasLocation) submitHint.textContent = "กรุณาปักตำแหน่งที่เกิดเหตุก่อนส่งข้อมูล";
     else if (!hasConsent) submitHint.textContent = "กรุณากดยืนยันว่าข้อมูลที่แจ้งเป็นความจริงก่อนส่งข้อมูล";
   };

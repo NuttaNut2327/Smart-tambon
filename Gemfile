@@ -19,6 +19,7 @@ gem "pdf-reader", "~> 2.13"
 gem "rexml", "~> 3.3"
 gem "rubyzip", "~> 2.3"
 gem "chunky_png", "~> 1.4"
+gem "aws-sdk-s3", require: false
 gem "bootsnap", require: false
 gem "tzinfo-data", platforms: %i[windows jruby]
 

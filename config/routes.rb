@@ -17,6 +17,7 @@ Rails.application.routes.draw do
   post "incidents", to: "incidents#create", as: :incidents
   patch "incidents/:id", to: "incidents#update", as: :incident
   delete "incidents/:id", to: "incidents#destroy"
+  get "incidents/:id/photos/:photo_id", to: "incidents#photo", as: :incident_photo
   get "incidents/:id/assessment", to: "incidents#assessment", as: :assessment_incident
   post "incidents/:id/calculate_assessment", to: "incidents#calculate_assessment", as: :calculate_incident_assessment
   get "situation_assessment", to: "incidents#standalone_assessment", as: :situation_assessment

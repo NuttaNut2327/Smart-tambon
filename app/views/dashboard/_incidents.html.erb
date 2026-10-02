@@ -88,6 +88,21 @@
           </section>
         </div>
 
+        <% incident_photos = Array(incident.photos) %>
+        <% if incident_photos.any? %>
+          <section class="incident-card incident-photo-card">
+            <div class="incident-card-heading"><div><h3>รูปภาพประกอบเหตุการณ์</h3><p><%= incident_photos.size %> รูป</p></div></div>
+            <div class="incident-photo-grid">
+              <% incident_photos.each do |photo| %>
+                <% photo_url = incident_photo_path(incident, photo["id"]) %>
+                <%= link_to photo_url, target: "_blank", rel: "noopener", aria: { label: "เปิดรูปภาพประกอบเหตุการณ์" } do %>
+                  <%= image_tag photo_url, alt: "รูปภาพประกอบเหตุการณ์", loading: "lazy" %>
+                <% end %>
+              <% end %>
+            </div>
+          </section>
+        <% end %>
+
         <% if incident.response_plan_versions.any? %>
           <section class="incident-card incident-plan-card">
             <div class="incident-card-heading"><div><h3>แผนรับมือของเหตุการณ์นี้</h3><p>เลือกดูแต่ละ Version และกำหนด Version ที่ต้องการนำไปใช้</p></div><% if @selected_plan && (current_user.system_admin? || current_user.subdistrict_admin?) %><button type="button" class="incident-secondary-action compact incident-plan-edit" data-edit-response-plan><span class="material-symbols-outlined">edit</span>แก้ไขทรัพยากร</button><% end %></div>

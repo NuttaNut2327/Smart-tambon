@@ -110,7 +110,7 @@ class DashboardController < ApplicationController
           title: incident.title, place: location_name,
           longitude: incident.longitude, latitude: incident.latitude,
           approximate_address: location_name.present? && !location_name.start_with?("ตำแหน่งที่") && location_name != "ไม่ระบุสถานที่",
-          time: incident.created_at&.in_time_zone&.strftime("%d/%m/%Y %H:%M น."),
+          time: helpers.thai_short_datetime(incident.created_at),
           reporter: [incident.reporter_name, incident.reporter_contact].compact_blank.join(" · ").presence || incident.report_source_label,
           team: incident.assigned_to.presence || "ยังไม่มอบหมายผู้รับผิดชอบ",
           impact: incident.initial_impact.presence || "ยังไม่มีข้อมูลผลกระทบเบื้องต้น",

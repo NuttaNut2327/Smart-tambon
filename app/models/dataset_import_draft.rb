@@ -13,7 +13,7 @@ class DatasetImportDraft
   field :validation_summary, type: Hash, default: {}
   field :expires_at, type: Time
   has_many :rows, class_name: "DatasetImportDraftRow", dependent: :destroy
-  index({ user_id: 1 }); index({ expires_at: 1 }, expire_after_seconds: 0)
+  index({ user_id: 1 }); index({ expires_at: 1 })
   validates :user_id, :source_filename, :expires_at, presence: true
   validates :data_type, inclusion: { in: ImportedDataset::TYPE_LABELS.keys }
   scope :active, -> { where(:expires_at.gt => Time.current) }
