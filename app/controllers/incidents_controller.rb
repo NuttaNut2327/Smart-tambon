@@ -22,6 +22,7 @@ class IncidentsController < ApplicationController
     @page_mode = :disasters
     @assigned_subdistrict = current_user.subdistrict unless current_user.system_admin?
     @provinces = current_user.system_admin? ? Province.alphabetical : [@assigned_subdistrict&.province].compact
+    load_map_layer_data(include_incidents: false)
     render :assessment
   rescue Mongoid::Errors::DocumentNotFound
     redirect_to disasters_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"
@@ -33,22 +34,7 @@ class IncidentsController < ApplicationController
     @page_mode = :city_map
     @assigned_subdistrict = current_user.subdistrict unless current_user.system_admin?
     @provinces = current_user.system_admin? ? Province.alphabetical : [@assigned_subdistrict&.province].compact
-    @map_incidents = Incident.visible_to(current_user).where(category: "general").to_a.filter_map do |incident|
-      next unless incident.longitude.present? && incident.latitude.present?
-
-      {
-        id: incident.id.to_s, reference_code: incident.reference_code, title: incident.title,
-        source: incident.report_source_label, longitude: incident.longitude, latitude: incident.latitude,
-        severity: incident.severity, description: incident.description.to_s.truncate(180),
-        status: incident.status, url: general_incidents_path(incident_id: incident.id)
-      }
-    end
-    @map_incident_sources = @map_incidents.group_by { |incident| incident[:source] }
-    @map_datasets = ImportedDataset.visible_to(current_user)
-      .where(map_enabled: true)
-      .to_a
-      .reject { |dataset| dataset.data_type == "village_boundaries" }
-      .sort_by { |dataset| dataset.name.to_s }
+    load_map_layer_data(include_incidents: true)
     render :assessment
   end
 
@@ -464,6 +450,30 @@ class IncidentsController < ApplicationController
   end
 
   private
+
+  def load_map_layer_data(include_incidents:)
+    @map_incidents =
+      if include_incidents
+        Incident.visible_to(current_user).where(category: "general").to_a.filter_map do |incident|
+          next unless incident.longitude.present? && incident.latitude.present?
+
+          {
+            id: incident.id.to_s, reference_code: incident.reference_code, title: incident.title,
+            source: incident.report_source_label, longitude: incident.longitude, latitude: incident.latitude,
+            severity: incident.severity, description: incident.description.to_s.truncate(180),
+            status: incident.status, url: general_incidents_path(incident_id: incident.id)
+          }
+        end
+      else
+        []
+      end
+    @map_incident_sources = @map_incidents.group_by { |incident| incident[:source] }
+    @map_datasets = ImportedDataset.visible_to(current_user)
+      .where(map_enabled: true)
+      .to_a
+      .reject { |dataset| dataset.data_type == "village_boundaries" }
+      .sort_by { |dataset| dataset.name.to_s }
+  end
 
   def find_incident
     Incident.visible_to(current_user).find(params[:id])
