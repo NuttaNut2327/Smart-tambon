@@ -31,11 +31,28 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, dataset.current_version.records.first["village_number"]
     assert_equal "บ้านทดสอบ", dataset.current_version.records.first["village_name"]
     assert_equal "population.csv", dataset.current_version.source_filename
+    assert_equal "ข้อมูลประชากร #{Time.zone.today.strftime('%d-%m-%Y')}", dataset.current_version.display_name
     assert_not dataset.map_enabled?
     assert_not DatasetImportDraft.exists?(draft_id)
+
+    Tempfile.create(["population-more", ".csv"]) do |file|
+      file.write("ตำบล,หมู่ที่,หมู่บ้าน,ชาย,หญิง,ทั้งหมด,ครัวเรือน\nตำบลทดสอบ,2,บ้านถัดไป,4,6,10,5\n")
+      file.flush
+      upload = Rack::Test::UploadedFile.new(file.path, "text/csv", original_filename: "population-more.csv")
+      post dataset_import_drafts_path, params: { data_type: "population", file: upload }, as: :multipart
+    end
+    assert_response :success, response.body
+    append_draft_id = response.parsed_body.fetch("id")
+    post validate_dataset_import_draft_path(append_draft_id), params: { mapping: mapping }
+    assert_response :success, response.body
+    post finalize_dataset_import_draft_path(append_draft_id), params: { import_mode: "append" }
+    assert_response :success, response.body
+
+    assert_equal 2, dataset.reload.current_version.version_number
+    assert_equal ["บ้านทดสอบ", "บ้านถัดไป"], dataset.current_version.records.map { |record| record["village_name"] }
   end
 
-  test "manual entry appends a record and creates a new version" do
+  test "manual entry appends a record to the current manual working version" do
     dataset = ImportedDataset.create!(user: @user, name: "ประชากรเดิม", data_type: "population", geometry_type: "none",
       schema_definition: ImportedDataset.schema_for("population"), shared_with_all: true)
     DatasetVersionImportService.new(dataset: dataset, user: @user,
@@ -46,7 +63,8 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
       record: { subdistrict: "ตำบลทดสอบ", village_number: 2, village_name: "บ้านสอง", population_male: 3, population_female: 3,
                 population_total: 6, household_count: 3 } }
     assert_response :success, response.body
-    assert_equal 2, dataset.reload.current_version.version_number
+    assert_equal 1, dataset.reload.current_version.version_number
+    assert_equal 1, dataset.versions.count
     assert_equal ["บ้านหนึ่ง", "บ้านสอง"], dataset.current_version.records.map { |record| record["village_name"] }
   end
 
@@ -54,54 +72,220 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
     get data_layers_path(data_type: "resources")
     assert_response :success
     assert_select "table.fixed-data-table"
-    assert_select "#manual-data-dialog"
-    assert_select "#file-import-dialog[data-selected-type='resources']"
+    assert_select "#manual-data-dialog" do
+      assert_select "[name='import_mode']", count: 0
+      assert_select ".automatic-destination-note", text: /เพิ่มรายการนี้ในรุ่นข้อมูลที่กรอกด้วยตนเองล่าสุด/
+    end
+    assert_select "#file-import-dialog[data-selected-type='resources']" do
+      assert_select "[name='import_mode'][value='replace'][checked]", count: 1
+      assert_select "[name='import_mode'][value='append']", count: 1
+      assert_select "[name='version_name'][value='ข้อมูลทรัพยากรและอุปกรณ์ #{Time.zone.today.strftime('%d-%m-%Y')}']", count: 1
+    end
     assert_select "[name='target_dataset_id']", count: 0
-    assert_select ".automatic-destination-note", text: /Version ใหม่/
+    assert_select ".automatic-destination-note", text: /รุ่นข้อมูลใหม่/
   end
 
-  test "edits and deletes a population row by creating new versions" do
+  test "village boundary data page has a back link to population data" do
+    get data_layers_path(data_type: "village_boundaries")
+
+    assert_response :success
+    assert_select "a.boundary-back-link[href='#{data_layers_path(data_type: "population")}']", text: /กลับไปข้อมูลประชากร/
+  end
+
+  test "renames one population version without changing its dataset or records" do
+    dataset = ImportedDataset.create!(user: @user, name: "ข้อมูลประชากร", data_type: "population", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("population"), shared_with_all: true)
+    version = DatasetVersionImportService.new(dataset: dataset, user: @user,
+      manual_records: [{ subdistrict: "ตำบลทดสอบ", village_number: 1, village_name: "บ้านหนึ่ง", population_male: 2,
+                         population_female: 3, population_total: 5, household_count: 2 }]).import!
+
+    patch imported_dataset_version_path(dataset, version),
+      params: { imported_dataset_version: { display_name: "ข้อมูลประชากรเดือนตุลาคม 2569" } }
+
+    assert_redirected_to data_layers_path(data_type: "population")
+    assert_equal "ข้อมูลประชากรเดือนตุลาคม 2569", version.reload.display_name
+    assert_equal "ข้อมูลประชากร", dataset.reload.name
+    assert_equal 1, dataset.versions.count
+    assert_equal 5, version.records.first["population_total"]
+  end
+
+  test "shows the records stored in a historical version without activating it" do
+    dataset = ImportedDataset.create!(user: @user, name: "ข้อมูลประชากร", data_type: "population", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("population"), shared_with_all: true)
+    first_record = { subdistrict: "ตำบลทดสอบ", village_number: 1, village_name: "บ้าน Version แรก",
+                     population_male: 2, population_female: 3, population_total: 5, household_count: 2 }
+    second_record = first_record.merge(village_name: "บ้าน Version ใหม่", population_total: 6)
+    first_version = DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [first_record],
+      source_kind: "file", display_name: "ข้อมูลประชากร Version แรก").import!
+    second_version = DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [second_record],
+      source_kind: "file", display_name: "ข้อมูลประชากร Version ใหม่").import!
+
+    get imported_dataset_version_path(dataset, first_version)
+
+    assert_response :success
+    assert_select ".version-snapshot-header h1", text: "ข้อมูลประชากร Version แรก"
+    assert_select ".version-snapshot-meta", text: /รุ่นข้อมูลย้อนหลัง/
+    assert_select ".version-snapshot-table", text: /บ้าน Version แรก/
+    assert_select ".version-snapshot-table", text: /บ้าน Version ใหม่/, count: 0
+    assert_equal second_version.id, dataset.reload.current_version_id
+
+    get imported_dataset_version_path(dataset, first_version), params: { paginated: "1", page: 1 }, as: :json
+    assert_response :success
+    assert_equal "ข้อมูลประชากร Version แรก", response.parsed_body["display_name"]
+    assert_equal 1, response.parsed_body.dig("pagination", "total")
+    assert_equal "บ้าน Version แรก", response.parsed_body.dig("records", 0, "village_name")
+  end
+
+  test "does not rename the standard population dataset" do
+    dataset = ImportedDataset.create!(user: @user, name: "ข้อมูลประชากร", data_type: "population", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("population"), shared_with_all: true)
+
+    patch imported_dataset_path(dataset), params: { imported_dataset: { name: "ชื่อที่ไม่ควรถูกบันทึก" } }
+
+    assert_redirected_to data_layers_path(data_type: "population")
+    assert_equal "ข้อมูลประชากร", dataset.reload.name
+  end
+
+  test "links the current population and village boundary versions without dropdown ids" do
+    population = ImportedDataset.create!(user: @user, name: "ข้อมูลประชากร", data_type: "population", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("population"), shared_with_all: true)
+    boundary = ImportedDataset.create!(user: @user, name: "ขอบเขตหมู่บ้าน", data_type: "village_boundaries", geometry_type: "polygon",
+      schema_definition: ImportedDataset.schema_for("village_boundaries"), shared_with_all: true, map_enabled: true)
+    population_record = { subdistrict: "ตำบลทดสอบ", village_code: "V001", village_number: 1, village_name: "บ้านหนึ่ง",
+                          population_male: 2, population_female: 3, population_total: 5, household_count: 2 }
+    boundary_record = { subdistrict: "ตำบลทดสอบ", village_code: "V001", village_number: 1, village_name: "บ้านหนึ่ง",
+                        geometry: { type: "Polygon", coordinates: [[[100.0, 13.0], [100.1, 13.0], [100.1, 13.1], [100.0, 13.0]]] }.to_json }
+    DatasetVersionImportService.new(dataset: population, user: @user, manual_records: [population_record]).import!
+    DatasetVersionImportService.new(dataset: boundary, user: @user, manual_records: [boundary_record]).import!
+    assert_equal "needs_matching", population.reload.boundary_link_status
+
+    get data_layers_path(data_type: "village_boundaries")
+    assert_response :success
+    assert_select ".boundary-link-form select", count: 0
+    assert_select ".boundary-link-form", text: /จับคู่ข้อมูล/
+
+    post link_village_boundaries_path
+
+    assert_redirected_to data_layers_path(data_type: "village_boundaries")
+    linked_record = population.reload.current_version.records.first
+    assert_equal "เชื่อมแล้ว", linked_record["boundary_status"]
+    assert_equal boundary.id.to_s, linked_record["boundary_dataset_id"]
+    assert_equal boundary.current_version.records.first["record_id"], linked_record["boundary_record_id"]
+    assert_equal "linked", population.reload.boundary_link_status
+    assert_equal boundary.current_version_id, population.linked_boundary_version_id
+
+    changed_boundary = boundary.current_version.records.first.merge("village_name" => "บ้านหนึ่งปรับปรุง")
+    DatasetVersionImportService.new(dataset: boundary, user: @user, manual_records: [changed_boundary]).import!
+    assert_equal "needs_matching", population.reload.boundary_link_status
+  end
+
+  test "edits and deletes a population row in the current manual working version" do
     dataset = ImportedDataset.create!(user: @user, name: "ประชากรแก้ไข", data_type: "population", geometry_type: "none",
       schema_definition: ImportedDataset.schema_for("population"), shared_with_all: true)
     original = { subdistrict: "ตำบลทดสอบ", village_number: 1, village_name: "บ้านหนึ่ง", population_male: 2, population_female: 3,
-                 population_total: 5, household_count: 2 }
+                 population_total: 5, household_count: 2, boundary_status: "เชื่อมแล้ว",
+                 boundary_dataset_id: BSON::ObjectId.new.to_s, boundary_record_id: "boundary-1", boundary_record_position: 0 }
     DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [original]).import!
+    original_record_id = dataset.reload.current_version.records.first["record_id"]
 
-    patch imported_dataset_record_path(dataset, 0), params: { record: original.merge(population_total: 6) }
+    patch imported_dataset_record_path(dataset, 0), params: { record: original.merge(village_number: 2, population_total: 6) }
     assert_response :success, response.body
-    assert_equal 2, dataset.reload.current_version.version_number
+    assert_equal 1, dataset.reload.current_version.version_number
+    assert_equal 2, dataset.current_version.records.first["village_number"]
     assert_equal 6, dataset.current_version.records.first["population_total"]
+    assert_equal original_record_id, dataset.current_version.records.first["record_id"]
+    assert_equal "ยังไม่เชื่อมขอบเขต", dataset.current_version.records.first["boundary_status"]
+    assert_nil dataset.current_version.records.first["boundary_record_id"]
+    assert_equal "needs_matching", dataset.boundary_link_status
+    update_log = DatasetChangeLog.where(imported_dataset_id: dataset.id, action: "update").first
+    assert_equal %w[boundary_status population_total village_number], update_log.changed_fields.sort
 
     delete imported_dataset_record_path(dataset, 0)
     assert_response :success, response.body
-    assert_equal 3, dataset.reload.current_version.version_number
+    assert_equal 1, dataset.reload.current_version.version_number
     assert_empty dataset.current_version.records
-    assert_equal 1, dataset.versions.find_by(version_number: 1).record_count
+    assert_equal 1, dataset.versions.count
+    assert_equal 3, dataset.current_version.change_history.size
+    assert_equal %w[add update delete], DatasetChangeLog.where(imported_dataset_id: dataset.id).asc(:created_at).pluck(:action)
   end
 
-  test "edits a resource row by creating a new version" do
+  test "rejects changing a population row into a duplicate village" do
+    dataset = ImportedDataset.create!(user: @user, name: "ประชากรซ้ำ", data_type: "population", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("population"), shared_with_all: true)
+    first = { subdistrict: "ตำบลทดสอบ", village_number: 1, village_name: "บ้านหนึ่ง", population_male: 2,
+              population_female: 3, population_total: 5, household_count: 2 }
+    second = first.merge(village_number: 2, village_name: "บ้านสอง")
+    DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [first, second]).import!
+
+    patch imported_dataset_record_path(dataset, 0), params: { record: first.merge(village_number: 2, village_name: "บ้านสอง") }
+
+    assert_response :unprocessable_entity
+    assert_match(/มีข้อมูลหมู่บ้านนี้อยู่แล้ว/, response.parsed_body["error"])
+    assert_equal [1, 2], dataset.reload.current_version.records.map { |record| record["village_number"] }
+  end
+
+  test "creates an immutable checkpoint from the current manual version" do
+    dataset = ImportedDataset.create!(user: @user, name: "ข้อมูลประชากร", data_type: "population", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("population"), shared_with_all: true)
+    record = { subdistrict: "ตำบลทดสอบ", village_number: 1, village_name: "บ้านหนึ่ง", population_male: 2,
+               population_female: 3, population_total: 5, household_count: 2 }
+    manual = DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [record]).import!
+
+    post checkpoint_imported_dataset_versions_path(dataset)
+
+    assert_redirected_to data_layers_path(data_type: "population")
+    checkpoint = dataset.reload.current_version
+    assert_equal 2, checkpoint.version_number
+    assert_equal "checkpoint", checkpoint.source_kind
+    assert_equal manual.records, checkpoint.records
+    assert_equal "checkpoint", DatasetChangeLog.where(imported_dataset_id: dataset.id).desc(:created_at).first.action
+  end
+
+  test "edits a resource row in the current manual working version" do
     dataset = ImportedDataset.create!(user: @user, name: "ทรัพยากร", data_type: "resources", geometry_type: "none",
       schema_definition: ImportedDataset.schema_for("resources"), shared_with_all: true)
     record = { name: "เครื่องสูบน้ำ", code: "P-01", registration: "กข-123", resource_type: "เครื่องสูบน้ำ",
-               status: "พร้อมใช้", storage_location: "คลังกลาง", responsible_person: "สมชาย" }
+               status: "พร้อมใช้", storage_location: "คลังกลาง", responsible_person: "อบต.ทดสอบ",
+               agency_code: "AG-001" }
     DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [record]).import!
 
     patch imported_dataset_record_path(dataset, 0), params: { record: record.merge(status: "ซ่อมบำรุง") }
     assert_response :success, response.body
-    assert_equal 2, dataset.reload.current_version.version_number
+    assert_equal 1, dataset.reload.current_version.version_number
     assert_equal "ซ่อมบำรุง", dataset.current_version.records.first["status"]
   end
 
-  test "edits a workforce row by creating a new version" do
+  test "editing a legacy row without a record id is logged as one update" do
+    dataset = ImportedDataset.create!(user: @user, name: "ทรัพยากรเดิม", data_type: "resources", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("resources"), shared_with_all: true)
+    record = { name: "เครื่องสูบน้ำเดิม", registration: "กข-123", resource_type: "เครื่องสูบน้ำ",
+               status: "พร้อมใช้", storage_location: "คลังกลาง", responsible_person: "อบต.ทดสอบ",
+               agency_code: "AG-001" }
+    DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [record]).import!
+    document = dataset.current_version.record_documents.first
+    document.set(payload: document.payload.except("record_id", "code"))
+    DatasetChangeLog.where(imported_dataset_id: dataset.id).delete_all
+
+    patch imported_dataset_record_path(dataset, 0), params: { record: record.merge(name: "เครื่องสูบน้ำใหม่") }
+
+    assert_response :success
+    assert_equal "เครื่องสูบน้ำใหม่", dataset.reload.current_version.records.first["name"]
+    assert dataset.current_version.records.first["record_id"].present?
+    assert_equal ["update"], DatasetChangeLog.where(imported_dataset_id: dataset.id).pluck(:action)
+  end
+
+  test "edits a workforce row in the current manual working version" do
     dataset = ImportedDataset.create!(user: @user, name: "ทีมงาน", data_type: "workforce", geometry_type: "none",
       schema_definition: ImportedDataset.schema_for("workforce"), shared_with_all: true)
-    record = { team_name: "ทีมกู้ภัย", duty: "ช่วยเหลือฉุกเฉิน", member_count: 12, ready_count: 10,
-               responsible_area: "หมู่ 1-3", team_leader: "สมหญิง" }
+    record = { full_name: "สมหญิง ทดสอบ", position: "เจ้าหน้าที่กู้ภัย", skills: "ช่วยเหลือฉุกเฉิน",
+               agency_code: "AG-001", agency_name: "อบต.ทดสอบ", team_code: "TEAM-001",
+               team_name: "ทีมกู้ภัย", employment_status: "ปฏิบัติงาน",
+               availability_status: "พร้อมปฏิบัติงาน", phone: "0812345678" }
     DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [record]).import!
 
-    patch imported_dataset_record_path(dataset, 0), params: { record: record.merge(ready_count: 11) }
+    patch imported_dataset_record_path(dataset, 0), params: { record: record.merge(availability_status: "ติดภารกิจ") }
     assert_response :success, response.body
-    assert_equal 2, dataset.reload.current_version.version_number
-    assert_equal 11, dataset.current_version.records.first["ready_count"]
+    assert_equal 1, dataset.reload.current_version.version_number
+    assert_equal "ติดภารกิจ", dataset.current_version.records.first["availability_status"]
   end
 end

@@ -27,13 +27,17 @@ class VillageBoundaryLinkService
       else
         record["boundary_status"] = "ยังไม่เชื่อมขอบเขต"
         record.delete("boundary_dataset_id")
+        record.delete("boundary_record_id")
         record.delete("boundary_record_position")
         counts[:unmatched] += 1
       end
     end
 
-    DatasetVersionImportService.new(dataset: @population_dataset, user: @user, manual_records: populations,
-      source_kind: "manual", change_note: "เชื่อมข้อมูลกับ #{@boundary_dataset.name}").import!
+    linked_version = DatasetVersionImportService.new(dataset: @population_dataset, user: @user, manual_records: populations,
+      source_kind: "manual", change_note: "เชื่อมข้อมูลกับ #{@boundary_dataset.name}", skip_boundary_link_state: true).import!
+    @population_dataset.set(boundary_link_status: "linked", boundary_linked_at: Time.current,
+      linked_boundary_dataset_id: @boundary_dataset.id, linked_population_version_id: linked_version.id,
+      linked_boundary_version_id: @boundary_dataset.current_version_id)
     counts
   end
 
@@ -45,9 +49,10 @@ class VillageBoundaryLinkService
   end
 
   def attach(record, match)
-    _boundary_record, position = match
+    boundary_record, position = match
     record["boundary_status"] = "เชื่อมแล้ว"
     record["boundary_dataset_id"] = @boundary_dataset.id.to_s
+    record["boundary_record_id"] = boundary_record["record_id"]
     record["boundary_record_position"] = position
   end
 

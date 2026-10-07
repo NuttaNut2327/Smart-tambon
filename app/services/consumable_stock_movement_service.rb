@@ -28,7 +28,8 @@ class ConsumableStockMovementService
 
     record["current_quantity"] = after_quantity
     version = DatasetVersionImportService.new(dataset: @dataset, user: @user, manual_records: records,
-      source_kind: "manual", change_note: "#{movement_label} #{record['name']} #{@quantity.to_fs(:delimited)} #{record['unit']}").import!
+      source_kind: "manual", change_note: "#{movement_label} #{record['name']} #{@quantity.to_fs(:delimited)} #{record['unit']}",
+      skip_audit_log: true).import!
     ConsumableMovement.create!(imported_dataset_id: @dataset.id, consumable_code: record["consumable_code"],
       consumable_name: record["name"], unit: record["unit"], agency_code: record["agency_code"],
       agency_name: record["agency_name"], movement_type: @movement_type, quantity: @quantity,

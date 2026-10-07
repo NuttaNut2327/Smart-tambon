@@ -1,4 +1,32 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const dataLayerTabs = [...document.querySelectorAll("[data-data-layer-tab]")];
+  const dataLayerPanels = [...document.querySelectorAll("[data-data-layer-tab-panel]")];
+  dataLayerTabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      const selectedTab = tab.dataset.dataLayerTab;
+      dataLayerTabs.forEach(item => {
+        const active = item === tab;
+        item.classList.toggle("active", active);
+        item.setAttribute("aria-selected", String(active));
+      });
+      dataLayerPanels.forEach(panel => {
+        const active = panel.dataset.dataLayerTabPanel === selectedTab;
+        panel.hidden = !active;
+        panel.classList.toggle("active", active);
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-audit-toggle]").forEach(button => {
+    button.addEventListener("click", () => {
+      const detailRow = document.getElementById(button.dataset.auditToggle);
+      if (!detailRow) return;
+      const expanded = button.getAttribute("aria-expanded") === "true";
+      button.setAttribute("aria-expanded", String(!expanded));
+      detailRow.hidden = expanded;
+    });
+  });
+
   document.querySelectorAll("[data-map-layer-visibility-form]").forEach((form) => {
     form.querySelector('input[type="checkbox"][name="imported_dataset[map_enabled]"]')?.addEventListener("change", () => form.requestSubmit());
   });
@@ -15,6 +43,46 @@ document.addEventListener("DOMContentLoaded", () => {
     const query = event.target.value.trim().toLowerCase();
     document.querySelectorAll("[data-fixed-row]").forEach(row => row.hidden = !row.dataset.search.includes(query));
   });
+
+  const versionPreviewLinks = document.querySelectorAll("[data-version-preview-url]");
+  if (versionPreviewLinks.length) {
+    const previewDialog = document.createElement("dialog");
+    previewDialog.className = "dataset-modal standard-version-preview-modal";
+    previewDialog.innerHTML = `<header><div><small data-version-preview-label>ประวัติรุ่นข้อมูล</small><h2 data-version-preview-title>ข้อมูลในรุ่นนี้</h2></div><button type="button" aria-label="ปิด">×</button></header><div class="standard-version-preview-meta"><span data-version-preview-note></span><span data-version-preview-count></span></div><div class="standard-version-preview-body"><div class="standard-version-preview-loading">กำลังโหลดข้อมูล…</div></div><footer class="standard-version-preview-footer"><span data-version-preview-page></span><div><button type="button" class="button-link" data-version-preview-previous>‹ ก่อนหน้า</button><button type="button" class="button-link" data-version-preview-next>ถัดไป ›</button></div></footer>`;
+    document.body.append(previewDialog);
+    const body = previewDialog.querySelector(".standard-version-preview-body");
+    const previous = previewDialog.querySelector("[data-version-preview-previous]");
+    const nextPage = previewDialog.querySelector("[data-version-preview-next]");
+    let activeUrl = "", activePage = 1, totalPages = 1;
+    const closePreview = () => previewDialog.close();
+    const loadVersionPage = async page => {
+      body.innerHTML = '<div class="standard-version-preview-loading">กำลังโหลดข้อมูล…</div>';
+      try {
+        const separator = activeUrl.includes("?") ? "&" : "?";
+        const version = await request(`${activeUrl}${separator}paginated=1&page=${page}`);
+        activePage = version.pagination.page; totalPages = version.pagination.total_pages;
+        previewDialog.querySelector("[data-version-preview-label]").textContent = `รุ่นข้อมูลที่ ${version.version_number}`;
+        previewDialog.querySelector("[data-version-preview-title]").textContent = version.display_name;
+        previewDialog.querySelector("[data-version-preview-note]").textContent = version.change_note || "ไม่มีรายละเอียดเพิ่มเติม";
+        previewDialog.querySelector("[data-version-preview-count]").textContent = `${Number(version.pagination.total).toLocaleString()} รายการ`;
+        previewDialog.querySelector("[data-version-preview-page]").textContent = `หน้า ${activePage} จาก ${totalPages}`;
+        previous.disabled = activePage <= 1; nextPage.disabled = activePage >= totalPages;
+        const headers = version.schema.map(field => `<th>${escapeHtml(field.label)}</th>`).join("");
+        const rows = version.records.map(record => `<tr>${version.schema.map(field => `<td>${escapeHtml(record[field.key] ?? "—")}</td>`).join("")}</tr>`).join("") || `<tr class="empty-row"><td colspan="${Math.max(version.schema.length, 1)}">รุ่นข้อมูลนี้ไม่มีข้อมูล</td></tr>`;
+        body.innerHTML = `<table class="fixed-data-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+      } catch (error) {
+        body.innerHTML = `<div class="standard-version-preview-loading">${escapeHtml(error.message)}</div>`;
+      }
+    };
+    versionPreviewLinks.forEach(link => link.addEventListener("click", event => {
+      event.preventDefault(); activeUrl = link.dataset.versionPreviewUrl; activePage = 1;
+      previewDialog.showModal(); loadVersionPage(1);
+    }));
+    previewDialog.querySelector("header button").addEventListener("click", closePreview);
+    previewDialog.addEventListener("click", event => { if (event.target === previewDialog) closePreview(); });
+    previous.addEventListener("click", () => { if (activePage > 1) loadVersionPage(activePage - 1); });
+    nextPage.addEventListener("click", () => { if (activePage < totalPages) loadVersionPage(activePage + 1); });
+  }
 
   const manualDialog = document.querySelector("#manual-data-dialog");
   if (manualDialog) {
@@ -248,7 +316,7 @@ document.addEventListener("DOMContentLoaded", () => {
     status.className = "modal-status"; status.textContent = "กำลังบันทึกข้อมูล…"; submit.disabled = true;
     try {
       const payload = await request("/dataset_import_drafts/manual", { method: "POST", body: new FormData(form) });
-      status.textContent = `บันทึกเป็น Version ${payload.version} แล้ว`;
+      status.textContent = `บันทึกเป็นรุ่นข้อมูลที่ ${payload.version} แล้ว`;
       window.location.assign(payload.redirect_url);
     } catch (error) { status.classList.add("error"); status.textContent = error.message; submit.disabled = false; }
   });
@@ -299,6 +367,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-edit-population]").forEach(button => button.addEventListener("click", () => {
     const record = JSON.parse(button.dataset.record);
     editPopulationForm.dataset.url = button.dataset.url;
+    editPopulationForm.dataset.originalRecord = JSON.stringify(record);
     editPopulationForm.querySelectorAll("[data-edit-field]").forEach(input => input.value = record[input.dataset.editField] ?? "");
     editPopulationForm.querySelector("[name=change_note]").value = "";
     const status = editPopulationForm.querySelector("[data-edit-status]");
@@ -310,19 +379,29 @@ document.addEventListener("DOMContentLoaded", () => {
   editPopulationForm?.addEventListener("submit", async event => {
     event.preventDefault();
     const form = event.currentTarget, status = form.querySelector("[data-edit-status]"), submit = form.querySelector("[type=submit]");
+    const selectedType = document.querySelector("#file-import-dialog")?.dataset.selectedType;
+    if (selectedType === "population") {
+      const original = JSON.parse(form.dataset.originalRecord || "{}");
+      const identityFields = ["village_code", "subdistrict_code", "subdistrict", "village_number", "village_name"];
+      const identityChanged = identityFields.some(key => {
+        const input = form.elements[`record[${key}]`];
+        return input && String(input.value ?? "").trim() !== String(original[key] ?? "").trim();
+      });
+      if (identityChanged && !window.confirm("คุณกำลังเปลี่ยนข้อมูลระบุตัวตนของหมู่บ้าน ระบบจะตรวจสอบข้อมูลซ้ำและยกเลิกการจับคู่ขอบเขตเดิม เพื่อให้จับคู่ใหม่อีกครั้ง ยืนยันการแก้ไขหรือไม่?")) return;
+    }
     if (document.querySelector("#file-import-dialog")?.dataset.selectedType === "agencies" && (!form.elements["record[latitude]"]?.value || !form.elements["record[longitude]"]?.value)) {
       status.className = "modal-status error"; status.textContent = "กรุณาปักหมุดสถานที่ตั้งหน่วยงานก่อนบันทึก"; return;
     }
-    status.className = "modal-status"; status.textContent = "กำลังบันทึกและสร้าง Version ใหม่…"; submit.disabled = true;
+    status.className = "modal-status"; status.textContent = "กำลังบันทึกการแก้ไข…"; submit.disabled = true;
     try {
       const payload = await request(form.dataset.url, { method: "PATCH", body: new FormData(form) });
-      status.textContent = `แก้ไขเรียบร้อย เป็น Version ${payload.version}`;
+      status.textContent = `แก้ไขเรียบร้อย เป็นรุ่นข้อมูลที่ ${payload.version}`;
       window.location.assign(payload.redirect_url);
     } catch (error) { status.classList.add("error"); status.textContent = error.message; submit.disabled = false; }
   });
   document.querySelectorAll("[data-delete-population]").forEach(button => button.addEventListener("click", async () => {
     const recordType = document.querySelector(".catalog-hero h2")?.textContent.trim() || "ข้อมูล";
-    if (!window.confirm(`ยืนยันลบ${recordType}รายการนี้? ข้อมูลเดิมจะยังอยู่ในประวัติ Version`)) return;
+    if (!window.confirm(`ยืนยันลบ${recordType}รายการนี้? ข้อมูลเดิมจะยังอยู่ในประวัติรุ่นข้อมูล`)) return;
     button.disabled = true;
     try {
       const payload = await request(button.dataset.url, { method: "DELETE" });
@@ -359,7 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const editor = document.createElement("dialog");
     editor.className = "dataset-modal";
-    editor.innerHTML = `<form><header><div><small>แก้ไขข้อมูลทรัพยากรและอุปกรณ์</small><h2>แก้ไขรายการ</h2></div><button type="button" aria-label="ปิด">×</button></header><div class="modal-info">เมื่อบันทึก ระบบจะสร้าง Version ใหม่และเก็บข้อมูลเดิมไว้ในประวัติ</div><div class="manual-fixed-grid">${resourceFields.map(([key, label, required]) => `<label>${label}${required ? " *" : ""}<input name="record[${key}]" ${required ? "required" : ""}></label>`).join("")}</div><label class="record-change-note">รายละเอียดการแก้ไข<input name="change_note" placeholder="เช่น ปรับสถานะอุปกรณ์"></label><p class="modal-status"></p><footer><button type="button" class="button-link" data-resource-close>ยกเลิก</button><button class="data-layer-add" type="submit">บันทึกเป็น Version ใหม่</button></footer></form>`;
+    editor.innerHTML = `<form><header><div><small>แก้ไขข้อมูลทรัพยากรและอุปกรณ์</small><h2>แก้ไขรายการ</h2></div><button type="button" aria-label="ปิด">×</button></header><div class="modal-info">ระบบจะอัปเดต Version ที่กรอกเองล่าสุด หากข้อมูลปัจจุบันมาจากไฟล์ ระบบจะสร้าง Version สำหรับการแก้ไขขึ้นใหม่</div><div class="manual-fixed-grid">${resourceFields.map(([key, label, required]) => `<label>${label}${required ? " *" : ""}<input name="record[${key}]" ${required ? "required" : ""}></label>`).join("")}</div><label class="record-change-note">รายละเอียดการแก้ไข<input name="change_note" placeholder="เช่น ปรับสถานะอุปกรณ์"></label><p class="modal-status"></p><footer><button type="button" class="button-link" data-resource-close>ยกเลิก</button><button class="data-layer-add" type="submit">บันทึกการแก้ไข</button></footer></form>`;
     document.body.append(editor);
     const resourceForm = editor.querySelector("form"), resourceStatus = editor.querySelector(".modal-status");
     const openResourceEditor = (url, record) => {
@@ -369,7 +448,7 @@ document.addEventListener("DOMContentLoaded", () => {
       editor.showModal();
     };
     const deleteResourceRecord = async (button, url) => {
-      if (!window.confirm("ยืนยันลบข้อมูลทรัพยากร/อุปกรณ์รายการนี้? ข้อมูลเดิมจะยังอยู่ในประวัติ Version")) return;
+      if (!window.confirm("ยืนยันลบข้อมูลทรัพยากร/อุปกรณ์รายการนี้? ข้อมูลเดิมจะยังอยู่ในประวัติรุ่นข้อมูล")) return;
       button.disabled = true;
       try { const payload = await request(url, { method: "DELETE" }); window.location.assign(payload.redirect_url); }
       catch (error) { window.alert(error.message); button.disabled = false; }
@@ -377,7 +456,7 @@ document.addEventListener("DOMContentLoaded", () => {
     editor.querySelectorAll("[data-resource-close], header button").forEach(button => button.addEventListener("click", () => editor.close()));
     resourceForm.addEventListener("submit", async event => {
       event.preventDefault(); const submit = resourceForm.querySelector("[type=submit]");
-      resourceStatus.className = "modal-status"; resourceStatus.textContent = "กำลังบันทึกและสร้าง Version ใหม่…"; submit.disabled = true;
+      resourceStatus.className = "modal-status"; resourceStatus.textContent = "กำลังบันทึกการแก้ไข…"; submit.disabled = true;
       try { const payload = await request(resourceForm.dataset.url, { method: "PATCH", body: new FormData(resourceForm) }); window.location.assign(payload.redirect_url); }
       catch (error) { resourceStatus.classList.add("error"); resourceStatus.textContent = error.message; submit.disabled = false; }
     });
@@ -406,7 +485,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const editor = document.createElement("dialog");
     editor.className = "dataset-modal";
-    editor.innerHTML = `<form><header><div><small>แก้ไขบุคลากรปฏิบัติงาน</small><h2>แก้ไขรายการ</h2></div><button type="button" aria-label="ปิด">×</button></header><div class="modal-info">เมื่อบันทึก ระบบจะสร้าง Version ใหม่และเก็บข้อมูลเดิมไว้ในประวัติ</div><div class="manual-fixed-grid">${workforceFields.map(([key, label, required]) => `<label>${label}${required ? " *" : ""}<input name="record[${key}]" ${required ? "required" : ""}></label>`).join("")}</div><label class="record-change-note">รายละเอียดการแก้ไข<input name="change_note" placeholder="เช่น ปรับจำนวนกำลังพลพร้อมปฏิบัติงาน"></label><p class="modal-status"></p><footer><button type="button" class="button-link" data-workforce-close>ยกเลิก</button><button class="data-layer-add" type="submit">บันทึกเป็น Version ใหม่</button></footer></form>`;
+    editor.innerHTML = `<form><header><div><small>แก้ไขบุคลากรปฏิบัติงาน</small><h2>แก้ไขรายการ</h2></div><button type="button" aria-label="ปิด">×</button></header><div class="modal-info">ระบบจะอัปเดต Version ที่กรอกเองล่าสุด หากข้อมูลปัจจุบันมาจากไฟล์ ระบบจะสร้าง Version สำหรับการแก้ไขขึ้นใหม่</div><div class="manual-fixed-grid">${workforceFields.map(([key, label, required]) => `<label>${label}${required ? " *" : ""}<input name="record[${key}]" ${required ? "required" : ""}></label>`).join("")}</div><label class="record-change-note">รายละเอียดการแก้ไข<input name="change_note" placeholder="เช่น ปรับจำนวนกำลังพลพร้อมปฏิบัติงาน"></label><p class="modal-status"></p><footer><button type="button" class="button-link" data-workforce-close>ยกเลิก</button><button class="data-layer-add" type="submit">บันทึกการแก้ไข</button></footer></form>`;
     document.body.append(editor);
     const workforceForm = editor.querySelector("form"), workforceStatus = editor.querySelector(".modal-status");
     const openWorkforceEditor = (url, record) => {
@@ -416,7 +495,7 @@ document.addEventListener("DOMContentLoaded", () => {
       editor.showModal();
     };
     const deleteWorkforceRecord = async (button, url) => {
-      if (!window.confirm("ยืนยันลบข้อมูลทีมงานรายการนี้? ข้อมูลเดิมจะยังอยู่ในประวัติ Version")) return;
+      if (!window.confirm("ยืนยันลบข้อมูลทีมงานรายการนี้? ข้อมูลเดิมจะยังอยู่ในประวัติรุ่นข้อมูล")) return;
       button.disabled = true;
       try { const payload = await request(url, { method: "DELETE" }); window.location.assign(payload.redirect_url); }
       catch (error) { window.alert(error.message); button.disabled = false; }
@@ -424,7 +503,7 @@ document.addEventListener("DOMContentLoaded", () => {
     editor.querySelectorAll("[data-workforce-close], header button").forEach(button => button.addEventListener("click", () => editor.close()));
     workforceForm.addEventListener("submit", async event => {
       event.preventDefault(); const submit = workforceForm.querySelector("[type=submit]");
-      workforceStatus.className = "modal-status"; workforceStatus.textContent = "กำลังบันทึกและสร้าง Version ใหม่…"; submit.disabled = true;
+      workforceStatus.className = "modal-status"; workforceStatus.textContent = "กำลังบันทึกการแก้ไข…"; submit.disabled = true;
       try { const payload = await request(workforceForm.dataset.url, { method: "PATCH", body: new FormData(workforceForm) }); window.location.assign(payload.redirect_url); }
       catch (error) { workforceStatus.classList.add("error"); workforceStatus.textContent = error.message; submit.disabled = false; }
     });
@@ -501,10 +580,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const finalize = async () => {
     const fields = dialog.querySelector('[data-wizard-step="5"] [data-destination-fields]');
     const body = new FormData(); fields.querySelectorAll("input:not(:disabled),select:not(:disabled)").forEach(input => {
-      if ((input.type !== "checkbox" && input.value) || (input.type === "checkbox" && input.checked)) body.append(input.name, input.value);
+      const checkable = input.type === "checkbox" || input.type === "radio";
+      if ((!checkable && input.value) || (checkable && input.checked)) body.append(input.name, input.value);
     });
     const payload = await request(`/dataset_import_drafts/${draft.id}/finalize`, { method: "POST", body });
-    dialog.querySelector("[data-finish-message]").textContent = `นำเข้าสำเร็จ ${payload.records.toLocaleString()} รายการ เป็น Version ${payload.version}`;
+    dialog.querySelector("[data-finish-message]").textContent = `นำเข้าสำเร็จ ${payload.records.toLocaleString()} รายการ เป็นรุ่นข้อมูลที่ ${payload.version}`;
     dialog.querySelector("[data-finish-link]").href = payload.redirect_url;
   };
 

@@ -11,10 +11,12 @@ class ImportedDatasetVersion
   field :record_count, type: Integer, default: 0
   field :validation_summary, type: Hash, default: {}
   field :change_note, type: String
+  field :display_name, type: String
+  field :change_history, type: Array, default: []
   has_many :record_documents, class_name: "ImportedDatasetRecord", dependent: :destroy
   index({ imported_dataset_id: 1, version_number: -1 }, unique: true)
   validates :version_number, numericality: { only_integer: true, greater_than: 0 }
-  validates :source_kind, inclusion: { in: %w[manual file restored] }
+  validates :source_kind, inclusion: { in: %w[manual file restored checkpoint] }
   def user = User.find_by(id: user_id)
   def records
     integer_keys = imported_dataset.effective_schema_definition.filter_map do |field|

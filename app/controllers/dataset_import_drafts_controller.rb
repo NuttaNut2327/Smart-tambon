@@ -84,11 +84,12 @@ class DatasetImportDraftsController < ApplicationController
     map_enabled = ActiveModel::Type::Boolean.new.cast(params[:map_enabled]) || false
     target = @draft.data_type == "custom" ? custom_target_dataset : destination_dataset(@draft.data_type, map_enabled)
     source_content = DatasetGridFileStore.download(@draft.source_file_id)
-    append_records = @draft.data_type == "custom" && params[:import_mode] == "append"
+    import_mode = params[:import_mode].to_s.presence_in(%w[replace append]) || "replace"
+    append_records = import_mode == "append"
     version = DatasetVersionImportService.new(dataset: target, user: current_user, manual_records: records,
       source_kind: "file", source_filename: @draft.source_filename, source_content_type: @draft.source_content_type,
       source_content: source_content, change_note: params[:change_note].presence || "นำเข้าจาก #{@draft.source_filename}",
-      append_records: append_records).import!
+      append_records: append_records, display_name: params[:version_name]).import!
     next_url = data_layers_path(data_type: @draft.data_type)
     @draft.destroy
     render json: { dataset_id: target.id.to_s, version: version.version_number, records: version.record_count,

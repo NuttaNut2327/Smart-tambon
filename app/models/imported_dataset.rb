@@ -15,6 +15,7 @@ class ImportedDataset
       { "key" => "household_count", "label" => "จำนวนครัวเรือน", "type" => "integer", "required" => true },
       { "key" => "boundary_status", "label" => "สถานะขอบเขต", "type" => "text", "required" => false, "generated" => true },
       { "key" => "boundary_dataset_id", "label" => "ชุดข้อมูลขอบเขต", "type" => "text", "required" => false, "generated" => true, "hidden" => true },
+      { "key" => "boundary_record_id", "label" => "รหัสอ้างอิงขอบเขต", "type" => "text", "required" => false, "generated" => true, "hidden" => true },
       { "key" => "boundary_record_position", "label" => "ลำดับขอบเขต", "type" => "integer", "required" => false, "generated" => true, "hidden" => true }
     ],
     "village_boundaries" => [
@@ -136,7 +137,13 @@ class ImportedDataset
   field :map_enabled, type: Boolean, default: false
   field :shared_with_all, type: Boolean, default: false
   field :current_version_id, type: BSON::ObjectId
+  field :boundary_link_status, type: String, default: "not_linked"
+  field :boundary_linked_at, type: Time
+  field :linked_boundary_dataset_id, type: BSON::ObjectId
+  field :linked_population_version_id, type: BSON::ObjectId
+  field :linked_boundary_version_id, type: BSON::ObjectId
   has_many :versions, class_name: "ImportedDatasetVersion", dependent: :destroy
+  has_many :change_logs, class_name: "DatasetChangeLog", dependent: :destroy
   index({ user_id: 1 }); index({ subdistrict_id: 1 }); index({ data_type: 1 }); index({ map_enabled: 1 })
   validates :user_id, :name, presence: true
   validates :data_type, inclusion: { in: TYPE_LABELS.keys }

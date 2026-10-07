@@ -21,8 +21,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!value) return "—";
     return new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value)) + " น.";
   };
-  const sourceLabels = { manual: "กรอกหรือแก้ไขข้อมูล", file: "นำเข้าจากไฟล์", restored: "สร้างจาก Version เดิม" };
-  const versionCardMarkup = (version, editable) => `<article class="custom-version-row ${version.current ? "current" : ""}"><span class="custom-version-badge">v${version.version_number}</span><div class="custom-version-info"><b>${escapeHtml(version.change_note)}</b><small>${escapeHtml(sourceLabels[version.source_kind] || version.source_kind)} · ${Number(version.record_count || 0).toLocaleString()} รายการ · ${escapeHtml(version.user_name)} · ${escapeHtml(formatThaiDateTime(version.created_at))}</small>${version.source_filename ? `<em>ไฟล์: ${escapeHtml(version.source_filename)}</em>` : ""}</div><div class="custom-version-actions"><button type="button" class="button-link" data-view-version="${escapeHtml(version.view_url)}">ดูข้อมูล</button>${version.downloadable ? `<a href="${escapeHtml(version.download_url)}" class="button-link">ดาวน์โหลดไฟล์</a>` : ""}${editable ? `<button type="button" class="button-link" data-restore-version="${escapeHtml(version.restore_url)}">สร้าง Version จากชุดนี้</button>` : ""}</div></article>`;
+  const sourceLabels = { manual: "กรอกหรือแก้ไขข้อมูล", file: "นำเข้าจากไฟล์", restored: "สร้างจากรุ่นข้อมูลเดิม", checkpoint: "รุ่นข้อมูลที่บันทึกไว้ดูย้อนหลัง" };
+  const versionCardMarkup = (version, editable) => `<article class="custom-version-row ${version.current ? "current" : ""}"><span class="custom-version-badge">รุ่น ${version.version_number}</span><div class="custom-version-info"><b>${escapeHtml(version.change_note)}</b><small>${escapeHtml(sourceLabels[version.source_kind] || version.source_kind)} · ${Number(version.record_count || 0).toLocaleString()} รายการ · ${escapeHtml(version.user_name)} · ${escapeHtml(formatThaiDateTime(version.created_at))}</small>${version.source_filename ? `<em>ไฟล์: ${escapeHtml(version.source_filename)}</em>` : ""}</div><div class="custom-version-actions"><button type="button" class="button-link" data-view-version="${escapeHtml(version.view_url)}">ดูข้อมูล</button>${version.downloadable ? `<a href="${escapeHtml(version.download_url)}" class="button-link">ดาวน์โหลดไฟล์</a>` : ""}${editable ? `<button type="button" class="button-link" data-restore-version="${escapeHtml(version.restore_url)}">สร้างรุ่นข้อมูลจากชุดนี้</button>` : ""}</div></article>`;
   const items = [...list.querySelectorAll("article")].map(article => ({
     name: article.querySelector("b")?.textContent.trim() || "ชุดข้อมูล",
     summary: article.querySelector("small")?.textContent.trim() || "",
@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const headers = data.schema.map(field => `<th>${escapeHtml(field.label)}</th>`).join("") + (data.editable ? '<th class="record-actions-heading">จัดการ</th>' : "");
     const rows = data.records.map((record, position) => `<tr>${data.schema.map(field => `<td>${escapeHtml(record[field.key] ?? "—")}</td>`).join("")}${data.editable ? `<td class="record-actions"><button type="button" class="record-icon-button edit" title="แก้ไขข้อมูล" aria-label="แก้ไขข้อมูล" data-custom-record-edit="${position}">✎</button><button type="button" class="record-icon-button delete" title="ลบข้อมูล" aria-label="ลบข้อมูล" data-custom-record-delete="${position}">♲</button></td>` : ""}</tr>`).join("") || `<tr><td colspan="${Math.max(data.schema.length + (data.editable ? 1 : 0), 1)}">ยังไม่มีข้อมูลในชุดนี้</td></tr>`;
     const versions = Array.isArray(data.versions) ? data.versions : [];
-    const versionCards = versions.slice(0, 3).map(version => versionCardMarkup(version, data.editable)).join("") || '<p class="custom-empty">ยังไม่มีประวัติ Version</p>';
+    const versionCards = versions.slice(0, 3).map(version => versionCardMarkup(version, data.editable)).join("") || '<p class="custom-empty">ยังไม่มีประวัติรุ่นข้อมูล</p>';
     const moreVersionsButton = versions.length > 3 ? '<button type="button" class="button-link custom-version-more" data-show-all-versions>ดูเพิ่มเติม</button>' : "";
     const geometry = { none: "ไม่แสดงบนแผนที่", point: "จุด", line: "เส้นทาง", polygon: "ขอบเขตพื้นที่" }[data.geometry_type] || "—";
     if (catalogHero) catalogHero.hidden = true;
@@ -80,8 +80,8 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   const openAllVersions = () => {
     const versions = Array.isArray(activeDataset?.versions) ? activeDataset.versions : [];
-    const cards = versions.map(version => versionCardMarkup(version, activeDataset.editable)).join("") || '<p class="custom-empty">ยังไม่มีประวัติ Version</p>';
-    const dialog = dialogShell(`ประวัติ Version ทั้งหมด (${versions.length})`, `<div class="custom-version-history version-history-modal"><div class="version-history-cards">${cards}</div></div>`);
+    const cards = versions.map(version => versionCardMarkup(version, activeDataset.editable)).join("") || '<p class="custom-empty">ยังไม่มีประวัติรุ่นข้อมูล</p>';
+    const dialog = dialogShell(`ประวัติรุ่นข้อมูลทั้งหมด (${versions.length})`, `<div class="custom-version-history version-history-modal"><div class="version-history-cards">${cards}</div></div>`);
     dialog.addEventListener("click", event => {
       const viewVersion = event.target.closest("[data-view-version]");
       if (viewVersion) { showVersionRecords(viewVersion.dataset.viewVersion); return; }
@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const record = activeDataset?.records?.[position];
     if (!record) return;
     const fields = activeDataset.schema.map(field => `<label>${escapeHtml(field.label)}${field.required ? " *" : ""}<input name="record[${escapeHtml(field.key)}]" value="${escapeHtml(record[field.key] ?? "")}" type="${field.type === "number" || field.type === "integer" ? "number" : field.type === "date" ? "date" : "text"}" ${field.required ? "required" : ""} step="any"></label>`).join("");
-    const dialog = dialogShell("แก้ไขข้อมูล", `<form class="manual-record-form"><div class="modal-info">เมื่อบันทึก ระบบจะสร้าง Version ใหม่และเก็บข้อมูลเดิมไว้ในประวัติ</div><div class="manual-fixed-grid">${fields}</div><label class="record-change-note">รายละเอียดการแก้ไข<input name="change_note" placeholder="ระบุรายละเอียดที่แก้ไข"></label><p class="modal-status" data-status></p><footer><button type="button" class="button-link" data-cancel>ยกเลิก</button><button class="data-layer-add" type="submit">บันทึกการแก้ไข</button></footer></form>`);
+    const dialog = dialogShell("แก้ไขข้อมูล", `<form class="manual-record-form"><div class="modal-info">ระบบจะอัปเดต Version ที่กรอกเองล่าสุด หากข้อมูลปัจจุบันมาจากไฟล์ ระบบจะสร้าง Version สำหรับการแก้ไขขึ้นใหม่</div><div class="manual-fixed-grid">${fields}</div><label class="record-change-note">รายละเอียดการแก้ไข<input name="change_note" placeholder="ระบุรายละเอียดที่แก้ไข"></label><p class="modal-status" data-status></p><footer><button type="button" class="button-link" data-cancel>ยกเลิก</button><button class="data-layer-add" type="submit">บันทึกการแก้ไข</button></footer></form>`);
     const form = dialog.querySelector("form");
     form.querySelector("[data-cancel]").addEventListener("click", () => closeDialog(dialog));
     form.addEventListener("submit", async event => {
@@ -114,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
   const deleteCustomRecord = async position => {
-    if (!window.confirm("ยืนยันลบรายการนี้? ข้อมูลเดิมจะยังอยู่ในประวัติ Version")) return;
+    if (!window.confirm("ยืนยันลบรายการนี้? ข้อมูลเดิมจะยังอยู่ในประวัติรุ่นข้อมูล")) return;
     try {
       const response = await fetch(`/imported_datasets/${activeDataset.id}/records/${position}`, { method: "DELETE", headers: { Accept: "application/json", "X-CSRF-Token": csrfToken } });
       const payload = await response.json();
@@ -123,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) { window.alert(error.message); }
   };
   const deleteCustomDataset = async () => {
-    if (!activeDataset?.editable || !window.confirm(`ยืนยันลบชุดข้อมูล “${activeDataset.name}”? ข้อมูลและประวัติ Version ทั้งหมดจะถูกลบ`)) return;
+    if (!activeDataset?.editable || !window.confirm(`ยืนยันลบชุดข้อมูล “${activeDataset.name}”? ข้อมูลและประวัติรุ่นข้อมูลทั้งหมดจะถูกลบ`)) return;
     try {
       const response = await fetch(`/imported_datasets/${activeDataset.id}`, { method: "DELETE", headers: { Accept: "application/json", "X-CSRF-Token": csrfToken } });
       const payload = await response.json();
@@ -135,18 +135,18 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const response = await fetch(url, { headers: { Accept: "application/json" } });
       const version = await response.json();
-      if (!response.ok) throw new Error(version.error || "ไม่สามารถโหลดข้อมูล Version ได้");
+      if (!response.ok) throw new Error(version.error || "ไม่สามารถโหลดข้อมูลรุ่นนี้ได้");
       const headers = version.schema.map(field => `<th>${escapeHtml(field.label)}</th>`).join("");
-      const rows = version.records.map(record => `<tr>${version.schema.map(field => `<td>${escapeHtml(record[field.key] ?? "—")}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${version.schema.length}">ไม่มีข้อมูลใน Version นี้</td></tr>`;
-      dialogShell(`ข้อมูล Version ${version.version_number}`, `<div class="version-preview-modal fixed-table-wrap"><table class="fixed-data-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`);
+      const rows = version.records.map(record => `<tr>${version.schema.map(field => `<td>${escapeHtml(record[field.key] ?? "—")}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${version.schema.length}">ไม่มีข้อมูลในรุ่นนี้</td></tr>`;
+      dialogShell(`ข้อมูลรุ่นที่ ${version.version_number}`, `<div class="version-preview-modal fixed-table-wrap"><table class="fixed-data-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`);
     } catch (error) { window.alert(error.message); }
   };
   const restoreVersion = async url => {
-    if (!window.confirm("ยืนยันสร้าง Version ใหม่จากข้อมูลชุดนี้?")) return;
+    if (!window.confirm("ยืนยันสร้างรุ่นข้อมูลใหม่จากข้อมูลชุดนี้?")) return;
     try {
       const response = await fetch(url, { method: "POST", headers: { Accept: "application/json", "X-CSRF-Token": csrfToken } });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "ไม่สามารถสร้าง Version ได้");
+      if (!response.ok) throw new Error(payload.error || "ไม่สามารถสร้างรุ่นข้อมูลได้");
       await reloadActiveDataset();
     } catch (error) { window.alert(error.message); }
   };

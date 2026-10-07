@@ -1,1 +1,38 @@
-<div class="dataset-detail-page"><header><%= link_to "← กลับ Dataset", @dataset, class: "button-link" %><div><small><%= @dataset.name %></small><h1>Version <%= @version.version_number %></h1><p><%= @version.change_note.presence || "นำเข้าข้อมูล" %> · <%= thai_numeric_datetime(@version.created_at) %></p></div><%= link_to "ดาวน์โหลดไฟล์ต้นฉบับ", download_imported_dataset_version_path(@dataset, @version), class: "data-layer-add" if @version.downloadable? %></header><section class="builder-card"><div class="version-table-wrap"><table><thead><tr><% @dataset.schema_definition.each do |field| %><th><%= field["label"] %></th><% end %></tr></thead><tbody><% @version.records.each do |record| %><tr><% @dataset.schema_definition.each do |field| %><td><%= record[field["key"]] %></td><% end %></tr><% end %></tbody></table></div></section></div>
+<div class="version-snapshot-page">
+  <header class="version-snapshot-header">
+    <div>
+      <%= link_to "← กลับหน้าข้อมูล", @back_path, class: "button-link" %>
+      <small><%= @dataset.type_label %> · รุ่นข้อมูลที่ <%= @version.version_number %></small>
+      <h1><%= @version.display_name.presence || @dataset.name %></h1>
+      <p><%= @version.change_note.presence || "ไม่มีรายละเอียดเพิ่มเติม" %></p>
+    </div>
+    <%= link_to "ดาวน์โหลดไฟล์ต้นฉบับ", download_imported_dataset_version_path(@dataset, @version), class: "data-layer-add" if @version.downloadable? %>
+  </header>
+
+  <section class="version-snapshot-meta" aria-label="รายละเอียดรุ่นข้อมูล">
+    <article><small>สถานะ</small><b><%= @dataset.current_version_id == @version.id ? "กำลังใช้งาน" : "รุ่นข้อมูลย้อนหลัง" %></b></article>
+    <article><small>จำนวนข้อมูล</small><b><%= number_with_delimiter(@record_total) %> รายการ</b></article>
+    <article><small>แหล่งข้อมูล</small><b><%= { "file" => "นำเข้าจากไฟล์", "manual" => "กรอกหรือแก้ไขด้วยตนเอง", "restored" => "กู้คืนจากรุ่นข้อมูลเก่า", "checkpoint" => "รุ่นข้อมูลที่บันทึกไว้ดูย้อนหลัง" }.fetch(@version.source_kind, @version.source_kind) %></b></article>
+    <article><small>วันที่บันทึก</small><b><%= thai_numeric_datetime(@version.created_at) %></b></article>
+    <article><small>ผู้บันทึก</small><b><%= @version.user&.username || "—" %></b></article>
+  </section>
+
+  <section class="version-snapshot-card">
+    <div class="section-card-heading"><div><h2>ข้อมูลภายในรุ่นนี้</h2><p>เป็นรุ่นข้อมูลสำหรับดูย้อนหลังและแก้ไขไม่ได้ การเปิดดูไม่เปลี่ยนรุ่นข้อมูลที่กำลังใช้งาน</p></div><span>หน้า <%= @page %> จาก <%= @total_pages %></span></div>
+    <div class="fixed-table-wrap">
+      <table class="fixed-data-table version-snapshot-table">
+        <thead><tr><% @schema.each do |field| %><th><%= field["label"] %></th><% end %></tr></thead>
+        <tbody>
+          <% @records.each do |record| %><tr><% @schema.each do |field| %><td><%= record[field["key"]].presence || "—" %></td><% end %></tr><% end %>
+          <% if @records.empty? %><tr class="empty-row"><td colspan="<%= [@schema.size, 1].max %>">รุ่นข้อมูลนี้ไม่มีข้อมูล</td></tr><% end %>
+        </tbody>
+      </table>
+    </div>
+    <% if @total_pages > 1 %>
+      <nav class="fixed-pagination" aria-label="เปลี่ยนหน้าข้อมูลในรุ่นนี้">
+        <span>แสดง <%= ((@page - 1) * @page_size) + 1 %>–<%= [@page * @page_size, @record_total].min %> จาก <%= @record_total %> รายการ</span>
+        <div><%= link_to "‹", imported_dataset_version_path(@dataset, @version, page: @page - 1), class: "page-button #{'disabled' if @page == 1}" %><% @page_numbers.each_with_index do |page, index| %><span class="page-gap"><%= "…" if index.positive? && page - @page_numbers[index - 1] > 1 %></span><%= link_to page, imported_dataset_version_path(@dataset, @version, page: page), class: "page-button #{'active' if page == @page}" %><% end %><%= link_to "›", imported_dataset_version_path(@dataset, @version, page: @page + 1), class: "page-button #{'disabled' if @page == @total_pages}" %></div>
+      </nav>
+    <% end %>
+  </section>
+</div>

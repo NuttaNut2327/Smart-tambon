@@ -61,8 +61,9 @@ class ImportedDatasetsController < ApplicationController
           versions: @versions.map { |version|
             {
               id: version.id.to_s, version_number: version.version_number,
+              display_name: version.display_name.presence || @dataset.name,
               current: @dataset.current_version_id == version.id,
-              change_note: version.change_note.presence || (version.source_kind == "manual" ? "เพิ่มหรือแก้ไขข้อมูลด้วยตนเอง" : "นำเข้าข้อมูลจากไฟล์"),
+              change_note: version.change_note.presence || (version.source_kind == "manual" ? "เพิ่มหรือแก้ไขข้อมูลด้วยตนเอง" : version.source_kind == "checkpoint" ? "Snapshot จาก Manual" : "นำเข้าข้อมูลจากไฟล์"),
               source_kind: version.source_kind, source_filename: version.source_filename,
               user_name: version.user&.username || "—",
               record_count: version.record_count, created_at: version.created_at.iso8601,
@@ -83,7 +84,9 @@ class ImportedDatasetsController < ApplicationController
   end
 
   def update
-    @dataset.assign_attributes(dataset_attributes.except(:data_type))
+    attributes = dataset_attributes.except(:data_type)
+    attributes.delete(:name) unless @dataset.data_type == "custom"
+    @dataset.assign_attributes(attributes)
     @dataset.schema_definition = schema_definition if params[:schema_definition].present?
     authorize_subdistrict!(@dataset.subdistrict)
     @dataset.save!
