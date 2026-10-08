@@ -4,7 +4,7 @@
 <% comparator_labels = { "gte" => "≥", "gt" => ">", "lte" => "≤", "lt" => "<", "eq" => "=" } %>
 <% area_unit_labels = { "sqm" => "ตร.ม.", "sqkm" => "ตร.กม.", "rai" => "ไร่" } %>
 <% basis_labels = { "population" => "จำนวนประชากร", "households" => "จำนวนครัวเรือน", "area" => "พื้นที่ที่ได้รับผลกระทบ", "villages" => "จำนวนหมู่บ้าน" } %>
-<% disaster_icons = { "flood" => "♧", "fire" => "♨", "wind" => "≋", "landslide" => "△", "drought" => "☀", "other" => "⌁" } %>
+<% disaster_icons = { "flood" => "flood", "fire" => "local_fire_department", "wind" => "air", "landslide" => "landslide", "drought" => "wb_sunny", "other" => "emergency" } %>
 <% severity_labels = { "watch" => "เฝ้าระวัง", "urgent" => "เร่งด่วน", "critical" => "วิกฤต" } %>
 <% saved_rules = @resource_rules.map do |rule|
      condition_text = rule.conditions.map do |item|
@@ -32,14 +32,14 @@
     <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker">SMART GIS PLATFORM</p><span class="breadcrumb"><span id="selection-label"><%= initial_area %></span><b>›</b><span>กฎการประเมินทรัพยากร</span></span></div><div class="header-tools"><div id="longdo-usage" class="longdo-usage" aria-live="polite"><b>Longdo API</b><span>กำลังโหลด…</span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></div></header>
     <div class="dashboard-content rules-workspace" data-rule-resource-options="<%= json_escape(@rule_resource_options.to_json) %>">
       <section class="rules-heading city-heading"><div><p class="page-kicker">ระบบช่วยประเมินอัตโนมัติ</p><h1>กฎการประเมินทรัพยากร</h1><p>กำหนดเงื่อนไขและสูตรที่ระบบใช้คำนวณกำลังคน อุปกรณ์ และสิ่งของสำหรับแต่ละประเภทภัย</p></div><button type="button" class="rules-create-button" data-open-rule-wizard>＋ สร้างกฎใหม่</button></section>
-      <section class="rules-toolbar"><label><span>⌕</span><input type="search" placeholder="ค้นหาชื่อกฎหรือเงื่อนไข" data-rule-search></label><div class="rule-filters"><button class="active" type="button" data-rule-filter="all">ทั้งหมด</button><button type="button" data-rule-filter="flood">น้ำท่วม</button><button type="button" data-rule-filter="fire">ไฟป่า</button><button type="button" data-rule-filter="wind">พายุ</button><button type="button" data-rule-filter="landslide">ดินถล่ม</button><button type="button" data-rule-filter="drought">ภัยแล้ง</button><button type="button" data-rule-filter="other">อื่น ๆ</button></div><span data-rule-count>แสดง <%= rules.size %> กฎ</span></section>
+      <section class="rules-toolbar"><label><span class="material-symbols-outlined">search</span><input type="search" placeholder="ค้นหาชื่อกฎหรือเงื่อนไข" data-rule-search></label><div class="rule-filters"><button class="active" type="button" data-rule-filter="all">ทั้งหมด</button><button type="button" data-rule-filter="flood">น้ำท่วม</button><button type="button" data-rule-filter="fire">ไฟป่า</button><button type="button" data-rule-filter="wind">พายุ</button><button type="button" data-rule-filter="landslide">ดินถล่ม</button><button type="button" data-rule-filter="drought">ภัยแล้ง</button><button type="button" data-rule-filter="other">อื่น ๆ</button></div><span data-rule-count>แสดง <%= rules.size %> กฎ</span></section>
       <section class="rules-list" data-rules-list>
         <% if rules.empty? %><div class="rules-empty-state"><span>▥</span><b>ยังไม่มีกฎการประเมินทรัพยากร</b><p>กด “สร้างกฎใหม่” เพื่อกำหนดเงื่อนไขและสูตรคำนวณทรัพยากร</p></div><% end %>
         <% rules.each_with_index do |rule, index| %>
           <% severity_class = { "เฝ้าระวัง" => "watch", "เร่งด่วน" => "urgent", "วิกฤต" => "critical" }.fetch(rule[:level], "watch") %>
           <details class="resource-rule-card <%= rule[:type] %>" data-rule-card data-rule-type="<%= rule[:type] %>" data-rule-search="<%= "#{rule[:title]} #{rule[:condition]}".downcase %>" data-rule-payload="<%= json_escape(rule[:payload].to_json) %>" <%= "open" if index.zero? %>>
             <summary>
-              <span class="rule-icon"><%= rule[:icon] %></span><div class="rule-main"><div><b><%= rule[:title] %></b><em class="severity-<%= severity_class %>"><%= rule[:level] %></em></div><p><%= rule[:condition] %></p><small><%= rule[:id] %> · แก้ไขล่าสุด <%= rule[:updated] %></small></div>
+              <span class="rule-icon material-symbols-outlined"><%= rule[:icon] %></span><div class="rule-main"><div><b><%= rule[:title] %></b><em class="severity-<%= severity_class %>"><%= rule[:level] %></em></div><p><%= rule[:condition] %></p><small><%= rule[:id] %> · แก้ไขล่าสุด <%= rule[:updated] %></small></div>
               <button type="button" class="rule-edit" data-edit-rule>แก้ไข</button><label class="rule-switch" onclick="event.stopPropagation()"><input type="checkbox" <%= "checked" if rule[:payload][:active] %>><span></span><b>เปิดใช้</b></label><i class="rule-chevron">⌄</i>
             </summary>
             <div class="rule-detail">

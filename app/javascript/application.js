@@ -34,27 +34,27 @@ document.addEventListener("DOMContentLoaded", () => {
     wrapX: false
   })});
   const highlight = new ol.layer.Vector({ source: new ol.source.Vector(), style: new ol.style.Style({
-    stroke: new ol.style.Stroke({color:"#5ac5a9",width:5}), fill:new ol.style.Fill({color:"rgba(0,0,0,0)"}),
-    image:new ol.style.Circle({radius:8,fill:new ol.style.Fill({color:"#00a98f"}),stroke:new ol.style.Stroke({color:"white",width:3})})
+    stroke: new ol.style.Stroke({color:"#5f9279",width:5}), fill:new ol.style.Fill({color:"rgba(0,0,0,0)"}),
+    image:new ol.style.Circle({radius:8,fill:new ol.style.Fill({color:"#438a61"}),stroke:new ol.style.Stroke({color:"white",width:3})})
   })});
   const siblingBoundaryStyle=new ol.style.Style({
-      stroke:new ol.style.Stroke({color:"rgba(13,27,42,.9)",width:1.5}),
-      fill:new ol.style.Fill({color:"rgba(13,27,42,.25)"})
+      stroke:new ol.style.Stroke({color:"rgba(44,57,48,.9)",width:1.5}),
+      fill:new ol.style.Fill({color:"rgba(44,57,48,.25)"})
     });
-  const districtSubdistrictStyle=new ol.style.Style({stroke:new ol.style.Stroke({color:"rgba(13,27,42,.88)",width:1.25}),fill:new ol.style.Fill({color:"rgba(0,0,0,0)"})});
+  const districtSubdistrictStyle=new ol.style.Style({stroke:new ol.style.Stroke({color:"rgba(44,57,48,.88)",width:1.25}),fill:new ol.style.Fill({color:"rgba(0,0,0,0)"})});
   const siblingBoundaries = new ol.layer.Vector({
     source:new ol.source.Vector(),
     style:feature=>feature.get("districtOnly") ? districtSubdistrictStyle : siblingBoundaryStyle
   });
-  const districtBoundaryStyle=new ol.style.Style({stroke:new ol.style.Stroke({color:"rgba(13,27,42,.9)",width:2}),fill:new ol.style.Fill({color:"rgba(0,0,0,0)"})});
-  const dimmedDistrictStyle=new ol.style.Style({stroke:new ol.style.Stroke({color:"rgba(13,27,42,.9)",width:1.5}),fill:new ol.style.Fill({color:"rgba(13,27,42,.22)"})});
+  const districtBoundaryStyle=new ol.style.Style({stroke:new ol.style.Stroke({color:"rgba(44,57,48,.9)",width:2}),fill:new ol.style.Fill({color:"rgba(0,0,0,0)"})});
+  const dimmedDistrictStyle=new ol.style.Style({stroke:new ol.style.Stroke({color:"rgba(44,57,48,.9)",width:1.5}),fill:new ol.style.Fill({color:"rgba(44,57,48,.22)"})});
   const districtBoundaries = new ol.layer.Vector({
     source:new ol.source.Vector(),
     style:feature=>selectedFeatureData?.properties?.level==="district" && String(feature.getId())!==String(selectedDistrictCode) ? dimmedDistrictStyle : districtBoundaryStyle
   });
-  const overviewBoundaryStyle=new ol.style.Style({stroke:new ol.style.Stroke({color:"rgba(90,197,169,.8)",width:1.2}),fill:new ol.style.Fill({color:"rgba(90,197,169,.05)"})});
-  const selectedProvinceOverviewStyle=new ol.style.Style({stroke:new ol.style.Stroke({color:"rgba(90,197,169,.8)",width:1.2}),fill:new ol.style.Fill({color:"rgba(0,0,0,0)"})});
-  const dimmedProvinceStyle=new ol.style.Style({stroke:new ol.style.Stroke({color:"rgba(13,27,42,.78)",width:1.1}),fill:new ol.style.Fill({color:"rgba(13,27,42,.26)"})});
+  const overviewBoundaryStyle=new ol.style.Style({stroke:new ol.style.Stroke({color:"rgba(95,146,121,.8)",width:1.2}),fill:new ol.style.Fill({color:"rgba(95,146,121,.05)"})});
+  const selectedProvinceOverviewStyle=new ol.style.Style({stroke:new ol.style.Stroke({color:"rgba(95,146,121,.8)",width:1.2}),fill:new ol.style.Fill({color:"rgba(0,0,0,0)"})});
+  const dimmedProvinceStyle=new ol.style.Style({stroke:new ol.style.Stroke({color:"rgba(44,57,48,.78)",width:1.1}),fill:new ol.style.Fill({color:"rgba(44,57,48,.26)"})});
   const overviewBoundaries = new ol.layer.Vector({
     source:new ol.source.Vector(),
     style:feature=>{
@@ -66,7 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // intentionally separate from the selected province/district/subdistrict.
   let areaSelectionFilterGeometry=null;
   const placeConfig = {
-    government:{color:"#2563eb",glyph:"building",icon:"account_balance"}, education:{color:"#f59e0b",glyph:"ส",icon:"school"}, health:{color:"#e11d48",glyph:"+",icon:"heart_plus"}, culture:{color:"#8b5cf6",glyph:"♜",icon:"folded_hands"}, tourism:{color:"#f97316",glyph:"★",icon:"star"}, transport:{color:"#0ea5a4",glyph:"↔",icon:"directions_car"}, service:{color:"#ec4899",glyph:"●",icon:"local_mall"}, emergency:{color:"#dc2626",glyph:"!",icon:"emergency_home"}
+    government:{color:"#527f9d",glyph:"building",icon:"account_balance"}, education:{color:"#a97924",glyph:"ส",icon:"school"}, health:{color:"#b94755",glyph:"+",icon:"heart_plus"}, culture:{color:"#795f94",glyph:"♜",icon:"folded_hands"}, tourism:{color:"#b96132",glyph:"★",icon:"star"}, transport:{color:"#438f86",glyph:"↔",icon:"directions_car"}, service:{color:"#985675",glyph:"●",icon:"local_mall"}, emergency:{color:"#b7474d",glyph:"!",icon:"emergency_home"}
   };
   const placeCategoryTags={government:["government","municipality"],education:["school","university","library"],health:["hospital","clinic","pharmacy"],culture:["temple","mosque","church","museum"],tourism:["tourist attraction","hotel","park","viewpoint"],transport:["bus station","train station","pier","parking"],service:["restaurant","cafe","shopping","convenience"],emergency:["police","fire_station","rescue"]};
   const placeMarkerIcon = (color, glyph) => {
@@ -79,7 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const isPlaceInsideManualSelection = feature => !areaSelectionFilterGeometry || areaSelectionFilterGeometry.intersectsCoordinate(feature.getGeometry().getCoordinates());
   const placeMarkerStyle = config => {
     const selectedStyle=new ol.style.Style({image:new ol.style.Icon({src:placeMarkerIcon(config.color,""),anchor:[0.5,1],anchorXUnits:"fraction",anchorYUnits:"fraction"}),text:new ol.style.Text({text:config.icon,font:'20px "Material Symbols Outlined"',fill:new ol.style.Fill({color:"#fff"}),offsetY:-25})});
-    const mutedStyle=new ol.style.Style({image:new ol.style.Icon({src:placeMarkerIcon("#94a3b8",""),anchor:[0.5,1],anchorXUnits:"fraction",anchorYUnits:"fraction"}),text:new ol.style.Text({text:config.icon,font:'20px "Material Symbols Outlined"',fill:new ol.style.Fill({color:"#fff"}),offsetY:-25})});
+    const mutedStyle=new ol.style.Style({image:new ol.style.Icon({src:placeMarkerIcon("#89796a",""),anchor:[0.5,1],anchorXUnits:"fraction",anchorYUnits:"fraction"}),text:new ol.style.Text({text:config.icon,font:'20px "Material Symbols Outlined"',fill:new ol.style.Fill({color:"#fff"}),offsetY:-25})});
     return feature=>isPlaceInsideManualSelection(feature) ? selectedStyle : mutedStyle;
   };
   const placeLayers = {};
@@ -89,8 +89,8 @@ document.addEventListener("DOMContentLoaded", () => {
       style:placeMarkerStyle(config)
     });
   });
-  const importedSelectedStyle=new ol.style.Style({image:new ol.style.Icon({src:placeMarkerIcon("#5ac5a9","+"),anchor:[0.5,1],anchorXUnits:"fraction",anchorYUnits:"fraction"})});
-  const importedMutedStyle=new ol.style.Style({image:new ol.style.Icon({src:placeMarkerIcon("#94a3b8","+"),anchor:[0.5,1],anchorXUnits:"fraction",anchorYUnits:"fraction"})});
+  const importedSelectedStyle=new ol.style.Style({image:new ol.style.Icon({src:placeMarkerIcon("#5f9279","+"),anchor:[0.5,1],anchorXUnits:"fraction",anchorYUnits:"fraction"})});
+  const importedMutedStyle=new ol.style.Style({image:new ol.style.Icon({src:placeMarkerIcon("#89796a","+"),anchor:[0.5,1],anchorXUnits:"fraction",anchorYUnits:"fraction"})});
   const importedPlacesLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
     style:feature=>isPlaceInsideManualSelection(feature) ? importedSelectedStyle : importedMutedStyle
@@ -99,37 +99,37 @@ document.addEventListener("DOMContentLoaded", () => {
     source:new ol.source.Vector(),
     style:feature=>feature.get("data_type")==="agencies"
       ? placeMarkerStyle(placeConfig.government)(feature)
-      : new ol.style.Style({image:new ol.style.Circle({radius:8,fill:new ol.style.Fill({color:"#7c3aed"}),stroke:new ol.style.Stroke({color:"#fff",width:2})})})
+      : new ol.style.Style({image:new ol.style.Circle({radius:8,fill:new ol.style.Fill({color:"#795f94"}),stroke:new ol.style.Stroke({color:"#fff",width:2})})})
   });
   const villageBoundaryLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
     style:new ol.style.Style({
-      stroke:new ol.style.Stroke({color:"#2563eb",width:3}),
-      fill:new ol.style.Fill({color:"rgba(37,99,235,0)"}),
-      text:new ol.style.Text({font:"600 11px sans-serif",fill:new ol.style.Fill({color:"#173f6b"}),stroke:new ol.style.Stroke({color:"#fff",width:3}),overflow:true})
+      stroke:new ol.style.Stroke({color:"#355f7a",width:3}),
+      fill:new ol.style.Fill({color:"rgba(53,95,122,0)"}),
+      text:new ol.style.Text({font:"600 11px sans-serif",fill:new ol.style.Fill({color:"#674427"}),stroke:new ol.style.Stroke({color:"#fff",width:3}),overflow:true})
     })
   });
   const waterStationLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
     style:new ol.style.Style({
-      image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#1677c8"}),stroke:new ol.style.Stroke({color:"#fff",width:2})})
+      image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#438f86"}),stroke:new ol.style.Stroke({color:"#fff",width:2})})
     })
   });
   const areaSelectionLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
     style:new ol.style.Style({
-      stroke:new ol.style.Stroke({color:"#0b6b57",width:3,lineDash:[8,5]}),
-      fill:new ol.style.Fill({color:"rgba(90,197,169,.16)"}),
-      image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#0b6b57"}),stroke:new ol.style.Stroke({color:"white",width:2})})
+      stroke:new ol.style.Stroke({color:"#438a61",width:3,lineDash:[8,5]}),
+      fill:new ol.style.Fill({color:"rgba(95,146,121,.16)"}),
+      image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#438a61"}),stroke:new ol.style.Stroke({color:"white",width:2})})
     })
   });
   const areaSelectionDimLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
-    style:new ol.style.Style({fill:new ol.style.Fill({color:"rgba(9,35,59,.48)"})})
+    style:new ol.style.Style({fill:new ol.style.Fill({color:"rgba(44,57,48,.48)"})})
   });
   const areaSelectionEndpointsLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
-    style:new ol.style.Style({image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#237d69"}),stroke:new ol.style.Stroke({color:"white",width:3})})})
+    style:new ol.style.Style({image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#438a61"}),stroke:new ol.style.Stroke({color:"white",width:3})})})
   });
   const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,villageBoundaryLayer,...Object.values(placeLayers),importedPlacesLayer,importedDatasetLayer,waterStationLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5,maxZoom:19,extent:ol.proj.get("EPSG:3857").getExtent()}) });
   window.smartCityMap=map;
@@ -138,7 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const features=new ol.format.GeoJSON().readFeatures(data,{featureProjection:"EPSG:3857"});
     const villageBoundaries=features.filter(feature=>feature.get("data_type")==="village_boundaries");
     villageBoundaryGeoJson={type:"FeatureCollection",features:data.features.filter(feature=>feature.properties?.data_type==="village_boundaries")};
-    villageBoundaries.forEach(feature=>feature.setStyle(new ol.style.Style({stroke:new ol.style.Stroke({color:"#2563eb",width:3}),fill:new ol.style.Fill({color:"rgba(37,99,235,0)"}),text:new ol.style.Text({text:feature.get("village_name") || `หมู่ ${feature.get("village_number") || ""}`,font:"600 11px sans-serif",fill:new ol.style.Fill({color:"#173f6b"}),stroke:new ol.style.Stroke({color:"#fff",width:3}),overflow:true})})));
+    villageBoundaries.forEach(feature=>feature.setStyle(new ol.style.Style({stroke:new ol.style.Stroke({color:"#355f7a",width:3}),fill:new ol.style.Fill({color:"rgba(53,95,122,0)"}),text:new ol.style.Text({text:feature.get("village_name") || `หมู่ ${feature.get("village_number") || ""}`,font:"600 11px sans-serif",fill:new ol.style.Fill({color:"#674427"}),stroke:new ol.style.Stroke({color:"#fff",width:3}),overflow:true})})));
     villageBoundaryLayer.getSource().addFeatures(villageBoundaries);
     importedDatasetLayer.getSource().addFeatures(features.filter(feature=>feature.get("data_type")!=="village_boundaries"));
     if(cesiumMode) syncCesiumVillageBoundaries();
@@ -161,7 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const [lon,lat]=disasterWorkspace.dataset.disasterCenter.split(",").map(Number);
     const events={flood:{title:"น้ำเอ่อล้นตลิ่ง ชุมชนริมแม่น้ำ",location:"พื้นที่ริมน้ำ · วันนี้ 13:42",severity:"เร่งด่วน",point:[lon+.008,lat+.004],people:"1,840 คน",households:"612 หลัง",places:"8 แห่ง",shelters:"3 แห่ง",pumps:"12 เครื่อง",staff:"48 คน",water:"5,520 ลิตร",food:"5,520 มื้อ",kits:"612 ชุด",note:"เตรียมรองรับการอพยพและการช่วยเหลือภายใน 24 ชั่วโมง"},rain:{title:"ฝนตกหนักต่อเนื่อง",location:"เขตพื้นที่ลุ่มต่ำ · วันนี้ 11:15",severity:"เฝ้าระวัง",point:[lon-.01,lat+.006],people:"760 คน",households:"248 หลัง",places:"4 แห่ง",shelters:"1 แห่ง",pumps:"6 เครื่อง",staff:"24 คน",water:"2,280 ลิตร",food:"2,280 มื้อ",kits:"248 ชุด",note:"ติดตามฝนสะสมและเปิดเครื่องสูบน้ำในจุดเสี่ยง"},fire:{title:"ไฟไหม้หญ้าพื้นที่ว่าง",location:"แนวชุมชน · 2 ก.ย. 18:40",severity:"ติดตาม",point:[lon+.006,lat-.008],people:"120 คน",households:"36 หลัง",places:"1 แห่ง",shelters:"-",pumps:"-",staff:"18 คน",water:"1,000 ลิตร",food:"360 มื้อ",kits:"36 ชุด",note:"กันแนวไฟและเตรียมหน่วยสนับสนุนใกล้เคียง"}};
-    const source=new ol.source.Vector(), layer=new ol.layer.Vector({source,style:new ol.style.Style({image:new ol.style.Circle({radius:15,fill:new ol.style.Fill({color:"#ef4444"}),stroke:new ol.style.Stroke({color:"#fff",width:3})}),text:new ol.style.Text({text:"!",font:"700 16px sans-serif",fill:new ol.style.Fill({color:"#fff"})})})});map.addLayer(layer);
+    const source=new ol.source.Vector(), layer=new ol.layer.Vector({source,style:new ol.style.Style({image:new ol.style.Circle({radius:15,fill:new ol.style.Fill({color:"#b94050"}),stroke:new ol.style.Stroke({color:"#fff",width:3})}),text:new ol.style.Text({text:"!",font:"700 16px sans-serif",fill:new ol.style.Fill({color:"#fff"})})})});map.addLayer(layer);
     Object.entries(events).forEach(([id,event])=>source.addFeature(new ol.Feature({geometry:new ol.geom.Point(ol.proj.fromLonLat(event.point)),event:id})));
     const set=(id)=>{const event=events[id];document.querySelectorAll(".disaster-event").forEach(button=>button.classList.toggle("active",button.dataset.event===id));[["disaster-title",event.title],["disaster-location",event.location],["disaster-severity",event.severity],["impact-people",event.people],["impact-households",event.households],["impact-places",event.places],["resource-shelters",event.shelters],["resource-pumps",event.pumps],["resource-staff",event.staff],["resource-water",event.water],["resource-food",event.food],["resource-kits",event.kits],["preparedness-note",event.note],["disaster-map-note",`กำลังโฟกัส: ${event.location}`]].forEach(([key,value])=>{const node=document.querySelector(`#${key}`);if(node)node.textContent=value});map.getView().animate({center:ol.proj.fromLonLat(event.point),zoom:15,duration:500});};
     document.querySelectorAll(".disaster-event").forEach(button=>button.addEventListener("click",()=>set(button.dataset.event)));set("flood");
@@ -373,8 +373,8 @@ document.addEventListener("DOMContentLoaded", () => {
     cesiumViewer.scene.screenSpaceCameraController.enableCollisionDetection=true;
     cesiumViewer.scene.screenSpaceCameraController.minimumZoomDistance=1_200;
     cesiumViewer.scene.screenSpaceCameraController.maximumZoomDistance=4_000_000;
-    cesiumViewer.scene.globe.baseColor=Cesium.Color.fromCssColorString("#d9e2e8");
-    cesiumViewer.scene.backgroundColor=Cesium.Color.fromCssColorString("#d9e2e8");
+    cesiumViewer.scene.globe.baseColor=Cesium.Color.fromCssColorString("#d8cfbd");
+    cesiumViewer.scene.backgroundColor=Cesium.Color.fromCssColorString("#d8cfbd");
     const terrainColorProvider=new Cesium.UrlTemplateImageryProvider({url:"/api/terrain_color_tiles/{z}/{x}/{y}?palette=green-v7",tilingScheme:new Cesium.WebMercatorTilingScheme(),maximumLevel:12,credit:new Cesium.Credit("Elevation colors: AWS Open Data Terrain Tiles")});
     terrainColorLayer=new Cesium.ImageryLayer(terrainColorProvider,{alpha:0.58,show:terrainColorEnabled});
     cesiumViewer.imageryLayers.add(terrainColorLayer);
@@ -394,7 +394,7 @@ document.addEventListener("DOMContentLoaded", () => {
         name:place.name,
         position:Cesium.Cartesian3.fromDegrees(longitude,latitude,3),
         point:{
-          pixelSize:10,color:colors[place.category] || Cesium.Color.fromCssColorString("#5ac5a9"),
+          pixelSize:10,color:colors[place.category] || Cesium.Color.fromCssColorString("#5f9279"),
           outlineColor:Cesium.Color.WHITE,outlineWidth:2,
           heightReference:Cesium.HeightReference.RELATIVE_TO_GROUND,
           disableDepthTestDistance:Number.POSITIVE_INFINITY
@@ -438,7 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if(cesiumSiblingBoundaryDataSource) cesiumViewer.dataSources.remove(cesiumSiblingBoundaryDataSource,true);
     if(cesiumProvinceBoundaryDataSource) cesiumViewer.dataSources.remove(cesiumProvinceBoundaryDataSource,true);
     const selectedIsProvince=selectedFeatureData.properties?.level==="province";
-    const selectedColor=Cesium.Color.fromCssColorString("#5ac5a9");
+    const selectedColor=Cesium.Color.fromCssColorString("#5f9279");
     cesiumBoundaryDataSource=await Cesium.GeoJsonDataSource.load(selectedFeatureData,{clampToGround:true,stroke:selectedColor,fill:Cesium.Color.TRANSPARENT,strokeWidth:selectedIsProvince ? 5 : 4});
     drapeBoundaryOnTerrain(cesiumBoundaryDataSource);
     appendTerrainOutlines(cesiumBoundaryDataSource,selectedFeatureData,selectedColor,selectedIsProvince ? 5 : 4);
@@ -454,13 +454,13 @@ document.addEventListener("DOMContentLoaded", () => {
           fetchCesiumBoundary(`/api/provinces/${selectedProvinceId}/districts?geometry=1&simplified=3d`)
         ]);
         if(version!==cesiumBoundaryVersion) return;
-        cesiumProvinceBoundaryDataSource=await Cesium.GeoJsonDataSource.load(districts,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#0d1b2a").withAlpha(.9),fill:Cesium.Color.TRANSPARENT,strokeWidth:2});
+        cesiumProvinceBoundaryDataSource=await Cesium.GeoJsonDataSource.load(districts,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#2c3930").withAlpha(.9),fill:Cesium.Color.TRANSPARENT,strokeWidth:2});
         drapeBoundaryOnTerrain(cesiumProvinceBoundaryDataSource);
-        appendTerrainOutlines(cesiumProvinceBoundaryDataSource,districts,Cesium.Color.fromCssColorString("#0d1b2a").withAlpha(.9),2);
+        appendTerrainOutlines(cesiumProvinceBoundaryDataSource,districts,Cesium.Color.fromCssColorString("#2c3930").withAlpha(.9),2);
         if(version!==cesiumBoundaryVersion) return;
         cesiumViewer.dataSources.add(cesiumProvinceBoundaryDataSource);
         const otherProvinces={...provinces,features:provinces.features.filter(feature=>String(feature.id)!==String(selectedProvinceId))};
-        cesiumSiblingBoundaryDataSource=await Cesium.GeoJsonDataSource.load(otherProvinces,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#0d1b2a").withAlpha(.78),fill:Cesium.Color.fromCssColorString("#0d1b2a").withAlpha(.26),strokeWidth:1.1});
+        cesiumSiblingBoundaryDataSource=await Cesium.GeoJsonDataSource.load(otherProvinces,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#2c3930").withAlpha(.78),fill:Cesium.Color.fromCssColorString("#2c3930").withAlpha(.26),strokeWidth:1.1});
         drapeBoundaryOnTerrain(cesiumSiblingBoundaryDataSource);
         if(version!==cesiumBoundaryVersion) return;
         cesiumViewer.dataSources.add(cesiumSiblingBoundaryDataSource);
@@ -475,14 +475,14 @@ document.addEventListener("DOMContentLoaded", () => {
         ]);
         if(version!==cesiumBoundaryVersion) return;
         const otherDistricts={...districts,features:districts.features.filter(feature=>String(feature.id)!==String(selectedDistrictCode))};
-        cesiumSiblingBoundaryDataSource=await Cesium.GeoJsonDataSource.load(otherDistricts,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#0d1b2a").withAlpha(.9),fill:Cesium.Color.fromCssColorString("#0d1b2a").withAlpha(.22),strokeWidth:1.5});
+        cesiumSiblingBoundaryDataSource=await Cesium.GeoJsonDataSource.load(otherDistricts,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#2c3930").withAlpha(.9),fill:Cesium.Color.fromCssColorString("#2c3930").withAlpha(.22),strokeWidth:1.5});
         drapeBoundaryOnTerrain(cesiumSiblingBoundaryDataSource);
         if(version!==cesiumBoundaryVersion) return;
         cesiumViewer.dataSources.add(cesiumSiblingBoundaryDataSource);
         const districtSubdistricts={...subdistrictFeatures,features:subdistrictFeatures.features.map(feature=>({...feature,properties:{...feature.properties,subdistrict_id:feature.id}}))};
-        cesiumProvinceBoundaryDataSource=await Cesium.GeoJsonDataSource.load(districtSubdistricts,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#0d1b2a").withAlpha(.9),fill:Cesium.Color.TRANSPARENT,strokeWidth:1.5});
+        cesiumProvinceBoundaryDataSource=await Cesium.GeoJsonDataSource.load(districtSubdistricts,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#2c3930").withAlpha(.9),fill:Cesium.Color.TRANSPARENT,strokeWidth:1.5});
         drapeBoundaryOnTerrain(cesiumProvinceBoundaryDataSource);
-        appendTerrainOutlines(cesiumProvinceBoundaryDataSource,districtSubdistricts,Cesium.Color.fromCssColorString("#0d1b2a").withAlpha(.9),1.5);
+        appendTerrainOutlines(cesiumProvinceBoundaryDataSource,districtSubdistricts,Cesium.Color.fromCssColorString("#2c3930").withAlpha(.9),1.5);
         if(version!==cesiumBoundaryVersion) return;
         cesiumViewer.dataSources.add(cesiumProvinceBoundaryDataSource);
       }catch(error){console.warn("Unable to load district boundaries in 3D",error);}
@@ -495,14 +495,14 @@ document.addEventListener("DOMContentLoaded", () => {
         fetchCesiumBoundary(`/api/provinces/${selectedProvinceId}/subdistricts?geometry=1&district_code=${encodeURIComponent(selectedDistrictCode)}&simplified=3d`)
       ]);
       if(version!==cesiumBoundaryVersion) return;
-      cesiumProvinceBoundaryDataSource=await Cesium.GeoJsonDataSource.load(provinceFeature,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#173f56").withAlpha(.9),fill:Cesium.Color.TRANSPARENT,strokeWidth:2.5});
+      cesiumProvinceBoundaryDataSource=await Cesium.GeoJsonDataSource.load(provinceFeature,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#2c3930").withAlpha(.9),fill:Cesium.Color.TRANSPARENT,strokeWidth:2.5});
       drapeBoundaryOnTerrain(cesiumProvinceBoundaryDataSource);
       if(version!==cesiumBoundaryVersion) return;
       cesiumViewer.dataSources.add(cesiumProvinceBoundaryDataSource);
       const siblings={...subdistrictFeatures,features:subdistrictFeatures.features.filter(feature=>String(feature.id)!==String(selectedSubdistrictId)).map(feature=>({...feature,properties:{...feature.properties,subdistrict_id:feature.id}}))};
-      cesiumSiblingBoundaryDataSource=await Cesium.GeoJsonDataSource.load(siblings,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#0d1b2a").withAlpha(.9),fill:Cesium.Color.fromCssColorString("#0d1b2a").withAlpha(.24),strokeWidth:1.5});
+      cesiumSiblingBoundaryDataSource=await Cesium.GeoJsonDataSource.load(siblings,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#2c3930").withAlpha(.9),fill:Cesium.Color.fromCssColorString("#2c3930").withAlpha(.24),strokeWidth:1.5});
       drapeBoundaryOnTerrain(cesiumSiblingBoundaryDataSource);
-      appendTerrainOutlines(cesiumSiblingBoundaryDataSource,siblings,Cesium.Color.fromCssColorString("#0d1b2a").withAlpha(.9),1.5);
+      appendTerrainOutlines(cesiumSiblingBoundaryDataSource,siblings,Cesium.Color.fromCssColorString("#2c3930").withAlpha(.9),1.5);
       if(version!==cesiumBoundaryVersion) return;
       cesiumViewer.dataSources.add(cesiumSiblingBoundaryDataSource);
     }catch(error){console.warn("Unable to load province and sibling boundaries in 3D",error);}
@@ -587,7 +587,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if(!cesiumViewer || !villageBoundaryGeoJson) return;
     if(cesiumVillageBoundaryDataSource) cesiumViewer.dataSources.remove(cesiumVillageBoundaryDataSource,true);
     const Cesium=window.Cesium;
-    cesiumVillageBoundaryDataSource=await Cesium.GeoJsonDataSource.load(villageBoundaryGeoJson,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#2563eb"),fill:Cesium.Color.TRANSPARENT,strokeWidth:3});
+    cesiumVillageBoundaryDataSource=await Cesium.GeoJsonDataSource.load(villageBoundaryGeoJson,{clampToGround:true,stroke:Cesium.Color.fromCssColorString("#355f7a"),fill:Cesium.Color.TRANSPARENT,strokeWidth:3});
     cesiumVillageBoundaryDataSource.show=villageBoundaryVisible;
     cesiumViewer.dataSources.add(cesiumVillageBoundaryDataSource);
   }
@@ -645,7 +645,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Keep the marker attached just above the rendered terrain.  The terrain is
       // vertically exaggerated for readability, so an absolute, raw elevation
       // would otherwise be hidden inside the visible ground surface.
-      floodStartEntity=cesiumViewer.entities.add({name:"จุดเริ่มต้นระดับน้ำ",position:Cesium.Cartesian3.fromRadians(sample.longitude,sample.latitude,14),point:{pixelSize:16,color:Cesium.Color.fromCssColorString("#1377c9"),outlineColor:Cesium.Color.WHITE,outlineWidth:3,heightReference:Cesium.HeightReference.RELATIVE_TO_GROUND,disableDepthTestDistance:Number.POSITIVE_INFINITY},label:{text:"จุดเริ่มต้นน้ำ",font:"600 12px Noto Sans Thai",fillColor:Cesium.Color.WHITE,outlineColor:Cesium.Color.fromCssColorString("#0b3556"),outlineWidth:3,style:Cesium.LabelStyle.FILL_AND_OUTLINE,pixelOffset:new Cesium.Cartesian2(0,-22),heightReference:Cesium.HeightReference.RELATIVE_TO_GROUND,disableDepthTestDistance:Number.POSITIVE_INFINITY}});
+      floodStartEntity=cesiumViewer.entities.add({name:"จุดเริ่มต้นระดับน้ำ",position:Cesium.Cartesian3.fromRadians(sample.longitude,sample.latitude,14),point:{pixelSize:16,color:Cesium.Color.fromCssColorString("#438f86"),outlineColor:Cesium.Color.WHITE,outlineWidth:3,heightReference:Cesium.HeightReference.RELATIVE_TO_GROUND,disableDepthTestDistance:Number.POSITIVE_INFINITY},label:{text:"จุดเริ่มต้นน้ำ",font:"600 12px Noto Sans Thai",fillColor:Cesium.Color.WHITE,outlineColor:Cesium.Color.fromCssColorString("#2c3930"),outlineWidth:3,style:Cesium.LabelStyle.FILL_AND_OUTLINE,pixelOffset:new Cesium.Cartesian2(0,-22),heightReference:Cesium.HeightReference.RELATIVE_TO_GROUND,disableDepthTestDistance:Number.POSITIVE_INFINITY}});
       floodStatus.textContent=`จุดเริ่มต้นสูง ${sample.height.toFixed(1)} ม. จากระดับน้ำทะเล`;
       updateFloodControls();
     }).catch(error=>{floodStatus.textContent=error.message;updateFloodControls();});
@@ -693,7 +693,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // water at the same visual height as the exaggerated terrain while all
       // flood decisions above remain based on the real metres above sea level.
       const displayWaterLevel=waterLevel*(cesiumViewer.scene.verticalExaggeration || 1)+1;
-      flooded.forEach(key=>{const cell=byGrid.get(key),w=west+cell.column*dx,e=w+dx,s=south+cell.row*dy,n=s+dy;volume+=(waterLevel-cell.height)*cellArea;floodDataSource.entities.add({polygon:{hierarchy:Cesium.Cartesian3.fromDegreesArrayHeights([w,s,displayWaterLevel,e,s,displayWaterLevel,e,n,displayWaterLevel,w,n,displayWaterLevel]),perPositionHeight:true,material:Cesium.Color.fromCssColorString("#1677c8").withAlpha(.68),outline:true,outlineColor:Cesium.Color.fromCssColorString("#8fd3ff").withAlpha(.9)}});});
+      flooded.forEach(key=>{const cell=byGrid.get(key),w=west+cell.column*dx,e=w+dx,s=south+cell.row*dy,n=s+dy;volume+=(waterLevel-cell.height)*cellArea;floodDataSource.entities.add({polygon:{hierarchy:Cesium.Cartesian3.fromDegreesArrayHeights([w,s,displayWaterLevel,e,s,displayWaterLevel,e,n,displayWaterLevel,w,n,displayWaterLevel]),perPositionHeight:true,material:Cesium.Color.fromCssColorString("#438f86").withAlpha(.68),outline:true,outlineColor:Cesium.Color.fromCssColorString("#6f9d89").withAlpha(.9)}});});
       const total=cells.filter(cell=>Number.isFinite(cell.height)).length,wet=flooded.size;
       floodStatus.textContent=`ระดับน้ำ ${waterLevel.toFixed(1)} ม. (เพิ่ม ${rise.toFixed(1)} ม.)`;
       floodSummary.innerHTML=`<span>พื้นที่ท่วมโดยประมาณ<b>${(wet*cellArea/1e6).toFixed(2)} ตร.กม.</b></span><span>ปริมาตรน้ำโดยประมาณ<b>${(volume/1e6).toFixed(2)} ล้าน ลบ.ม.</b></span><span>เซลล์ที่ท่วม<b>${wet.toLocaleString()}</b></span><span>พื้นที่ไม่ท่วม<b>${Math.max(0,total-wet).toLocaleString()} เซลล์</b></span>`;floodSummary.hidden=false;

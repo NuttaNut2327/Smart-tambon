@@ -19,7 +19,7 @@
     border: 1px solid rgb(255 255 255 / 13%);
     border-radius: 50%;
     background: rgb(255 255 255 / 6%);
-    color: #d7e6f2;
+    color: #f3f1ea;
     cursor: pointer;
     transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
   }
@@ -32,7 +32,7 @@
   }
 
   .sidebar-collapse-toggle:focus-visible {
-    outline: 2px solid #72aefb;
+    outline: 2px solid #607466;
     outline-offset: 2px;
   }
 
@@ -92,7 +92,7 @@
     height: 36px;
     border: 0;
     border-radius: 10px;
-    background: linear-gradient(145deg, #358bf2, #176fe5);
+    background: linear-gradient(145deg, #607466, #2C3930);
     color: #fff;
     box-shadow: 0 6px 16px rgb(0 0 0 / 18%);
     font-size: 20px !important;
@@ -130,8 +130,8 @@
   }
 
   .sidebar-collapsed .primary-nav-item.active {
-    border-color: rgb(88 159 247 / 50%);
-    background: #2479e8;
+    border-color: rgb(86 127 109 / 50%);
+    background: #2C3930;
     color: #fff;
     box-shadow: 0 6px 14px rgb(0 0 0 / 18%);
   }
@@ -143,7 +143,7 @@
     min-width: 16px;
     height: 16px;
     padding: 0 4px;
-    border: 2px solid #0d2944;
+    border: 2px solid #2c3930;
     font-size: 9px !important;
   }
 

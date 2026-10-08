@@ -1,0 +1,263 @@
+:root {
+  --theme-primary: #2c3930;
+  --theme-secondary: #3f4f44;
+  --theme-text: #674427;
+  --theme-background: #ffffff;
+  --theme-surface: #ffffff;
+  --theme-surface-soft: #fffefb;
+  --theme-border: #e2dac8;
+  --theme-muted: #806f5f;
+  --theme-accent: #967326;
+  --nav: var(--theme-primary);
+  --nav2: var(--theme-primary);
+  --accent: var(--theme-secondary);
+  --bg: var(--theme-background);
+  --text: var(--theme-text);
+}
+
+html, body { background: var(--theme-background); color: var(--theme-text); }
+body, button, input, select, textarea { color: var(--theme-text); }
+.dashboard-main, .dashboard-content, .content, .import-workspace, .users-page,
+.data-layers-page, .data-layers-content, .analysis-page, .incident-page,
+.assessment-page, .public-report-page { background-color: var(--theme-background); }
+
+/* Navbar and sidebar */
+.dashboard-sidebar, .sidebar, .data-layers-sidebar {
+  background: var(--theme-primary) !important;
+  color: #fffdf7 !important;
+}
+.dashboard-brand, .brand, .scope-summary, .sidebar-user, .data-layers-brand,
+.data-layers-user { border-color: #ffffff20 !important; }
+.dashboard-sidebar small, .dashboard-sidebar p, .sidebar small, .sidebar p,
+.data-layers-sidebar small, .data-layers-sidebar p { color: #d9ded9 !important; }
+.primary-nav-item, .dashboard-sidebar a, .data-layers-sidebar a { color: #f3f1e9 !important; }
+.primary-nav-item:hover, .primary-nav-item.active,
+.dashboard-sidebar a:hover, .dashboard-sidebar a.active,
+.data-layers-sidebar nav a:hover, .data-layers-sidebar nav a.active {
+  background: #ffffff14 !important;
+  color: #fff !important;
+  box-shadow: inset 3px 0 var(--theme-accent);
+}
+.avatar, .data-layers-user > span { background: var(--theme-secondary) !important; color: #fff !important; }
+.sidebar-collapse-toggle { background: #ffffff12 !important; color: #fff !important; border-color: #ffffff28 !important; }
+
+/* Header and text hierarchy */
+.dashboard-header, .gis-topbar, .data-layers-header {
+  background: var(--theme-surface) !important;
+  border-color: var(--theme-border) !important;
+}
+.city-heading, .catalog-hero, .section-card-heading, .detail-section-heading,
+.panel-heading, .custom-detail-header { background-color: #ffffff !important; }
+.city-heading {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+h1, h2, h3, h4, .city-heading h1, .catalog-hero h2,
+.section-card-heading h2, .panel-heading h2, .panel-heading h3,
+.custom-detail-header h2 { color: var(--theme-primary) !important; }
+.breadcrumb, .topbar-kicker, .page-kicker, .catalog-hero p,
+.section-card-heading p, .detail-section-heading p { color: var(--theme-muted) !important; }
+a { color: var(--theme-secondary); }
+.dataset-type-nav h3,
+.dataset-type-nav .dataset-type-link,
+.dataset-type-nav .dataset-type-link:hover,
+.dataset-type-nav .dataset-type-link.active,
+.dataset-type-nav .dataset-type-link span,
+.dataset-type-nav .dataset-type-link b {
+  color: var(--theme-text) !important;
+}
+
+/* Clean white card surfaces */
+.city-heading, .dataset-catalog, .builder-card, .dashboard-card,
+.overview-card, .task-card, .map-card, .metric-card, .summary-card,
+.dataset-current-panel, .dataset-version-panel, .dataset-audit-panel,
+.consumable-movement-panel, .boundary-link-panel, .map-layer-setting-panel,
+.custom-detail-card > header, .custom-detail-section, .version-history-card,
+.dataset-current-card, .import-summary-grid article, .users-card,
+.population-map-card, .population-table-card, .population-metrics article,
+.rule-card, .incident-card, .disaster-card, .assessment-card,
+.public-report-card, dialog, .dataset-modal {
+  background: var(--theme-surface) !important;
+  border-color: var(--theme-border) !important;
+  box-shadow: 0 3px 12px #2c39300d;
+}
+.version-history-card.current, .dataset-current-card.current {
+  background: #f7f5ec !important;
+  border-color: #9aaa9e !important;
+}
+
+/* Primary actions and navigation states */
+.data-layer-add, .login-submit, .button-link.primary,
+button.primary, .primary-button, .submit-button, .page-button.active {
+  background: var(--theme-primary) !important;
+  border-color: var(--theme-primary) !important;
+  color: #fff !important;
+}
+.data-layer-add:hover, .login-submit:hover, .button-link.primary:hover,
+button.primary:hover, .primary-button:hover, .submit-button:hover { background: var(--theme-secondary) !important; }
+.button-link, .table-action, .page-button {
+  background: var(--theme-surface) !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-secondary) !important;
+}
+.button-link:hover, .table-action:hover, .page-button:hover {
+  background: var(--theme-surface-soft) !important;
+  border-color: #aeb9b0 !important;
+}
+.boundary-back-text-link, .custom-back-link, .dataset-audit-toggle { color: var(--theme-secondary) !important; }
+.data-management-tabs { border-color: var(--theme-border) !important; }
+.data-management-tabs button { color: var(--theme-muted) !important; }
+.data-management-tabs button:hover, .data-management-tabs button.active {
+  color: var(--theme-primary) !important;
+  border-bottom-color: var(--theme-primary) !important;
+}
+.version-history-badge, .section-card-heading > span,
+.version-heading-actions > span, .catalog-hero > b, .file-data-category {
+  background: #eef1ec !important;
+  color: var(--theme-secondary) !important;
+}
+
+/* Forms and tables stay neutral for readability */
+input, select, textarea, .catalog-toolbar input, .detail-section-heading input {
+  background: #fff !important;
+  border-color: var(--theme-border) !important;
+  color: var(--theme-text) !important;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--theme-secondary) !important;
+  box-shadow: 0 0 0 3px #3f4f441c !important;
+  outline: none;
+}
+input[type="checkbox"], input[type="radio"] { accent-color: var(--theme-primary); }
+.fixed-table-wrap, .dataset-audit-table-wrap, .custom-table-scroll { border-color: var(--theme-border) !important; }
+.fixed-data-table th, .dataset-audit-table th, table th, .custom-catalog-head {
+  background: #f6f3eb !important;
+  color: var(--theme-text) !important;
+}
+.fixed-data-table td, .dataset-audit-table td, table td,
+.custom-dataset-table [data-custom-row] { border-color: #ece6d9 !important; }
+.fixed-data-table tbody tr:hover, .dataset-audit-table tbody tr:hover,
+.custom-dataset-table [data-custom-row]:hover { background: #fbf8ef !important; }
+.dataset-audit-detail, .dataset-audit-detail-row > td {
+  background: #faf8f1 !important;
+  border-color: var(--theme-border) !important;
+}
+
+/* Restrained icon accents */
+.import-summary-grid article > span.versions { background: #e8efe9 !important; color: var(--theme-secondary) !important; }
+.import-summary-grid article > span.records { background: #edf1ed !important; color: var(--theme-secondary) !important; }
+.import-summary-grid article > span.maps { background: #f5ead8 !important; color: #b96132 !important; }
+.import-summary-grid article > span.geometry { background: #eceee9 !important; color: var(--theme-secondary) !important; }
+.import-summary-grid article > span.updated { background: #f2e9e0 !important; color: var(--theme-text) !important; }
+.import-summary-grid small { color: var(--theme-muted) !important; }
+.import-summary-grid strong { color: var(--theme-text) !important; }
+.import-summary-grid article:nth-child(5n + 1) {
+  background: #f1f6fa !important;
+  border-color: #c9d9e5 !important;
+}
+.import-summary-grid article:nth-child(5n + 2) {
+  background: #fff9e8 !important;
+  border-color: #e7d4a7 !important;
+}
+.import-summary-grid article:nth-child(5n + 3) {
+  background: #fff4e9 !important;
+  border-color: #e8c9a8 !important;
+}
+.import-summary-grid article:nth-child(5n + 4) {
+  background: #f6f1f7 !important;
+  border-color: #d8c9dc !important;
+}
+.import-summary-grid article:nth-child(5n + 5) {
+  background: #faf0ec !important;
+  border-color: #dfc8bd !important;
+}
+.import-summary-grid article:nth-child(5n + 1) > span {
+  background: #dceaf4 !important;
+  color: #527795 !important;
+}
+.import-summary-grid article:nth-child(5n + 2) > span {
+  background: #f5e8c5 !important;
+  color: #9a7427 !important;
+}
+.import-summary-grid article:nth-child(5n + 3) > span {
+  background: #f7dfc8 !important;
+  color: #b96132 !important;
+}
+.import-summary-grid article:nth-child(5n + 4) > span {
+  background: #e9dfed !important;
+  color: #795f94 !important;
+}
+.import-summary-grid article:nth-child(5n + 5) > span {
+  background: #efddd5 !important;
+  color: #985675 !important;
+}
+
+/* Warm supporting surfaces: replace the former blue-gray UI tint. */
+.assessment-results, .assessment-area-tools, .assessment-rule-picker,
+.assessment-kpis article, .affected-place-group, .assessment-resource-head,
+.simulation-grid-legend, .rule-wizard-info, .rule-formula-preview,
+.rules-toolbar, .rule-detail, .data-tab-empty, .automatic-destination-note,
+.boundary-geometry-editor, .boundary-edit-panel, .agency-location-picker {
+  border-color: var(--theme-border) !important;
+}
+.assessment-area-tools, .assessment-rule-picker, .assessment-kpis article,
+.affected-place-group, .assessment-resource-head, .simulation-grid-legend,
+.rule-wizard-info, .rule-formula-preview, .data-tab-empty,
+.automatic-destination-note, .boundary-geometry-editor,
+.boundary-edit-panel, .agency-location-picker {
+  background: var(--theme-surface-soft) !important;
+}
+.assessment-result-heading, .assessment-resource-result,
+.assessment-affected-places, .assessment-resource-table article,
+.assessment-results form { border-color: var(--theme-border) !important; }
+.assessment-kpis b, .assessment-kpis small,
+.assessment-area-tools h3, .assessment-area-tools > p,
+.assessment-rule-picker label, .affected-place-group b,
+.assessment-resource-table article > b {
+  color: var(--theme-text) !important;
+}
+.assessment-area-modes button:hover, .assessment-area-modes button.active {
+  background: #fff9ec !important;
+  border-color: var(--theme-primary) !important;
+  color: var(--theme-primary) !important;
+}
+.assessment-basemap-tabs button.active {
+  background: #2c3930 !important;
+  border-color: #2c3930 !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+/* Government places use blue consistently across map controls and summaries. */
+.city-place-controls .government,
+.dashboard-shell .map-wrap > .place-controls button[data-place-category="government"],
+.dashboard-shell .map-toolbar > .place-controls button[data-place-category="government"],
+.place-browser-card .place-controls button[data-place-category="government"][aria-pressed="true"] {
+  background: #527f9d !important;
+  border-color: #527f9d !important;
+  color: #fff !important;
+}
+.place-browser-card .place-controls button[data-place-category="government"][aria-pressed="false"],
+.place-category-summary .summary-icon.government {
+  background: #e5f1f8 !important;
+  color: #527f9d !important;
+}
+.place-dot.government {
+  background: #527f9d !important;
+}
+
+/* Login */
+.auth-page { background: var(--theme-background) !important; }
+.login-story { background: linear-gradient(155deg, var(--theme-primary), var(--theme-secondary)) !important; }
+.login-story::after { background: linear-gradient(12deg, #2c3930e8, #3f4f44b8) !important; }
+.login-panel { background: var(--theme-background) !important; }
+.login-card { background: var(--theme-surface) !important; border-color: var(--theme-border) !important; }
+.login-card h2, .login-form label { color: var(--theme-primary) !important; }
+.login-card-mark { border-color: var(--theme-primary) !important; color: var(--theme-primary) !important; }
+
+/* Semantic colors remain unchanged so alerts are easy to recognize. */
+.error, .danger, .urgent, .critical, .status-danger,
+.audit-action.delete, .dataset-danger { color: #b94050; }
+.success, .status-success, .audit-action.add { color: #607466; }
+.warning, .status-warning, .stock-low { color: #b96132; }

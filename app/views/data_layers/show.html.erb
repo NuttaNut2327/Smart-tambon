@@ -25,7 +25,7 @@
         <%= link_to data_layers_path(data_type: "file_library"), class: "dataset-type-link" do %><span class="material-symbols-outlined dataset-nav-icon">folder_open</span>คลังข้อมูลไฟล์<b class="material-symbols-outlined dataset-nav-arrow">chevron_right</b><% end %>
       </aside>
       <div class="data-management-main">
-        <% if @selected_type == "village_boundaries" %><%= link_to data_layers_path(data_type: "population"), class: "boundary-back-text-link" do %>‹ กลับไปหน้าข้อมูลประชากร<% end %><% end %>
+        <% if @selected_type == "village_boundaries" %><%= link_to data_layers_path(data_type: "population"), class: "boundary-back-link boundary-back-text-link" do %>‹ กลับไปข้อมูลประชากร<% end %><% end %>
         <nav class="data-management-tabs" aria-label="ส่วนจัดการข้อมูล" role="tablist">
           <button type="button" class="active" role="tab" aria-selected="true" data-data-layer-tab="current"><span class="material-symbols-outlined">table_view</span>ข้อมูลปัจจุบัน</button>
           <% if @selected_type == "consumables" %><button type="button" role="tab" aria-selected="false" data-data-layer-tab="movements"><span class="material-symbols-outlined">swap_vert</span>ประวัติรับเข้า–เบิกออก</button><% end %>

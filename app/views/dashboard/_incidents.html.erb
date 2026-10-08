@@ -3,7 +3,7 @@
 <% total_count = @incidents.size %>
 <% summary_noun = @incident_category == "disaster" ? "ภัยพิบัติ" : "เหตุการณ์" %>
 
-<section class="incident-page" data-incident-page>
+<section class="incident-page" data-incident-page data-incident-category="<%= @incident_category %>">
   <div class="incident-page-heading">
     <div><p class="page-kicker"><%= @incident_category == "disaster" ? "ศูนย์บริหารจัดการภัยพิบัติ" : "ศูนย์รับแจ้งเหตุประชาชน" %></p><h1><%= @incident_category == "disaster" ? "ภัยพิบัติ" : "เหตุการณ์ทั่วไป" %></h1><p>ดูรายละเอียด ตำแหน่ง การดำเนินงาน แผนรับมือ และทรัพยากรของแต่ละเหตุ</p></div>
     <% if @allow_incident_creation %><div class="incident-heading-actions"><% if current_user.subdistrict_id.present? || current_user.access_area.present? %><button type="button" class="incident-secondary-action" data-open-incident-dialog="share-incident-form-dialog"><span class="material-symbols-outlined">share</span>แชร์แบบฟอร์ม</button><% end %><button type="button" class="incident-primary-action" data-open-incident-dialog="new-incident-dialog"><span class="material-symbols-outlined">add</span>บันทึกเหตุการณ์ใหม่</button></div><% end %>
