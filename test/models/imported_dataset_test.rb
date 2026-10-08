@@ -40,4 +40,28 @@ class ImportedDatasetTest < ActiveSupport::TestCase
     assert_not dataset.valid?
     assert_includes dataset.errors[:schema_definition], "ต้องมีคอลัมน์ latitude และ longitude"
   end
+
+  test "uses a user-defined name field as the record display label" do
+    dataset = ImportedDataset.new(user: @user, name: "จุดสำรวจ", data_type: "custom", geometry_type: "none",
+      schema_definition: [
+        { "key" => "field_1", "label" => "ชื่อสถานที่", "type" => "text", "required" => true },
+        { "key" => "field_2", "label" => "รายละเอียด", "type" => "text", "required" => false }
+      ])
+
+    assert_equal "ศูนย์พักพิง A", dataset.record_display_label("field_1" => "ศูนย์พักพิง A", "record_id" => SecureRandom.uuid)
+  end
+
+  test "does not expose an internal record id as the display label" do
+    dataset = ImportedDataset.new(user: @user, name: "จุดสำรวจ", data_type: "custom", geometry_type: "none",
+      schema_definition: [{ "key" => "reference_id", "label" => "รหัสอ้างอิง", "type" => "text", "required" => false }])
+
+    assert_equal "จุดสำรวจ", dataset.record_display_label("record_id" => SecureRandom.uuid, "reference_id" => "REF-01")
+  end
+
+  test "standard datasets use the canonical type label as their display name" do
+    dataset = ImportedDataset.new(user: @user, name: "ข้อมูลประชากร 15-09-2026", data_type: "population",
+      geometry_type: "none", schema_definition: ImportedDataset.schema_for("population"))
+
+    assert_equal "ข้อมูลประชากร", dataset.display_name
+  end
 end

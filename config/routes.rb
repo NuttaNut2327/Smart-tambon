@@ -36,7 +36,8 @@ Rails.application.routes.draw do
   resources :population_dashboards, only: :show
   resources :imported_datasets do
     resources :records, controller: "imported_dataset_records", only: %i[update destroy]
-    resources :versions, controller: "imported_dataset_versions", only: %i[show create] do
+    resources :versions, controller: "imported_dataset_versions", only: %i[show create update] do
+      post :checkpoint, on: :collection
       get :download, on: :member
       post :restore, on: :member
     end

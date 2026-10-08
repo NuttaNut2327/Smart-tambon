@@ -50,6 +50,16 @@ class ImportedDatasetsController < ApplicationController
         render :index
       end
       format.json do
+        change_logs = DatasetChangeLog.where(imported_dataset_id: @dataset.id).desc(:created_at).limit(200).to_a
+        legacy_edit_groups = change_logs.group_by do |log|
+          [log.imported_dataset_id, log.imported_dataset_version_id, log.user_id, log.note, log.created_at&.to_i]
+        end
+        legacy_identity_artifact_ids = legacy_edit_groups.values.flat_map do |logs|
+          logs.any? { |log| log.action == "update" } ? logs.select { |log| %w[add delete].include?(log.action) }.map(&:id) : []
+        end.to_set
+        change_logs.reject! { |log| legacy_identity_artifact_ids.include?(log.id) }
+        change_logs = change_logs.first(100)
+        change_log_users = User.where(id: change_logs.map(&:user_id).uniq).index_by(&:id)
         render json: {
           id: @dataset.id.to_s, name: @dataset.name, type: @dataset.category_label,
           map_enabled: @dataset.map_enabled?, geometry_type: @dataset.geometry_type,
@@ -61,8 +71,9 @@ class ImportedDatasetsController < ApplicationController
           versions: @versions.map { |version|
             {
               id: version.id.to_s, version_number: version.version_number,
+              display_name: version.display_name.presence || @dataset.name,
               current: @dataset.current_version_id == version.id,
-              change_note: version.change_note.presence || (version.source_kind == "manual" ? "เพิ่มหรือแก้ไขข้อมูลด้วยตนเอง" : "นำเข้าข้อมูลจากไฟล์"),
+              change_note: version.change_note.presence || (version.source_kind == "manual" ? "เพิ่มหรือแก้ไขข้อมูลด้วยตนเอง" : version.source_kind == "checkpoint" ? "Snapshot จาก Manual" : "นำเข้าข้อมูลจากไฟล์"),
               source_kind: version.source_kind, source_filename: version.source_filename,
               user_name: version.user&.username || "—",
               record_count: version.record_count, created_at: version.created_at.iso8601,
@@ -70,6 +81,14 @@ class ImportedDatasetsController < ApplicationController
               restore_url: restore_imported_dataset_version_path(@dataset, version),
               downloadable: version.downloadable?,
               download_url: version.downloadable? ? download_imported_dataset_version_path(@dataset, version) : nil
+            }
+          },
+          change_logs: change_logs.map { |log|
+            {
+              id: log.id.to_s, action: log.action, record_label: change_log_record_label(log),
+              before_data: log.before_data, after_data: log.after_data,
+              changed_fields: log.changed_fields, note: log.note,
+              user_name: change_log_users[log.user_id]&.username || "—", created_at: log.created_at.iso8601
             }
           },
           updated_at: @dataset.updated_at.iso8601
@@ -83,7 +102,9 @@ class ImportedDatasetsController < ApplicationController
   end
 
   def update
-    @dataset.assign_attributes(dataset_attributes.except(:data_type))
+    attributes = dataset_attributes.except(:data_type)
+    attributes.delete(:name) unless @dataset.data_type == "custom"
+    @dataset.assign_attributes(attributes)
     @dataset.schema_definition = schema_definition if params[:schema_definition].present?
     authorize_subdistrict!(@dataset.subdistrict)
     @dataset.save!
@@ -155,6 +176,13 @@ class ImportedDatasetsController < ApplicationController
       { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => false },
       { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => false }
     ]
+  end
+
+  def change_log_record_label(log)
+    stored_label = log.record_label.to_s
+    return stored_label if stored_label.present? && !stored_label.match?(/\A[0-9a-f]{8}-[0-9a-f-]{27}\z/i)
+
+    @dataset.record_display_label(log.after_data.presence || log.before_data.presence || {})
   end
 
   def require_importer!

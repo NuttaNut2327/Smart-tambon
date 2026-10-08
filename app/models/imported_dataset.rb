@@ -15,6 +15,7 @@ class ImportedDataset
       { "key" => "household_count", "label" => "จำนวนครัวเรือน", "type" => "integer", "required" => true },
       { "key" => "boundary_status", "label" => "สถานะขอบเขต", "type" => "text", "required" => false, "generated" => true },
       { "key" => "boundary_dataset_id", "label" => "ชุดข้อมูลขอบเขต", "type" => "text", "required" => false, "generated" => true, "hidden" => true },
+      { "key" => "boundary_record_id", "label" => "รหัสอ้างอิงขอบเขต", "type" => "text", "required" => false, "generated" => true, "hidden" => true },
       { "key" => "boundary_record_position", "label" => "ลำดับขอบเขต", "type" => "integer", "required" => false, "generated" => true, "hidden" => true }
     ],
     "village_boundaries" => [
@@ -136,7 +137,13 @@ class ImportedDataset
   field :map_enabled, type: Boolean, default: false
   field :shared_with_all, type: Boolean, default: false
   field :current_version_id, type: BSON::ObjectId
+  field :boundary_link_status, type: String, default: "not_linked"
+  field :boundary_linked_at, type: Time
+  field :linked_boundary_dataset_id, type: BSON::ObjectId
+  field :linked_population_version_id, type: BSON::ObjectId
+  field :linked_boundary_version_id, type: BSON::ObjectId
   has_many :versions, class_name: "ImportedDatasetVersion", dependent: :destroy
+  has_many :change_logs, class_name: "DatasetChangeLog", dependent: :destroy
   index({ user_id: 1 }); index({ subdistrict_id: 1 }); index({ data_type: 1 }); index({ map_enabled: 1 })
   validates :user_id, :name, presence: true
   validates :data_type, inclusion: { in: TYPE_LABELS.keys }
@@ -160,10 +167,31 @@ class ImportedDataset
     self.current_version_id = value&.id
   end
   def type_label = TYPE_LABELS.fetch(data_type)
+  def display_name = data_type == "custom" ? name : type_label
   def category_label = CUSTOM_CATEGORY_LABELS[data_category] || "ยังไม่ระบุประเภท"
   def record_count = current_version&.record_count.to_i
   def self.schema_for(type) = STANDARD_SCHEMAS[type]&.deep_dup
   def effective_schema_definition = self.class.schema_for(data_type) || schema_definition
+
+  def record_display_label(record)
+    values = record.to_h.stringify_keys
+    known_keys = %w[village_name full_name name title agency_name team_name location_name sensor_id reference_code]
+    known_value = known_keys.filter_map { |key| values[key].presence }.first
+    return known_value.to_s if known_value.present?
+
+    fields = Array(effective_schema_definition).reject { |field| field["generated"] }
+    preferred_field = fields.find do |field|
+      field["label"].to_s.match?(/ชื่อ|รายการ|หัวข้อ|สถานที่|หน่วยงาน|บุคคล/) && values[field["key"]].present?
+    end
+    return values[preferred_field["key"]].to_s if preferred_field
+
+    fallback_field = fields.find do |field|
+      key = field["key"].to_s
+      field["type"] == "text" && key !~ /(?:^|_)(?:id|code|token)(?:$|_)/ &&
+        !%w[latitude longitude geometry].include?(key) && values[key].present?
+    end
+    fallback_field ? values[fallback_field["key"]].to_s : name
+  end
 
   private
 

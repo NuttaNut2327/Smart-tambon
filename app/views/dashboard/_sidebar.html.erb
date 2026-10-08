@@ -6,7 +6,13 @@
 <% sidebar_local_account = !current_user.system_admin? %>
 
 <aside class="dashboard-sidebar sidebar">
-  <div class="dashboard-brand brand"><span class="brand-symbol">⌂</span><div><strong>SMART TAMBON</strong><small>SMART GIS PLATFORM</small></div></div>
+  <div class="dashboard-brand brand">
+    <span class="brand-symbol material-symbols-outlined" aria-hidden="true">location_city</span>
+    <div><strong>SMART TAMBON</strong><small>SMART GIS PLATFORM</small></div>
+    <button type="button" class="sidebar-collapse-toggle" data-sidebar-collapse aria-expanded="true" aria-label="ย่อเมนูหลัก" title="ย่อเมนูหลัก">
+      <span class="material-symbols-outlined">chevron_left</span>
+    </button>
+  </div>
   <div class="scope-summary"><small>ขอบเขตการดูแล</small><div><b><%= current_user.system_admin? ? "ทุกพื้นที่ทั่วประเทศ" : sidebar_initial_area %></b><% if sidebar_local_admin %><button type="button" class="scope-name-edit" data-area-name-edit aria-label="แก้ไขชื่อขอบเขตพื้นที่" title="แก้ไขชื่อขอบเขตพื้นที่">✎</button><% end %></div></div>
   <div class="sidebar-menu-label">เมนูหลัก</div>
   <nav class="primary-nav" aria-label="เมนูหลัก">

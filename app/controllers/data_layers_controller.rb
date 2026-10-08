@@ -60,6 +60,7 @@ class DataLayersController < ApplicationController
       population_records = @population_datasets.flat_map { |dataset| Array(dataset.current_version&.records) }
       @linked_population_count = population_records.count { |record| record["boundary_status"] == "เชื่อมแล้ว" }
       @unlinked_population_count = population_records.size - @linked_population_count
+      @boundary_link_stale = @population_datasets.any? { |dataset| dataset.boundary_link_status != "linked" }
     end
     @dataset_summaries = @selected_datasets.map do |dataset|
       { dataset: dataset, current_version: dataset.current_version }
@@ -74,6 +75,21 @@ class DataLayersController < ApplicationController
     @version_history = @selected_datasets.flat_map do |dataset|
       dataset.versions.desc(:version_number).to_a.map { |version| { dataset: dataset, version: version } }
     end.sort_by { |item| item[:version].created_at }.reverse
+    @change_logs = DatasetChangeLog.where(:imported_dataset_id.in => @selected_datasets.map(&:id)).desc(:created_at).limit(200).to_a
+    legacy_edit_groups = @change_logs.group_by do |log|
+      [log.imported_dataset_id, log.imported_dataset_version_id, log.user_id, log.note, log.created_at&.to_i]
+    end
+    legacy_identity_artifact_ids = legacy_edit_groups.values.flat_map do |logs|
+      logs.any? { |log| log.action == "update" } ? logs.select { |log| %w[add delete].include?(log.action) }.map(&:id) : []
+    end.to_set
+    @change_logs.reject! { |log| legacy_identity_artifact_ids.include?(log.id) }
+    if @selected_type == "consumables"
+      movement_notes = @consumable_movements.map do |movement|
+        "#{movement.type_label} #{movement.consumable_name} #{movement.quantity.to_fs(:delimited)} #{movement.unit}"
+      end.to_set
+      @change_logs.reject! { |log| movement_notes.include?(log.note) }
+    end
+    @change_logs = @change_logs.first(100)
     @subdistricts = if current_user.system_admin?
       Subdistrict.includes(:province).alphabetical
     else
@@ -98,8 +114,11 @@ class DataLayersController < ApplicationController
 
   def link_village_boundaries
     scope = ImportedDataset.visible_to(current_user)
-    population = scope.where(id: params[:population_dataset_id], data_type: "population").first
-    boundary = ImportedDataset.visible_to(current_user).where(id: params[:boundary_dataset_id], data_type: "village_boundaries").first
+    boundaries = scope.where(data_type: "village_boundaries").to_a
+    boundary = primary_dataset(boundaries)
+    populations = scope.where(data_type: "population").to_a
+    same_area_populations = populations.select { |dataset| dataset.subdistrict_id == boundary&.subdistrict_id }
+    population = primary_dataset(same_area_populations.presence || populations)
     raise ArgumentError, "ไม่พบชุดข้อมูลประชากรหรือขอบเขตหมู่บ้านที่เลือก" unless population && boundary
 
     result = VillageBoundaryLinkService.new(population_dataset: population, boundary_dataset: boundary, user: current_user).link!
@@ -132,6 +151,12 @@ class DataLayersController < ApplicationController
   end
 
   private
+
+  def primary_dataset(datasets)
+    Array(datasets).max_by do |dataset|
+      [dataset.current_version&.record_count.to_i, dataset.current_version&.created_at || Time.at(0)]
+    end
+  end
 
   def require_importer!
     return if current_user.system_admin? || current_user.subdistrict_admin?

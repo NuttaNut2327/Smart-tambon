@@ -1,7 +1,8 @@
 <div class="destination-fields" data-destination-fields>
+  <% manual_entry = local_assigns.fetch(:manual_entry, false) %>
   <div class="automatic-destination-note">
     <b>บันทึกเข้าสู่<%= ImportedDataset::TYPE_LABELS.fetch(selected_type) %>อัตโนมัติ</b>
-    <span>ระบบจะใช้ชุดข้อมูลหลักของพื้นที่และสร้างเป็น Version ใหม่ หากยังไม่มี ระบบจะสร้างชุดข้อมูลหลักให้ครั้งแรก</span>
+    <span><%= manual_entry ? "ระบบจะเพิ่มรายการนี้ในรุ่นข้อมูลที่กรอกด้วยตนเองล่าสุด หากข้อมูลปัจจุบันมาจากไฟล์ ระบบจะสร้างรุ่นข้อมูลสำหรับแก้ไขให้อัตโนมัติ" : "ระบบจะใช้ชุดข้อมูลหลักของพื้นที่และสร้างเป็นรุ่นข้อมูลใหม่ หากยังไม่มี ระบบจะสร้างชุดข้อมูลหลักให้ครั้งแรก" %></span>
   </div>
   <% if current_user.system_admin? %>
   <label>พื้นที่
@@ -13,6 +14,17 @@
     </select>
   </label>
   <% end %>
+  <% unless manual_entry %><fieldset class="custom-import-mode system-import-mode">
+    <legend>ต้องการนำเข้าข้อมูลแบบไหน?</legend>
+    <label>
+      <input type="radio" name="import_mode" value="replace" checked>
+      <span><b>ใช้ข้อมูลจากไฟล์แทนข้อมูลเดิม</b><small>รุ่นข้อมูลใหม่จะมีเฉพาะข้อมูลจากไฟล์นี้ ส่วนข้อมูลเดิมยังเปิดดูและกู้คืนได้จากประวัติรุ่นข้อมูล</small></span>
+    </label>
+    <label>
+      <input type="radio" name="import_mode" value="append">
+      <span><b>เพิ่มข้อมูลจากไฟล์ต่อจากข้อมูลเดิม</b><small>ระบบจะเก็บข้อมูลปัจจุบันไว้ แล้วเพิ่มข้อมูลจากไฟล์นี้เพื่อสร้างรุ่นข้อมูลใหม่ที่มีข้อมูลทั้งหมด</small></span>
+    </label>
+  </fieldset><% end %>
   <% if selected_type == "village_boundaries" %>
     <div class="map-option map-option-note">ระบบจะสร้างชั้นข้อมูลแบบพื้นที่ และจับคู่กับประชากรด้วยรหัสหมู่บ้าน หรือ ตำบล + หมู่ที่</div>
   <% elsif selected_type != "population" %>
@@ -20,5 +32,11 @@
   <% else %>
     <div class="map-option map-option-note">ข้อมูลประชากรใช้งานได้โดยไม่ต้องมีขอบเขต และสามารถนำเข้าขอบเขตหมู่บ้านมาเชื่อมภายหลังได้</div>
   <% end %>
-  <label>รายละเอียด Version<input name="change_note" placeholder="เช่น นำเข้าข้อมูลเดือนกันยายน 2569"></label>
+  <% if local_assigns.fetch(:show_version_name, true) %>
+    <label>ชื่อรุ่นข้อมูล
+      <input name="version_name" value="<%= "#{ImportedDataset::TYPE_LABELS.fetch(selected_type)} #{Time.zone.today.strftime('%d-%m-%Y')}" %>" required maxlength="120">
+      <small>แก้ไขชื่อได้ก่อนบันทึก</small>
+    </label>
+  <% end %>
+  <label><%= manual_entry ? "รายละเอียดการเพิ่มข้อมูล" : "รายละเอียดรุ่นข้อมูล" %><input name="change_note" placeholder="<%= manual_entry ? 'เช่น เพิ่มวัสดุสำหรับงานป้องกันภัย' : 'เช่น นำเข้าข้อมูลเดือนกันยายน 2569' %>"></label>
 </div>
