@@ -384,7 +384,8 @@ class DatasetVersionImportService
   end
 
   def changed_record_fields(before_record, after_record)
-    internal_fields = %w[record_id boundary_dataset_id boundary_record_id boundary_record_position]
+    generated_fields = @dataset.effective_schema_definition.filter_map { |field| field["key"] if field["generated"] }
+    internal_fields = (%w[record_id boundary_dataset_id boundary_record_id boundary_record_position] + generated_fields).uniq
     return Array(after_record&.keys).reject { |key| internal_fields.include?(key) } if before_record.nil?
     return Array(before_record&.keys).reject { |key| internal_fields.include?(key) } if after_record.nil?
 
@@ -392,7 +393,7 @@ class DatasetVersionImportService
   end
 
   def audit_record_label(record)
-    %w[village_name full_name name agency_name team_name sensor_id reference_code].filter_map { |key| record[key].presence }.first || record["record_id"]
+    @dataset.record_display_label(record)
   end
 
   def existing_record_id(normalized, raw)

@@ -22,7 +22,19 @@ document.addEventListener("DOMContentLoaded", () => {
     return new Intl.DateTimeFormat("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value)) + " น.";
   };
   const sourceLabels = { manual: "กรอกหรือแก้ไขข้อมูล", file: "นำเข้าจากไฟล์", restored: "สร้างจากรุ่นข้อมูลเดิม", checkpoint: "รุ่นข้อมูลที่บันทึกไว้ดูย้อนหลัง" };
-  const versionCardMarkup = (version, editable) => `<article class="custom-version-row ${version.current ? "current" : ""}"><span class="custom-version-badge">รุ่น ${version.version_number}</span><div class="custom-version-info"><b>${escapeHtml(version.change_note)}</b><small>${escapeHtml(sourceLabels[version.source_kind] || version.source_kind)} · ${Number(version.record_count || 0).toLocaleString()} รายการ · ${escapeHtml(version.user_name)} · ${escapeHtml(formatThaiDateTime(version.created_at))}</small>${version.source_filename ? `<em>ไฟล์: ${escapeHtml(version.source_filename)}</em>` : ""}</div><div class="custom-version-actions"><button type="button" class="button-link" data-view-version="${escapeHtml(version.view_url)}">ดูข้อมูล</button>${version.downloadable ? `<a href="${escapeHtml(version.download_url)}" class="button-link">ดาวน์โหลดไฟล์</a>` : ""}${editable ? `<button type="button" class="button-link" data-restore-version="${escapeHtml(version.restore_url)}">สร้างรุ่นข้อมูลจากชุดนี้</button>` : ""}</div></article>`;
+  const versionCardMarkup = (version, editable) => `<article class="version-history-card ${version.current ? "current" : ""}"><div class="version-history-top"><span class="version-history-badge">v${version.version_number}</span>${version.current ? "<em>ใช้งานอยู่</em>" : ""}</div><b>${escapeHtml(version.display_name)}</b><p>${escapeHtml(version.change_note)}</p><small>${escapeHtml(sourceLabels[version.source_kind] || version.source_kind)} · ${Number(version.record_count || 0).toLocaleString()} รายการ · ${escapeHtml(formatThaiDateTime(version.created_at))}</small>${version.source_filename ? `<small>ไฟล์: ${escapeHtml(version.source_filename)}</small>` : ""}<div><button type="button" class="table-action" data-view-version="${escapeHtml(version.view_url)}">ดูข้อมูล</button>${version.downloadable ? `<a href="${escapeHtml(version.download_url)}" class="table-action">ดาวน์โหลดไฟล์</a>` : ""}${editable && !version.current ? `<button type="button" class="table-action" data-restore-version="${escapeHtml(version.restore_url)}">ใช้ข้อมูลรุ่นนี้</button>` : ""}</div></article>`;
+  const auditActionLabels = { add: "เพิ่ม", update: "แก้ไข", delete: "ลบ", import: "นำเข้าไฟล์", restore: "กู้คืน", checkpoint: "บันทึกเป็นรุ่นข้อมูล" };
+  const auditMarkup = (logs, schema, datasetName) => {
+    if (!logs.length) return '<section class="data-tab-empty custom-tab-empty"><span class="material-symbols-outlined">manage_search</span><h2>ยังไม่มีประวัติการแก้ไข</h2><p>รายการเพิ่ม แก้ไข ลบ และนำเข้าข้อมูลจะแสดงที่นี่</p></section>';
+    const labels = Object.fromEntries(schema.map(field => [field.key, field.label]));
+    const rows = logs.map(log => {
+      const changedFields = Array.isArray(log.changed_fields) ? log.changed_fields : [];
+      const summary = log.action === "add" ? "เพิ่มข้อมูลใหม่ 1 รายการ" : log.action === "delete" ? "ลบข้อมูล 1 รายการ" : log.action === "update" ? `แก้ไข ${changedFields.length} ช่องข้อมูล` : (log.note || "ข้อมูลทั้งชุด");
+      const details = changedFields.length ? changedFields.map(field => `<p><b>${escapeHtml(labels[field] || field)}</b><span><small>ข้อมูลเดิม</small><em>${escapeHtml(log.before_data?.[field] || "—")}</em></span><i class="material-symbols-outlined">arrow_forward</i><strong><small>ข้อมูลใหม่</small><em>${escapeHtml(log.after_data?.[field] || "—")}</em></strong></p>`).join("") : `<p><b>จำนวนข้อมูล</b><span><small>ข้อมูลเดิม</small><em>${Number(log.before_data?.record_count || 0).toLocaleString()} รายการ</em></span><i class="material-symbols-outlined">arrow_forward</i><strong><small>ข้อมูลใหม่</small><em>${Number(log.after_data?.record_count || 0).toLocaleString()} รายการ</em></strong></p>`;
+      return `<tr><td class="audit-date">${escapeHtml(formatThaiDateTime(log.created_at))}</td><td><span class="audit-action ${escapeHtml(log.action)}">${escapeHtml(auditActionLabels[log.action] || log.action)}</span></td><td class="audit-record"><b>${escapeHtml(log.record_label || log.note || datasetName)}</b><small>${escapeHtml(summary)}</small></td><td class="audit-user"><span class="material-symbols-outlined">person</span>${escapeHtml(log.user_name)}</td><td><button type="button" class="dataset-audit-toggle" data-custom-audit-toggle="custom-audit-${escapeHtml(log.id)}" aria-expanded="false">ดูรายละเอียด <i class="material-symbols-outlined">expand_more</i></button></td></tr><tr id="custom-audit-${escapeHtml(log.id)}" class="dataset-audit-detail-row" hidden><td colspan="5"><div class="dataset-audit-detail">${details}${log.note ? `<small>หมายเหตุ: ${escapeHtml(log.note)}</small>` : ""}</div></td></tr>`;
+    }).join("");
+    return `<section class="dataset-audit-panel custom-audit-panel"><div class="section-card-heading"><div><h2>ประวัติการแก้ไข</h2><p>ตรวจสอบย้อนหลังว่าใครเพิ่ม แก้ไข ลบ หรือนำเข้าข้อมูล</p></div><span>${logs.length} รายการล่าสุด</span></div><div class="dataset-audit-table-wrap"><table class="dataset-audit-table"><thead><tr><th>วันและเวลา</th><th>การดำเนินการ</th><th>รายการข้อมูล</th><th>ผู้ดำเนินการ</th><th>การเปลี่ยนแปลง</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+  };
   const items = [...list.querySelectorAll("article")].map(article => ({
     name: article.querySelector("b")?.textContent.trim() || "ชุดข้อมูล",
     summary: article.querySelector("small")?.textContent.trim() || "",
@@ -48,25 +60,51 @@ document.addEventListener("DOMContentLoaded", () => {
     list.querySelector("[data-custom-search]").addEventListener("input", applyFilters);
     list.querySelector("[data-custom-category-filter]").addEventListener("change", applyFilters);
   };
-  renderList();
   const renderDetail = data => {
     activeDataset = data;
     const headers = data.schema.map(field => `<th>${escapeHtml(field.label)}</th>`).join("") + (data.editable ? '<th class="record-actions-heading">จัดการ</th>' : "");
     const rows = data.records.map((record, position) => `<tr>${data.schema.map(field => `<td>${escapeHtml(record[field.key] ?? "—")}</td>`).join("")}${data.editable ? `<td class="record-actions"><button type="button" class="record-icon-button edit" title="แก้ไขข้อมูล" aria-label="แก้ไขข้อมูล" data-custom-record-edit="${position}">✎</button><button type="button" class="record-icon-button delete" title="ลบข้อมูล" aria-label="ลบข้อมูล" data-custom-record-delete="${position}">♲</button></td>` : ""}</tr>`).join("") || `<tr><td colspan="${Math.max(data.schema.length + (data.editable ? 1 : 0), 1)}">ยังไม่มีข้อมูลในชุดนี้</td></tr>`;
     const versions = Array.isArray(data.versions) ? data.versions : [];
-    const versionCards = versions.slice(0, 3).map(version => versionCardMarkup(version, data.editable)).join("") || '<p class="custom-empty">ยังไม่มีประวัติรุ่นข้อมูล</p>';
-    const moreVersionsButton = versions.length > 3 ? '<button type="button" class="button-link custom-version-more" data-show-all-versions>ดูเพิ่มเติม</button>' : "";
+    const versionCards = versions.map(version => versionCardMarkup(version, data.editable)).join("");
+    const versionPanel = versionCards ? `<section class="dataset-version-panel custom-version-panel"><div class="section-card-heading"><div><h2>ประวัติรุ่นข้อมูล</h2><p>รุ่นข้อมูลจากไฟล์และรุ่นข้อมูลที่บันทึกไว้ใช้เป็นจุดย้อนกลับสำหรับดูข้อมูลย้อนหลัง</p></div><div class="version-heading-actions"><span>${versions.length} รุ่นข้อมูล</span></div></div><div class="version-history-cards">${versionCards}</div></section>` : '<section class="data-tab-empty custom-tab-empty"><span class="material-symbols-outlined">history</span><h2>ยังไม่มีประวัติรุ่นข้อมูล</h2><p>เมื่อเพิ่มข้อมูลหรือนำเข้าไฟล์ ประวัติรุ่นข้อมูลจะแสดงที่นี่</p></section>';
+    const auditPanel = auditMarkup(Array.isArray(data.change_logs) ? data.change_logs : [], data.schema, data.name);
     const geometry = { none: "ไม่แสดงบนแผนที่", point: "จุด", line: "เส้นทาง", polygon: "ขอบเขตพื้นที่" }[data.geometry_type] || "—";
+    const summaryGeometry = data.map_enabled ? ({ point: "จุดตำแหน่ง", line: "เส้นทาง", polygon: "ขอบเขตพื้นที่" }[data.geometry_type] || "—") : "—";
     if (catalogHero) catalogHero.hidden = true;
     if (createDatasetButton) createDatasetButton.hidden = true;
     catalog?.classList.add("custom-detail-mode");
     list.classList.remove("custom-dataset-table");
     const typeLabel = { text: "ข้อความ", number: "ตัวเลข", integer: "จำนวนเต็ม", date: "วันที่", boolean: "ใช่/ไม่ใช่" };
-    list.innerHTML = `<button type="button" class="custom-back-link" data-custom-back>‹ กลับไปรายการชุดข้อมูล</button><section class="custom-detail-card"><header class="custom-detail-header"><div><small>ชุดข้อมูลแบบกำหนดเอง</small><h2>${escapeHtml(data.name)}</h2><p>${escapeHtml(data.type)} · เจ้าของข้อมูล · อัปเดตล่าสุด</p></div><div class="custom-detail-actions">${data.editable ? '<button type="button" class="custom-delete-dataset" data-custom-delete-dataset>♲ ลบชุดข้อมูล</button>' : ""}<button type="button" class="button-link" data-custom-add-record>＋ เพิ่มข้อมูล</button><button type="button" class="data-layer-add" data-custom-upload-file>⇧ นำเข้าไฟล์</button></div></header><section class="custom-detail-stats"><div><small>Version ข้อมูลปัจจุบัน</small><b>${data.current_version_number ? `v${data.current_version_number}` : "ยังไม่มี Version"}</b></div><div><small>จำนวนข้อมูล</small><b>${data.record_count} รายการ</b></div><div><small>สถานะแผนที่</small><b class="map-enabled-state">${data.map_enabled ? "เปิดแสดง" : "ไม่แสดง"}</b></div><div><small>รูปแบบตำแหน่ง</small><b>${geometry}</b></div><div><small>อัปเดตล่าสุด</small><b>${escapeHtml(formatThaiDateTime(data.updated_at))}</b></div></section><section class="map-layer-setting-panel custom-map-setting-panel"><div><span class="material-symbols-outlined">layers</span><div><b>การตั้งค่าชั้นข้อมูลบนแผนที่</b><p>${data.geometry_type === "none" ? "ชุดข้อมูลนี้ยังไม่มีข้อมูลตำแหน่ง จึงยังไม่สามารถแสดงบนแผนที่ได้" : "เมื่อปิด ชื่อชั้นข้อมูลและข้อมูลชุดนี้จะไม่ปรากฏในหน้าแผนที่เมือง"}</p></div></div>${data.editable ? `<label class="map-layer-switch custom-map-layer-switch"><input type="checkbox" data-custom-map-toggle ${data.map_enabled ? "checked" : ""} ${data.geometry_type === "none" ? "disabled" : ""}><span aria-hidden="true"></span><em>${data.map_enabled ? "แสดงในชั้นข้อมูล" : "ไม่แสดงในชั้นข้อมูล"}</em></label>` : `<strong class="map-setting-readonly">${data.map_enabled ? "เปิดใช้งาน" : "ปิดใช้งาน"}</strong>`}</section><section class="custom-detail-section schema-detail-card"><div class="detail-section-heading"><div><h3>โครงสร้างรายละเอียดข้อมูล</h3><p>กด “แก้ไขโครงสร้าง” ก่อนเปลี่ยนหัวข้อรายละเอียดข้อมูล</p></div><button type="button" class="button-link" data-custom-edit-schema>⚙ แก้ไขโครงสร้าง</button></div><div class="fixed-table-wrap"><table class="fixed-data-table"><thead><tr><th>ชื่อหัวข้อ</th><th>ประเภทข้อมูลที่เก็บ</th><th>การกรอกข้อมูล</th></tr></thead><tbody>${data.schema.map(field => `<tr><td>${escapeHtml(field.label)}</td><td>${typeLabel[field.type] || escapeHtml(field.type)}</td><td>${field.required ? "☑ จำเป็นต้องกรอก" : "☐ ไม่บังคับ"}</td></tr>`).join("")}</tbody></table></div></section><section class="custom-detail-section data-detail-card"><div class="detail-section-heading"><div><h3>ข้อมูลในชุดนี้</h3><p>แสดงรายละเอียดที่ถูกนำเข้าและบันทึกไว้ทั้งหมด</p></div><input type="search" placeholder="⌕ ค้นหาข้อมูลในตาราง" data-detail-search></div><div class="fixed-table-wrap"><table class="fixed-data-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div></section><section class="custom-detail-section custom-version-history"><div class="detail-section-heading"><div><h3>ประวัติ Version</h3><p>แสดง 3 Version ล่าสุด กดดูเพิ่มเติมเพื่อดูประวัติทั้งหมด</p></div><span>${versions.length} Version</span></div><div class="version-history-cards">${versionCards}</div>${moreVersionsButton ? `<div class="custom-version-more-wrap">${moreVersionsButton}</div>` : ""}</section></section>`;
+    list.innerHTML = `<button type="button" class="custom-back-link" data-custom-back>‹ กลับไปรายการชุดข้อมูล</button><section class="custom-detail-card"><header class="custom-detail-header"><div><small>ชุดข้อมูลแบบกำหนดเอง</small><h2>${escapeHtml(data.name)}</h2><p>${escapeHtml(data.type)} · เจ้าของข้อมูล · อัปเดตล่าสุด</p></div><div class="custom-detail-actions">${data.editable ? '<button type="button" class="custom-delete-dataset" data-custom-delete-dataset>♲ ลบชุดข้อมูล</button>' : ""}<button type="button" class="button-link" data-custom-add-record>＋ เพิ่มข้อมูล</button><button type="button" class="data-layer-add" data-custom-upload-file>⇧ นำเข้าไฟล์</button></div></header><nav class="data-management-tabs custom-data-tabs" role="tablist" aria-label="ข้อมูลชุดที่กำหนดเอง"><button type="button" class="active" role="tab" aria-selected="true" data-custom-detail-tab="current"><span class="material-symbols-outlined">table_view</span>ข้อมูลปัจจุบัน</button><button type="button" role="tab" aria-selected="false" data-custom-detail-tab="versions"><span class="material-symbols-outlined">history</span>ประวัติรุ่นข้อมูล</button><button type="button" role="tab" aria-selected="false" data-custom-detail-tab="audit"><span class="material-symbols-outlined">manage_search</span>ประวัติการแก้ไข</button></nav><section class="custom-detail-stats"><div><small>รุ่นข้อมูลปัจจุบัน</small><b>${data.current_version_number ? `v${data.current_version_number}` : "ยังไม่มีรุ่นข้อมูล"}</b></div><div><small>จำนวนข้อมูล</small><b>${data.record_count} รายการ</b></div><div><small>สถานะแผนที่</small><b class="map-enabled-state">${data.map_enabled ? "เปิดแสดง" : "ไม่แสดง"}</b></div><div><small>รูปแบบตำแหน่ง</small><b>${geometry}</b></div><div><small>อัปเดตล่าสุด</small><b>${escapeHtml(formatThaiDateTime(data.updated_at))}</b></div></section><div class="data-management-tab-panel active" role="tabpanel" data-custom-detail-panel="current"><section class="map-layer-setting-panel custom-map-setting-panel"><div><span class="material-symbols-outlined">layers</span><div><b>การตั้งค่าชั้นข้อมูลบนแผนที่</b><p>${data.geometry_type === "none" ? "ชุดข้อมูลนี้ยังไม่มีข้อมูลตำแหน่ง จึงยังไม่สามารถแสดงบนแผนที่ได้" : "เมื่อปิด ชื่อชั้นข้อมูลและข้อมูลชุดนี้จะไม่ปรากฏในหน้าแผนที่เมือง"}</p></div></div>${data.editable ? `<label class="map-layer-switch custom-map-layer-switch"><input type="checkbox" data-custom-map-toggle ${data.map_enabled ? "checked" : ""} ${data.geometry_type === "none" ? "disabled" : ""}><span aria-hidden="true"></span><em>${data.map_enabled ? "แสดงในชั้นข้อมูล" : "ไม่แสดงในชั้นข้อมูล"}</em></label>` : `<strong class="map-setting-readonly">${data.map_enabled ? "เปิดใช้งาน" : "ปิดใช้งาน"}</strong>`}</section><section class="custom-detail-section schema-detail-card"><div class="detail-section-heading"><div><h3>โครงสร้างรายละเอียดข้อมูล</h3><p>กด “แก้ไขโครงสร้าง” ก่อนเปลี่ยนหัวข้อรายละเอียดข้อมูล</p></div><button type="button" class="button-link" data-custom-edit-schema>⚙ แก้ไขโครงสร้าง</button></div><div class="fixed-table-wrap"><table class="fixed-data-table"><thead><tr><th>ชื่อหัวข้อ</th><th>ประเภทข้อมูลที่เก็บ</th><th>การกรอกข้อมูล</th></tr></thead><tbody>${data.schema.map(field => `<tr><td>${escapeHtml(field.label)}</td><td>${typeLabel[field.type] || escapeHtml(field.type)}</td><td>${field.required ? "☑ จำเป็นต้องกรอก" : "☐ ไม่บังคับ"}</td></tr>`).join("")}</tbody></table></div></section><section class="custom-detail-section data-detail-card"><div class="detail-section-heading"><div><h3>ข้อมูลในชุดนี้</h3><p>แสดงรายละเอียดที่ถูกนำเข้าและบันทึกไว้ทั้งหมด</p></div><input type="search" placeholder="⌕ ค้นหาข้อมูลในตาราง" data-detail-search></div><div class="fixed-table-wrap"><table class="fixed-data-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div></section></div><div class="data-management-tab-panel" role="tabpanel" data-custom-detail-panel="versions" hidden>${versionPanel}</div><div class="data-management-tab-panel" role="tabpanel" data-custom-detail-panel="audit" hidden>${auditPanel}</div></section>`;
+    const summaryCards = list.querySelector(".custom-detail-stats");
+    summaryCards.className = "import-summary-grid dataset-summary-grid custom-detail-stats";
+    summaryCards.setAttribute("aria-label", "สรุปชุดข้อมูลปัจจุบัน");
+    summaryCards.innerHTML = `<article><span class="material-symbols-outlined versions">history</span><div><small>รุ่นข้อมูลที่ใช้อยู่</small><strong>${data.current_version_number ? `รุ่นที่ ${data.current_version_number}` : "—"}</strong></div></article><article><span class="material-symbols-outlined records">database</span><div><small>จำนวนข้อมูล</small><strong>${Number(data.record_count || 0).toLocaleString()}</strong></div></article><article><span class="material-symbols-outlined maps">map</span><div><small>การแสดงบนแผนที่</small><strong class="state ${data.map_enabled ? "enabled" : "disabled"}">${data.map_enabled ? "เปิดใช้งาน" : "ยังไม่เปิดใช้งาน"}</strong></div></article><article><span class="material-symbols-outlined geometry">category</span><div><small>รูปแบบข้อมูลแผนที่</small><strong class="date">${escapeHtml(summaryGeometry)}</strong></div></article><article><span class="material-symbols-outlined updated">update</span><div><small>อัปเดตล่าสุด</small><strong class="date">${escapeHtml(formatThaiDateTime(data.updated_at))}</strong></div></article>`;
     list.querySelector("[data-detail-search]").addEventListener("input", event => {
       const query = event.target.value.trim().toLowerCase();
       list.querySelectorAll(".data-detail-card tbody tr").forEach(row => row.hidden = Boolean(query) && !row.textContent.toLowerCase().includes(query));
     });
+  };
+  const loadDetail = async (url, updateHistory = true) => {
+    list.setAttribute("aria-busy", "true");
+    try {
+      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error("ไม่สามารถเปิดรายละเอียดชุดข้อมูลได้");
+      const data = await response.json();
+      renderDetail(data);
+      if (updateHistory && window.location.pathname !== new URL(url, window.location.origin).pathname) history.pushState({ customDatasetUrl: url }, "", url);
+    } finally {
+      list.removeAttribute("aria-busy");
+    }
+  };
+  const returnToList = (updateHistory = true) => {
+    activeDataset = null;
+    if (catalogHero) catalogHero.hidden = false;
+    if (createDatasetButton) createDatasetButton.hidden = false;
+    catalog?.classList.remove("custom-detail-mode");
+    list.classList.add("custom-dataset-table");
+    renderList();
+    if (updateHistory && window.location.pathname !== "/imported_datasets") history.pushState({ customDatasetList: true }, "", "/imported_datasets");
   };
   const closeDialog = dialog => { dialog.close(); dialog.remove(); };
   const dialogShell = (title, content) => {
@@ -98,7 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const record = activeDataset?.records?.[position];
     if (!record) return;
     const fields = activeDataset.schema.map(field => `<label>${escapeHtml(field.label)}${field.required ? " *" : ""}<input name="record[${escapeHtml(field.key)}]" value="${escapeHtml(record[field.key] ?? "")}" type="${field.type === "number" || field.type === "integer" ? "number" : field.type === "date" ? "date" : "text"}" ${field.required ? "required" : ""} step="any"></label>`).join("");
-    const dialog = dialogShell("แก้ไขข้อมูล", `<form class="manual-record-form"><div class="modal-info">ระบบจะอัปเดต Version ที่กรอกเองล่าสุด หากข้อมูลปัจจุบันมาจากไฟล์ ระบบจะสร้าง Version สำหรับการแก้ไขขึ้นใหม่</div><div class="manual-fixed-grid">${fields}</div><label class="record-change-note">รายละเอียดการแก้ไข<input name="change_note" placeholder="ระบุรายละเอียดที่แก้ไข"></label><p class="modal-status" data-status></p><footer><button type="button" class="button-link" data-cancel>ยกเลิก</button><button class="data-layer-add" type="submit">บันทึกการแก้ไข</button></footer></form>`);
+    const dialog = dialogShell("แก้ไขข้อมูล", `<form class="manual-record-form"><div class="modal-info">ระบบจะอัปเดตรุ่นข้อมูลที่กรอกเองล่าสุด หากข้อมูลปัจจุบันมาจากไฟล์ ระบบจะสร้างรุ่นข้อมูลสำหรับการแก้ไขขึ้นใหม่</div><div class="manual-fixed-grid">${fields}</div><label class="record-change-note">รายละเอียดการแก้ไข<input name="change_note" placeholder="ระบุรายละเอียดที่แก้ไข"></label><p class="modal-status" data-status></p><footer><button type="button" class="button-link" data-cancel>ยกเลิก</button><button class="data-layer-add" type="submit">บันทึกการแก้ไข</button></footer></form>`);
     const form = dialog.querySelector("form");
     form.querySelector("[data-cancel]").addEventListener("click", () => closeDialog(dialog));
     form.addEventListener("submit", async event => {
@@ -305,7 +343,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
   list.addEventListener("click", async event => {
-    if (event.target.closest("[data-custom-back]")) { window.location.assign("/imported_datasets"); return; }
+    const detailTab = event.target.closest("[data-custom-detail-tab]");
+    if (detailTab) {
+      const selected = detailTab.dataset.customDetailTab;
+      list.querySelectorAll("[data-custom-detail-tab]").forEach(tab => {
+        const active = tab === detailTab;
+        tab.classList.toggle("active", active);
+        tab.setAttribute("aria-selected", String(active));
+      });
+      list.querySelectorAll("[data-custom-detail-panel]").forEach(panel => {
+        const active = panel.dataset.customDetailPanel === selected;
+        panel.hidden = !active;
+        panel.classList.toggle("active", active);
+      });
+      return;
+    }
+    const auditToggle = event.target.closest("[data-custom-audit-toggle]");
+    if (auditToggle) {
+      const detailRow = document.getElementById(auditToggle.dataset.customAuditToggle);
+      if (!detailRow) return;
+      const expanded = auditToggle.getAttribute("aria-expanded") === "true";
+      auditToggle.setAttribute("aria-expanded", String(!expanded));
+      detailRow.hidden = expanded;
+      return;
+    }
+    if (event.target.closest("[data-custom-back]")) { returnToList(); return; }
     if (event.target.closest("[data-custom-edit-schema]")) { openSchemaForm(); return; }
     if (event.target.closest("[data-custom-add-record]")) { openRecordForm(); return; }
     if (event.target.closest("[data-custom-upload-file]")) { openFileForm(); return; }
@@ -321,7 +383,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (deleteRecord) { deleteCustomRecord(Number(deleteRecord.dataset.customRecordDelete)); return; }
     const row = event.target.closest("[data-custom-row]");
     if (!row) return;
-    window.location.assign(row.dataset.detailUrl);
+    try {
+      await loadDetail(row.dataset.detailUrl);
+    } catch (error) {
+      window.alert(error.message);
+    }
   });
   list.addEventListener("keydown", event => {
     if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-custom-row]")) {
@@ -329,10 +395,14 @@ document.addEventListener("DOMContentLoaded", () => {
       event.target.click();
     }
   });
+  window.addEventListener("popstate", () => {
+    if (window.location.pathname === "/imported_datasets") returnToList(false);
+    else loadDetail(window.location.href, false).catch(error => window.alert(error.message));
+  });
   if (initialDetailUrl) {
-    fetch(initialDetailUrl, { headers: { Accept: "application/json" } })
-      .then(response => { if (!response.ok) throw new Error(); return response.json(); })
-      .then(renderDetail)
-      .catch(() => window.alert("ไม่สามารถเปิดรายละเอียดชุดข้อมูลได้"));
+    list.innerHTML = '<div class="custom-detail-loading"><span class="material-symbols-outlined">progress_activity</span><p>กำลังโหลดรายละเอียดชุดข้อมูล…</p></div>';
+    loadDetail(initialDetailUrl, false).catch(error => { returnToList(false); window.alert(error.message); });
+  } else {
+    renderList();
   }
 });

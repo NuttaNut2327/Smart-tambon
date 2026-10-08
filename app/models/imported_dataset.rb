@@ -167,10 +167,31 @@ class ImportedDataset
     self.current_version_id = value&.id
   end
   def type_label = TYPE_LABELS.fetch(data_type)
+  def display_name = data_type == "custom" ? name : type_label
   def category_label = CUSTOM_CATEGORY_LABELS[data_category] || "ยังไม่ระบุประเภท"
   def record_count = current_version&.record_count.to_i
   def self.schema_for(type) = STANDARD_SCHEMAS[type]&.deep_dup
   def effective_schema_definition = self.class.schema_for(data_type) || schema_definition
+
+  def record_display_label(record)
+    values = record.to_h.stringify_keys
+    known_keys = %w[village_name full_name name title agency_name team_name location_name sensor_id reference_code]
+    known_value = known_keys.filter_map { |key| values[key].presence }.first
+    return known_value.to_s if known_value.present?
+
+    fields = Array(effective_schema_definition).reject { |field| field["generated"] }
+    preferred_field = fields.find do |field|
+      field["label"].to_s.match?(/ชื่อ|รายการ|หัวข้อ|สถานที่|หน่วยงาน|บุคคล/) && values[field["key"]].present?
+    end
+    return values[preferred_field["key"]].to_s if preferred_field
+
+    fallback_field = fields.find do |field|
+      key = field["key"].to_s
+      field["type"] == "text" && key !~ /(?:^|_)(?:id|code|token)(?:$|_)/ &&
+        !%w[latitude longitude geometry].include?(key) && values[key].present?
+    end
+    fallback_field ? values[fallback_field["key"]].to_s : name
+  end
 
   private
 

@@ -3,9 +3,9 @@ class ImportedDatasetRecordsController < ApplicationController
 
   def update
     records = current_records
+    ensure_record_ids!(records)
     records.fetch(position)
     original_record = records[position]
-    ensure_record_id!(original_record)
     updated_record = record_params
     # Keep the stable row identity even when users edit fields that are also
     # used as natural keys (for example village number or village name).
@@ -87,13 +87,16 @@ class ImportedDatasetRecordsController < ApplicationController
     params.require(:record).permit(*keys).to_h
   end
 
-  def ensure_record_id!(record)
-    return if record["record_id"].present?
+  def ensure_record_ids!(records)
+    documents_by_position = @dataset.current_version&.record_documents&.index_by(&:position) || {}
+    records.each_with_index do |record, index|
+      next if record["record_id"].present?
 
-    record_id = SecureRandom.uuid
-    record["record_id"] = record_id
-    document = @dataset.current_version&.record_documents&.where(position: position)&.first
-    document&.set(payload: document.payload.merge("record_id" => record_id))
+      record_id = SecureRandom.uuid
+      record["record_id"] = record_id
+      document = documents_by_position[index]
+      document&.set(payload: document.payload.merge("record_id" => record_id))
+    end
   end
 
   def normalized_identity_value(value)

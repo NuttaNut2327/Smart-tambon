@@ -92,6 +92,29 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a.boundary-back-link[href='#{data_layers_path(data_type: "population")}']", text: /กลับไปข้อมูลประชากร/
   end
 
+  test "audit page hides legacy add and delete artifacts from the same edit" do
+    dataset = ImportedDataset.create!(user: @user, name: "หน่วยงาน", data_type: "agencies", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("agencies"), shared_with_all: true)
+    record = { agency_name: "อบต.ทดสอบ", agency_type: "ท้องถิ่น", latitude: 13.7, longitude: 100.5 }
+    version = DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [record]).import!
+    DatasetChangeLog.where(imported_dataset_id: dataset.id).delete_all
+    timestamp = Time.zone.now.change(usec: 100_000)
+    common = { imported_dataset_id: dataset.id, imported_dataset_version_id: version.id, user_id: @user.id,
+               source_kind: "manual", note: "แก้ไขหน่วยงาน" }
+    DatasetChangeLog.create!(common.merge(action: "update", record_id: "agency-1", record_label: "อบต.ทดสอบ",
+      before_data: { "phone" => "" }, after_data: { "phone" => "0812345678" }, changed_fields: ["phone"], created_at: timestamp))
+    DatasetChangeLog.create!(common.merge(action: "add", record_id: "legacy-new", record_label: "กองช่าง",
+      after_data: { "agency_name" => "กองช่าง" }, changed_fields: ["agency_name"], created_at: timestamp + 0.2.seconds))
+    DatasetChangeLog.create!(common.merge(action: "delete", record_id: "legacy-old", record_label: "กองช่าง",
+      before_data: { "agency_name" => "กองช่าง" }, changed_fields: ["agency_name"], created_at: timestamp + 0.3.seconds))
+
+    get data_layers_path(data_type: "agencies")
+
+    assert_response :success
+    assert_select ".dataset-audit-table tbody > tr:not(.dataset-audit-detail-row)", count: 1
+    assert_select ".audit-action.update", text: "แก้ไข", count: 1
+  end
+
   test "renames one population version without changing its dataset or records" do
     dataset = ImportedDataset.create!(user: @user, name: "ข้อมูลประชากร", data_type: "population", geometry_type: "none",
       schema_definition: ImportedDataset.schema_for("population"), shared_with_all: true)
@@ -198,7 +221,7 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
     assert_nil dataset.current_version.records.first["boundary_record_id"]
     assert_equal "needs_matching", dataset.boundary_link_status
     update_log = DatasetChangeLog.where(imported_dataset_id: dataset.id, action: "update").first
-    assert_equal %w[boundary_status population_total village_number], update_log.changed_fields.sort
+    assert_equal %w[population_total village_number], update_log.changed_fields.sort
 
     delete imported_dataset_record_path(dataset, 0)
     assert_response :success, response.body
@@ -261,16 +284,18 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
     record = { name: "เครื่องสูบน้ำเดิม", registration: "กข-123", resource_type: "เครื่องสูบน้ำ",
                status: "พร้อมใช้", storage_location: "คลังกลาง", responsible_person: "อบต.ทดสอบ",
                agency_code: "AG-001" }
-    DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [record]).import!
-    document = dataset.current_version.record_documents.first
-    document.set(payload: document.payload.except("record_id", "code"))
+    another_record = record.merge(name: "รถบรรทุกน้ำ", registration: "กข-456")
+    DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [record, another_record]).import!
+    dataset.current_version.record_documents.each do |document|
+      document.set(payload: document.payload.except("record_id", "code"))
+    end
     DatasetChangeLog.where(imported_dataset_id: dataset.id).delete_all
 
     patch imported_dataset_record_path(dataset, 0), params: { record: record.merge(name: "เครื่องสูบน้ำใหม่") }
 
     assert_response :success
     assert_equal "เครื่องสูบน้ำใหม่", dataset.reload.current_version.records.first["name"]
-    assert dataset.current_version.records.first["record_id"].present?
+    assert dataset.current_version.records.all? { |item| item["record_id"].present? }
     assert_equal ["update"], DatasetChangeLog.where(imported_dataset_id: dataset.id).pluck(:action)
   end
 

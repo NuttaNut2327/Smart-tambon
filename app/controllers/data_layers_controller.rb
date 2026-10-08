@@ -76,6 +76,13 @@ class DataLayersController < ApplicationController
       dataset.versions.desc(:version_number).to_a.map { |version| { dataset: dataset, version: version } }
     end.sort_by { |item| item[:version].created_at }.reverse
     @change_logs = DatasetChangeLog.where(:imported_dataset_id.in => @selected_datasets.map(&:id)).desc(:created_at).limit(200).to_a
+    legacy_edit_groups = @change_logs.group_by do |log|
+      [log.imported_dataset_id, log.imported_dataset_version_id, log.user_id, log.note, log.created_at&.to_i]
+    end
+    legacy_identity_artifact_ids = legacy_edit_groups.values.flat_map do |logs|
+      logs.any? { |log| log.action == "update" } ? logs.select { |log| %w[add delete].include?(log.action) }.map(&:id) : []
+    end.to_set
+    @change_logs.reject! { |log| legacy_identity_artifact_ids.include?(log.id) }
     if @selected_type == "consumables"
       movement_notes = @consumable_movements.map do |movement|
         "#{movement.type_label} #{movement.consumable_name} #{movement.quantity.to_fs(:delimited)} #{movement.unit}"

@@ -165,7 +165,8 @@ class DatasetImportDraftsController < ApplicationController
     end
 
     if dataset
-      dataset.update!(subdistrict: subdistrict, map_enabled: map_enabled, geometry_type: geometry_type)
+      dataset.update!(name: ImportedDataset::TYPE_LABELS.fetch(data_type), subdistrict: subdistrict,
+        map_enabled: map_enabled, geometry_type: geometry_type)
       return dataset
     end
 
