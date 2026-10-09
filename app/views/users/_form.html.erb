@@ -1,5 +1,11 @@
-<main class="users-page"><header><div><h1><%= title %></h1><p><%= current_user.system_admin? ? "กำหนดสิทธิ์และขอบเขตพื้นที่ที่บัญชีเข้าถึงได้" : "เพิ่มบัญชีสำหรับเจ้าหน้าที่ใน อบต. เดียวกัน" %></p></div><%= link_to "กลับรายการผู้ใช้", users_path, class: "button-link" %></header>
-  <section class="users-card"><%= form_with model: user, html: { multipart: true } do |form| %>
+<% users_area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<div class="shell dashboard-shell gis-dashboard users-shell">
+  <%= render "dashboard/sidebar", active_nav: :users, initial_area: users_area %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker">SMART TAMBON SAFETY THAILAND</p><span class="breadcrumb"><span id="selection-label"><%= users_area %></span><b>›</b><span>จัดการผู้ใช้</span><b>›</b><span><%= title %></span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker">การบริหารสิทธิ์ผู้ใช้งาน</p><h1><%= title %></h1><p><%= current_user.system_admin? ? "กำหนดสิทธิ์และขอบเขตพื้นที่ที่บัญชีเข้าถึงได้" : "เพิ่มบัญชีสำหรับเจ้าหน้าที่ใน อบต. เดียวกัน" %></p></div><%= link_to "กลับรายการผู้ใช้", users_path, class: "button-link" %></section>
+      <section class="users-card"><%= form_with model: user, html: { multipart: true } do |form| %>
     <% if user.errors.any? %><div class="form-errors"><%= user.errors.full_messages.to_sentence %></div><% end %>
 
     <% if current_user.system_admin? %>
@@ -22,7 +28,9 @@
     <label>ยืนยันรหัสผ่าน<%= form.password_field :password_confirmation, required: user.new_record?, autocomplete: "new-password" %></label>
     <div class="form-actions"><%= form.submit "บันทึก", class: "button-link primary" %><%= link_to "ยกเลิก", users_path, class: "button-link" %></div>
   <% end %></section>
-</main>
+    </div>
+  </main>
+</div>
 
 <script>
   function setAccessAreaMode(mode) {

@@ -449,3 +449,106 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--theme-primary)
 @media(min-width:761px){
   .dashboard-brand .sidebar-collapse-toggle,.sidebar-collapsed .dashboard-brand .sidebar-collapse-toggle{border-radius:50%}
 }
+
+/* Users dashboard layout */
+.users-shell .users-workspace{width:min(100%,1440px);min-height:calc(100vh - 64px);margin:0 auto;padding:28px}
+.users-shell .users-title-row{align-items:flex-end;margin-bottom:20px}
+.users-shell .users-title-row h1{margin:0;color:#2c3930;font-size:25px}
+.users-shell .users-title-row p:not(.page-kicker){margin:4px 0 0;color:#806f5f;font-size:12px}
+.users-shell .users-card{width:100%;max-width:none;margin:0;padding:24px;border:1px solid #e2dac8;border-radius:14px;background:#fff;box-shadow:0 4px 16px rgba(44,57,48,.07)}
+.users-shell .users-toolbar{padding-bottom:16px;border-bottom:1px solid #ece6d9}
+.users-shell .users-toolbar h2{font-size:20px}
+.users-shell .users-list-card{overflow-x:auto}
+.users-shell .users-list-card table{min-width:720px;margin-top:10px}
+.users-shell .users-card th{padding:13px 12px;background:#fffefb;color:#674427;font-size:13px}
+.users-shell .users-card td{padding:14px 12px;color:#3f4f44;font-size:14px}
+.users-shell .users-card td b{color:#2c3930}
+.users-shell .button-link{font-size:14px;font-weight:700}
+.users-shell .button-link.primary{background:#2c3930;color:#fff}
+.users-shell .button-link.primary:hover{background:#3f4f44}
+@media(max-width:760px){
+  .users-shell .users-workspace{min-height:auto;padding:18px 12px}
+  .users-shell .users-title-row{align-items:flex-start;flex-direction:column;gap:14px}
+  .users-shell .users-title-row h1{font-size:21px}
+  .users-shell .users-card{padding:16px 14px}
+  .users-shell .users-toolbar{align-items:flex-start}
+}
+/* Match users heading to data and rules pages */
+.users-shell .users-title-row h1{font-size:clamp(22px,2vw,32px)!important;line-height:1.2;letter-spacing:-.04em}
+.users-shell .users-title-row p:not(.page-kicker){margin:5px 0 0;font-size:clamp(11px,.82vw,13px)!important;line-height:1.55}
+@media(max-width:760px){.users-shell .users-title-row h1{font-size:clamp(21px,6vw,27px)!important}}
+/* Users table aligned with data import */
+.users-shell .users-list-card{padding:0;overflow:hidden}
+.users-shell .users-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid #e2dac8}
+.users-shell .users-toolbar h2,.users-shell .users-toolbar p{margin:0}
+.users-shell .users-toolbar h2{color:#2c3930;font-size:18px}
+.users-shell .users-toolbar p{margin-top:4px;color:#806f5f;font-size:12px}
+.users-shell .users-toolbar>span{padding:6px 10px;border-radius:999px;background:#edf2ee;color:#2c3930;font-size:12px;font-weight:800;white-space:nowrap}
+.users-shell .users-table-wrap{width:100%;overflow-x:auto}
+.users-shell .users-table{width:100%;min-width:760px;margin:0;border-collapse:collapse}
+.users-shell .users-table th{padding:13px 14px;border:0;border-bottom:1px solid #e2dac8;background:#fffefb;color:#674427;font-size:12px;font-weight:800;text-align:left;white-space:nowrap}
+.users-shell .users-table td{padding:14px;border:0;border-bottom:1px solid #f0ebe1;color:#3f4f44;font-size:13px;vertical-align:middle}
+.users-shell .users-table tbody tr:last-child td{border-bottom:0}
+.users-shell .users-table tbody tr:hover{background:#fffdf7}
+.users-shell .users-table td:first-child b{display:block;color:#2c3930;font-size:14px}
+.users-shell .current-account-label{display:inline-block;margin-top:4px;padding:3px 7px;border-radius:999px;background:#e8efe9;color:#3f4f44;font-size:10px;font-weight:700}
+.users-shell .users-table th:last-child,.users-shell .users-table td:last-child{width:150px;text-align:right}
+.users-shell .user-actions{justify-content:flex-end;gap:8px;white-space:nowrap}
+.users-shell .user-edit,.users-shell .user-delete{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:6px 10px;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none}
+.users-shell .user-edit{border:1px solid #b9c8bc;background:#f5f8f5;color:#2c3930}
+.users-shell .user-edit:hover{background:#e7eee8}
+.users-shell .user-delete{border:1px solid #edc8cd;background:#fff4f5;color:#a83f50;text-decoration:none}
+.users-shell .user-delete:hover{background:#ffe9ec;color:#923a4d}
+@media(max-width:760px){.users-shell .users-toolbar{align-items:flex-start;padding:15px 14px}.users-shell .users-toolbar p{font-size:11px}.users-shell .users-table th,.users-shell .users-table td{padding:12px}}
+/* Equal user rows and icon actions */
+.users-shell .users-table{table-layout:fixed}
+.users-shell .users-table th:nth-child(1),.users-shell .users-table td:nth-child(1){width:25%}
+.users-shell .users-table th:nth-child(2),.users-shell .users-table td:nth-child(2){width:20%}
+.users-shell .users-table th:nth-child(3),.users-shell .users-table td:nth-child(3){width:auto}
+.users-shell .users-table th:nth-child(4),.users-shell .users-table td:nth-child(4){width:110px;text-align:center}
+.users-shell .users-table thead tr{height:46px}
+.users-shell .users-table tbody tr{height:66px}
+.users-shell .users-table td{height:66px;overflow:hidden;text-overflow:ellipsis}
+.users-shell .users-table td:nth-child(2),.users-shell .users-table td:nth-child(3){white-space:nowrap}
+.users-shell .user-actions{display:table-cell;vertical-align:middle;white-space:nowrap}
+.users-shell .user-actions form{display:inline-block;margin:0 0 0 7px;vertical-align:middle}
+.users-shell .user-icon-button{display:inline-grid;place-items:center;width:32px;height:32px;padding:0;border:1px solid #d8dfd9;border-radius:7px;background:#fff;color:#3f4f44;text-decoration:none;vertical-align:middle;cursor:pointer}
+.users-shell .user-icon-button .material-symbols-outlined{font-size:18px;font-variation-settings:"wght" 500}
+.users-shell .user-icon-button.edit:hover{border-color:#8ea294;background:#edf2ee;color:#2c3930}
+.users-shell .user-icon-button.delete{border-color:#edcdd1;background:#fff;color:#b94050}
+.users-shell .user-icon-button.delete:hover{border-color:#cf7d87;background:#fff0f2;color:#a83f50}
+@media(max-width:760px){.users-shell .users-table{table-layout:auto}.users-shell .users-table th:nth-child(n),.users-shell .users-table td:nth-child(n){width:auto}.users-shell .users-table tbody tr,.users-shell .users-table td{height:62px}}
+/* User create and edit modal */
+.user-form-dialog{width:min(920px,calc(100vw - 40px));max-width:920px;max-height:90vh;padding:0;border:1px solid #d8cfbd;border-radius:16px;background:#fff;box-shadow:0 24px 70px rgba(44,57,48,.28);color:#2c3930;overflow:hidden}
+.user-form-dialog::backdrop{background:rgba(31,43,35,.5);backdrop-filter:blur(2px)}
+.user-form-dialog>header{position:sticky;z-index:3;top:0;display:flex;height:auto;min-height:72px;padding:14px 20px;border-bottom:1px solid #e2dac8;background:#fffefb;box-shadow:none}
+.user-form-dialog>header p,.user-form-dialog>header h2{margin:0}
+.user-form-dialog>header p{color:#806f5f;font-size:11px;font-weight:700}
+.user-form-dialog>header h2{margin-top:3px;color:#2c3930!important;font-size:22px}
+.user-form-dialog>header button{display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid #d8cfbd;border-radius:50%;background:#fff;color:#3f4f44;cursor:pointer}
+.user-form-dialog>header button:hover{background:#edf2ee;color:#2c3930}
+.user-form-dialog>header .material-symbols-outlined{font-size:20px}
+.user-form-dialog-body{max-height:calc(90vh - 72px);padding:20px;overflow:auto;background:#fff}
+.users-shell .user-form-dialog .users-card{margin:0;padding:0;border:0;border-radius:0;box-shadow:none}
+.users-shell .user-form-dialog .users-card form{gap:18px}
+.user-form-loading{display:grid;place-items:center;min-height:220px;color:#607466;font-size:14px}
+.users-shell .user-form-dialog .form-actions{position:sticky;bottom:-20px;margin:4px -20px -20px;padding:16px 20px;border-top:1px solid #e2dac8;background:#fffefb}
+@media(max-width:760px){.user-form-dialog{width:calc(100vw - 20px);max-height:94vh;border-radius:13px}.user-form-dialog>header{min-height:64px;padding:11px 14px}.user-form-dialog>header h2{font-size:19px}.user-form-dialog-body{max-height:calc(94vh - 64px);padding:14px}.users-shell .user-form-dialog .form-actions{bottom:-14px;margin-right:-14px;margin-bottom:-14px;margin-left:-14px;padding:14px}}
+/* Compact user management actions */
+.users-shell .users-table th:nth-child(4),.users-shell .users-table td:nth-child(4){width:92px;text-align:center}
+.users-shell .user-actions{padding-right:12px!important;padding-left:12px!important;text-align:center!important}
+.users-shell .user-actions form{margin-left:7px}
+.users-shell .user-icon-button{width:28px;height:28px;border:1px solid #e7dfd2;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(44,57,48,.03)}
+.users-shell .user-icon-button .material-symbols-outlined{font-size:16px;font-variation-settings:"FILL" 0,"wght" 500,"GRAD" 0,"opsz" 20}
+.users-shell .user-icon-button.edit{color:#2c3930}
+.users-shell .user-icon-button.edit:hover{border-color:#9fb0a3;background:#f4f7f4;color:#2c3930}
+.users-shell .user-icon-button.delete{border-color:#eadfdb;background:#fff;color:#c25a70}
+.users-shell .user-icon-button.delete:hover{border-color:#dbaab4;background:#fff5f6;color:#a83f50}
+/* Keep both user action icons visible */
+.users-shell .users-table td.user-actions{overflow:visible;text-overflow:clip;white-space:nowrap}
+.users-shell .user-actions form,.users-shell .users-card .user-actions form{display:inline-flex!important;width:auto!important;max-width:none!important;margin:0 0 0 7px!important;gap:0!important;vertical-align:middle}
+.users-shell .user-actions .user-icon-button{flex:0 0 28px}
+/* User modal action buttons */
+.users-shell .user-form-dialog .form-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.users-shell .user-form-dialog .form-actions .button-link{display:inline-flex;align-items:center;justify-content:center;width:132px;min-height:42px;margin:0;padding:10px 16px;font-size:14px}
+@media(max-width:520px){.users-shell .user-form-dialog .form-actions{display:grid;grid-template-columns:1fr 1fr}.users-shell .user-form-dialog .form-actions .button-link{width:100%}}

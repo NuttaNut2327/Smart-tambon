@@ -1,6 +1,6 @@
 <div class="shell dashboard-shell gis-dashboard data-layers-shell">
   <%= render "dashboard/sidebar", active_nav: :data_layers, initial_area: @area_label %>
-  <main class="dashboard-main content"><header class="dashboard-header gis-topbar"><div><p class="topbar-kicker">DATA MANAGEMENT</p><span class="breadcrumb"><span id="selection-label"><%= @area_label %></span><b>›</b><span>นำเข้าข้อมูล</span></span></div></header><div class="dashboard-content import-workspace">
+  <main class="dashboard-main content"><header class="dashboard-header gis-topbar"><div><p class="topbar-kicker">SMART TAMBON SAFETY THAILAND</p><span class="breadcrumb"><span id="selection-label"><%= @area_label %></span><b>›</b><span>นำเข้าข้อมูล</span></span></div></header><div class="dashboard-content import-workspace">
     <% if notice %><div class="import-flash success"><%= notice %></div><% end %><% if alert %><div class="import-flash error"><%= alert %></div><% end %>
     <section class="city-heading import-heading"><div><p class="page-kicker">สร้างชุดข้อมูลของตัวเอง</p><h1>นำเข้าข้อมูล</h1><p>จัดการข้อมูลเฉพาะพื้นที่ พร้อมรุ่นข้อมูล ประวัติไฟล์ และชั้นข้อมูลบนแผนที่</p></div><% if @can_upload %><div class="import-heading-actions"><button class="button-link" type="button" data-open-manual>＋ เพิ่มข้อมูลด้วยตนเอง</button><button class="data-layer-add" type="button" data-open-import>⇧ นำเข้าไฟล์</button></div><% end %></section>
     <% current_dataset = @current_dataset_summary&.dig(:dataset); current_version = @current_dataset_summary&.dig(:current_version) %>
