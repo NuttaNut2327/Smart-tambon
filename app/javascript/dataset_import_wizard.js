@@ -123,8 +123,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const markerSource = new ol.source.Vector();
     const map = new ol.Map({ target: panel.querySelector("[data-agency-location-map]"), layers: [
       new ol.layer.Tile({ source: new ol.source.OSM() }),
-      new ol.layer.Vector({ source: accessSource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#20a67a", width: 3 }), fill: new ol.style.Fill({ color: "rgba(32,166,122,.06)" }) }) }),
-      new ol.layer.Vector({ source: markerSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 8, fill: new ol.style.Fill({ color: "#176fe5" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) }) }) })
+      new ol.layer.Vector({ source: accessSource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#438a61", width: 3 }), fill: new ol.style.Fill({ color: "rgba(67,138,97,.06)" }) }) }),
+      new ol.layer.Vector({ source: markerSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 8, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) }) }) })
     ], view: new ol.View({ center: ol.proj.fromLonLat([100.5, 14]), zoom: 10 }) });
     const format = new ol.format.GeoJSON();
     const state = panel.querySelector("[data-agency-location-state]");
@@ -192,14 +192,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const vectorSource = new ol.source.Vector();
     const vectorLayer = new ol.layer.Vector({ source: vectorSource, style: new ol.style.Style({
-      stroke: new ol.style.Stroke({ color: "#1976e9", width: 3 }),
-      fill: new ol.style.Fill({ color: "rgba(25,118,233,.16)" }),
-      image: new ol.style.Circle({ radius: 5, fill: new ol.style.Fill({ color: "#1976e9" }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) })
+      stroke: new ol.style.Stroke({ color: "#567f6d", width: 3 }),
+      fill: new ol.style.Fill({ color: "rgba(86,127,109,.16)" }),
+      image: new ol.style.Circle({ radius: 5, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) })
     }) });
     const boundarySource = new ol.source.Vector();
     const boundaryLayer = new ol.layer.Vector({ source: boundarySource, style: new ol.style.Style({
-      stroke: new ol.style.Stroke({ color: "#20a67a", width: 3, lineDash: [8, 5] }),
-      fill: new ol.style.Fill({ color: "rgba(32,166,122,.06)" })
+      stroke: new ol.style.Stroke({ color: "#438a61", width: 3, lineDash: [8, 5] }),
+      fill: new ol.style.Fill({ color: "rgba(67,138,97,.06)" })
     }) });
     const map = new ol.Map({ target: editor.querySelector("[data-boundary-map]"), layers: [
       new ol.layer.Tile({ source: new ol.source.OSM() }), boundaryLayer, vectorLayer
@@ -335,8 +335,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const accessSource = new ol.source.Vector(), editSource = new ol.source.Vector();
     const map = new ol.Map({ target: panel.querySelector("[data-edit-boundary-map]"), layers: [
       new ol.layer.Tile({ source: new ol.source.OSM() }),
-      new ol.layer.Vector({ source: accessSource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#20a67a", width: 3, lineDash: [8, 5] }), fill: new ol.style.Fill({ color: "rgba(32,166,122,.05)" }) }) }),
-      new ol.layer.Vector({ source: editSource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#1976e9", width: 3 }), fill: new ol.style.Fill({ color: "rgba(25,118,233,.16)" }), image: new ol.style.Circle({ radius: 5, fill: new ol.style.Fill({ color: "#1976e9" }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) }) }) })
+      new ol.layer.Vector({ source: accessSource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#438a61", width: 3, lineDash: [8, 5] }), fill: new ol.style.Fill({ color: "rgba(67,138,97,.05)" }) }) }),
+      new ol.layer.Vector({ source: editSource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#567f6d", width: 3 }), fill: new ol.style.Fill({ color: "rgba(86,127,109,.16)" }), image: new ol.style.Circle({ radius: 5, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) }) }) })
     ], view: new ol.View({ center: ol.proj.fromLonLat([100.5, 14]), zoom: 10 }) });
     const format = new ol.format.GeoJSON(), state = panel.querySelector("[data-edit-boundary-state]");
     let draw, modify = new ol.interaction.Modify({ source: editSource }); map.addInteraction(modify);

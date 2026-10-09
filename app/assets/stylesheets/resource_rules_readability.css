@@ -93,3 +93,114 @@
     font-size: clamp(21px, 6vw, 27px) !important;
   }
 }
+
+/* Make search, filters and rule cards easier to scan. */
+.resource-rules-page .rules-toolbar {
+  padding: 14px;
+  border-color: #cfc5b3;
+  box-shadow: 0 2px 8px rgb(44 57 48 / 7%);
+}
+
+.resource-rules-page .rules-toolbar > label {
+  min-height: 44px;
+  border: 1px solid #b9ad98;
+  background: #fff;
+  color: #2c3930;
+  box-shadow: inset 0 0 0 1px rgb(44 57 48 / 3%);
+}
+
+.resource-rules-page .rules-toolbar > label:focus-within {
+  border-color: #2c3930;
+  box-shadow: 0 0 0 3px rgb(44 57 48 / 13%);
+}
+
+.resource-rules-page .rules-toolbar > label > span {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.resource-rules-page .rules-toolbar input {
+  color: #2c3930;
+  font-size: 14px;
+}
+
+.resource-rules-page .rules-toolbar input::placeholder {
+  color: #806f5f;
+  opacity: 1;
+}
+
+.resource-rules-page .rule-filters {
+  gap: 7px;
+}
+
+.resource-rules-page .rule-filters button {
+  border: 1px solid #ddd4c3;
+  background: #fff;
+  color: #674427;
+  font-size: 13px;
+}
+
+.resource-rules-page .rule-filters button:hover {
+  border-color: #9f927e;
+  background: #fffaf0;
+}
+
+.resource-rules-page .rule-filters button.active {
+  border-color: #2c3930;
+  background: #2c3930;
+  color: #fff;
+}
+
+.resource-rules-page .resource-rule-card {
+  border: 1px solid #cfc7b8;
+  border-left-width: 4px;
+  box-shadow: 0 2px 8px rgb(44 57 48 / 6%);
+}
+
+.resource-rules-page .resource-rule-card[open] {
+  border-color: #8b9b8f;
+  box-shadow: 0 3px 12px rgb(44 57 48 / 10%);
+}
+
+.resource-rules-page .resource-rule-card summary {
+  background: #fff;
+}
+
+.resource-rules-page .resource-rule-card.flood { border-left-color: #527f9d; }
+.resource-rules-page .resource-rule-card.fire { border-left-color: #bd6532; }
+.resource-rules-page .resource-rule-card.wind { border-left-color: #6f769c; }
+.resource-rules-page .resource-rule-card.landslide { border-left-color: #8a6649; }
+.resource-rules-page .resource-rule-card.drought { border-left-color: #a97924; }
+.resource-rules-page .resource-rule-card.other { border-left-color: #607466; }
+
+.resource-rules-page .resource-rule-card.flood .rule-icon { background: #e9f3f8; color: #527f9d; }
+.resource-rules-page .resource-rule-card.fire .rule-icon { background: #fff0e7; color: #bd6532; }
+.resource-rules-page .resource-rule-card.wind .rule-icon { background: #f0eff8; color: #6f769c; }
+.resource-rules-page .resource-rule-card.landslide .rule-icon { background: #f5ece5; color: #8a6649; }
+.resource-rules-page .resource-rule-card.drought .rule-icon { background: #fff5d9; color: #a97924; }
+.resource-rules-page .resource-rule-card.other .rule-icon { background: #edf2ee; color: #607466; }
+
+.resource-rules-page .rule-main b {
+  color: #2c3930;
+  font-weight: 800;
+}
+
+.resource-rules-page .rule-main p {
+  color: #4f6255;
+}
+
+.resource-rules-page .rule-main small,
+.resource-rules-page .rules-toolbar > span {
+  color: #674427;
+}
+
+.resource-rules-page .rule-edit {
+  border-color: #bdb2a0;
+  color: #2c3930;
+  font-weight: 700;
+}
+
+.resource-rules-page .rule-detail {
+  border-top-color: #d8cfbd;
+  background: #fffdf8;
+}

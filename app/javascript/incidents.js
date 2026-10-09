@@ -136,7 +136,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const filters = panel.querySelector("[data-incident-status-filters]");
     const sourceFilters = panel.querySelector("[data-incident-source-filters]");
     if (!filters) return;
-    const filterStorageKey = "smart-tambon:incident-status-filter";
+    const incidentPage = panel.closest("[data-incident-page]");
+    const incidentCategory = incidentPage?.dataset.incidentCategory || "general";
+    const filterStorageKey = `smart-tambon:incident-status-filter:${incidentCategory}`;
     const list = panel.querySelector("[data-incident-card-list]");
     const countLabel = panel.querySelector("[data-incident-visible-count]");
     const emptyMessage = list?.querySelector("[data-incident-filter-empty]");
@@ -177,7 +179,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const activeCardFilter = activeCardStatus && filters.querySelector(`[data-incident-status-filter="${activeCardStatus}"]`);
     const savedStatus = sessionStorage.getItem(filterStorageKey);
     const savedFilter = savedStatus && filters.querySelector(`[data-incident-status-filter="${savedStatus}"]`);
-    (activeCardFilter || savedFilter || filters.querySelector("[data-incident-status-filter].active"))?.click();
+    const hasRequestedIncident = new URLSearchParams(window.location.search).has("incident_id");
+    const disasterDefaultFilter = incidentCategory === "disaster" && !hasRequestedIncident
+      ? filters.querySelector('[data-incident-status-filter="pending"]')
+      : null;
+    (disasterDefaultFilter || activeCardFilter || savedFilter || filters.querySelector("[data-incident-status-filter].active"))?.click();
     sourceFilters?.querySelector("[data-incident-source-filter].active")?.click();
   });
 
@@ -329,7 +335,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (window.ol) {
     const importantPlaceCategories = ["government", "education", "health", "culture", "tourism", "transport", "service", "emergency"];
-    const importantPlaceColors = { government: "#2563eb", education: "#d99000", health: "#e11d48", culture: "#7c3aed", tourism: "#ea580c", transport: "#0891b2", service: "#db2777", emergency: "#dc2626", imported: "#059669" };
+    const importantPlaceColors = { government: "#527f9d", education: "#a97924", health: "#b94755", culture: "#795f94", tourism: "#b96132", transport: "#438f86", service: "#985675", emergency: "#b7474d", imported: "#438a61" };
     const importantPlacesPromise = Promise.all([
       ...importantPlaceCategories.map((category) => fetch(`/api/places?category=${category}`, { headers: { Accept: "application/json" } })
         .then((response) => response.ok ? response.json() : { data: [] })
@@ -361,10 +367,10 @@ document.addEventListener("DOMContentLoaded", () => {
         declutter: true,
         style: (feature) => {
           const place = feature.get("place");
-          const color = importantPlaceColors[place.category] || "#475569";
+          const color = importantPlaceColors[place.category] || "#806f5f";
           return new ol.style.Style({
             image: new ol.style.Circle({ radius: 5, fill: new ol.style.Fill({ color }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) }),
-            text: new ol.style.Text({ text: place.name || "สถานที่สำคัญ", offsetY: -13, font: '500 11px "Google Sans", sans-serif', fill: new ol.style.Fill({ color: "#173653" }), stroke: new ol.style.Stroke({ color: "rgba(255,255,255,.95)", width: 3 }), padding: [2, 3, 2, 3] })
+            text: new ol.style.Text({ text: place.name || "สถานที่สำคัญ", offsetY: -13, font: '500 11px "Google Sans", sans-serif', fill: new ol.style.Fill({ color: "#674427" }), stroke: new ol.style.Stroke({ color: "rgba(255,255,255,.95)", width: 3 }), padding: [2, 3, 2, 3] })
           });
         }
       });
@@ -374,12 +380,12 @@ document.addEventListener("DOMContentLoaded", () => {
         source: boundarySource,
         style: new ol.style.Style({
           fill: new ol.style.Fill({ color: "rgba(0, 0, 0, 0)" }),
-          stroke: new ol.style.Stroke({ color: "#176fe5", width: 2.5 })
+          stroke: new ol.style.Stroke({ color: "#567f6d", width: 2.5 })
         })
       });
       const maskLayer = new ol.layer.Vector({
         source: maskSource,
-        style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(12, 29, 48, 0.58)" }) })
+        style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(44, 57, 48, 0.58)" }) })
       });
       let accessBoundary = null;
       let addressRequestId = 0;
@@ -406,7 +412,7 @@ document.addEventListener("DOMContentLoaded", () => {
         markerSource.clear();
         const marker = new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([longitude, latitude])));
         marker.setStyle(new ol.style.Style({
-          image: new ol.style.Circle({ radius: 8, fill: new ol.style.Fill({ color: "#176fe5" }), stroke: new ol.style.Stroke({ color: "#ffffff", width: 3 }) })
+          image: new ol.style.Circle({ radius: 8, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#ffffff", width: 3 }) })
         }));
         markerSource.addFeature(marker);
         latitudeInput.value = latitude.toFixed(6);
@@ -618,7 +624,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const point = ol.proj.fromLonLat([longitude, latitude]);
   const marker = new ol.Feature(new ol.geom.Point(point));
   marker.setStyle(new ol.style.Style({
-    image: new ol.style.Circle({ radius: 7, fill: new ol.style.Fill({ color: "#176fe5" }), stroke: new ol.style.Stroke({ color: "#ffffff", width: 3 }) })
+    image: new ol.style.Circle({ radius: 7, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#ffffff", width: 3 }) })
   }));
 
   new ol.Map({

@@ -1,7 +1,7 @@
 :root {
-  --accent: #5ac5a9;
-  --accent-dark: #3da98d;
-  --accent-soft: #e6f7f2;
+  --accent: #806f5f;
+  --accent-dark: #607466;
+  --accent-soft: #fffefb;
 }
 
 html,
@@ -27,7 +27,7 @@ td a {
 }
 
 .login-story {
-  background: linear-gradient(160deg, #247b6c 0%, var(--accent) 55%, #216d60 100%);
+  background: linear-gradient(160deg, #607466 0%, var(--accent) 55%, #2c3930 100%);
 }
 
 .login-card-mark {

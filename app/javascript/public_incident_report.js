@@ -131,7 +131,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const boundarySource = new ol.source.Vector({ features: boundaryFeatures });
   const markerSource = new ol.source.Vector();
   const placesSource = new ol.source.Vector();
-  const importantPlaceColors = { government: "#2563eb", education: "#d99000", health: "#e11d48", culture: "#7c3aed", tourism: "#ea580c", transport: "#0891b2", service: "#db2777", emergency: "#dc2626", imported: "#059669" };
+  const importantPlaceColors = { government: "#527f9d", education: "#a97924", health: "#b94755", culture: "#795f94", tourism: "#b96132", transport: "#438f86", service: "#985675", emergency: "#b7474d", imported: "#438a61" };
 
   const boundaryRings = boundaryFeatures.flatMap((feature) => {
     const geometry = feature.getGeometry();
@@ -147,22 +147,22 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   const maskLayer = new ol.layer.Vector({
     source: maskSource,
-    style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(12, 29, 48, 0.58)" }) })
+    style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(44, 57, 48, 0.58)" }) })
   });
 
   const boundaryLayer = new ol.layer.Vector({
     source: boundarySource,
-    style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(0, 0, 0, 0)" }), stroke: new ol.style.Stroke({ color: "#176fe5", width: 2.5 }) })
+    style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(0, 0, 0, 0)" }), stroke: new ol.style.Stroke({ color: "#567f6d", width: 2.5 }) })
   });
   const placesLayer = new ol.layer.Vector({
     source: placesSource,
     declutter: true,
     style: (feature) => {
       const place = feature.get("place") || {};
-      const color = importantPlaceColors[place.category] || "#475569";
+      const color = importantPlaceColors[place.category] || "#806f5f";
       return new ol.style.Style({
         image: new ol.style.Circle({ radius: 5, fill: new ol.style.Fill({ color }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) }),
-        text: new ol.style.Text({ text: place.name || "สถานที่สำคัญ", offsetY: -13, font: '500 11px "Google Sans", sans-serif', fill: new ol.style.Fill({ color: "#173653" }), stroke: new ol.style.Stroke({ color: "rgba(255,255,255,.95)", width: 3 }), padding: [2, 3, 2, 3] })
+        text: new ol.style.Text({ text: place.name || "สถานที่สำคัญ", offsetY: -13, font: '500 11px "Google Sans", sans-serif', fill: new ol.style.Fill({ color: "#674427" }), stroke: new ol.style.Stroke({ color: "rgba(255,255,255,.95)", width: 3 }), padding: [2, 3, 2, 3] })
       });
     }
   });
@@ -245,7 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
     longitudeInput.value = lon.toFixed(6);
     markerSource.clear();
     const marker = new ol.Feature(new ol.geom.Point(coordinate));
-    marker.setStyle(new ol.style.Style({ image: new ol.style.Circle({ radius: 8, fill: new ol.style.Fill({ color: "#176fe5" }), stroke: new ol.style.Stroke({ color: "#ffffff", width: 3 }) }) }));
+    marker.setStyle(new ol.style.Style({ image: new ol.style.Circle({ radius: 8, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#ffffff", width: 3 }) }) }));
     markerSource.addFeature(marker);
     coordinateLabel.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
     coordinateLabel.classList.remove("error");

@@ -20,29 +20,29 @@ document.addEventListener("DOMContentLoaded", () => {
   const incidentSourceNames = [...new Set(cityIncidents.map((incident) => incident.source || "ไม่ระบุแหล่งที่มา"))];
   const visibleIncidentSources = new Set(incidentSourceNames);
   const placeConfig = {
-    government: { color: "#2563eb", icon: "account_balance" }, education: { color: "#f59e0b", icon: "school" },
-    health: { color: "#e11d48", icon: "heart_plus" }, culture: { color: "#8b5cf6", icon: "folded_hands" },
-    tourism: { color: "#f97316", icon: "star" }, transport: { color: "#0ea5a4", icon: "directions_car" },
-    service: { color: "#ec4899", icon: "local_mall" }, emergency: { color: "#dc2626", icon: "emergency_home" }
+    government: { color: "#527f9d", icon: "account_balance" }, education: { color: "#a97924", icon: "school" },
+    health: { color: "#b94755", icon: "heart_plus" }, culture: { color: "#795f94", icon: "folded_hands" },
+    tourism: { color: "#b96132", icon: "star" }, transport: { color: "#438f86", icon: "directions_car" },
+    service: { color: "#985675", icon: "local_mall" }, emergency: { color: "#b7474d", icon: "emergency_home" }
   };
   const placeMarkerIcon = (color) => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 42 52"><path d="M21 1C10 1 2 9.5 2 20c0 14.2 19 30.4 19 30.4S40 34.2 40 20C40 9.5 32 1 21 1z" fill="${color}" stroke="#fff" stroke-width="3"/></svg>`;
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   };
   const reportedIncidentMarkerIcon = () => {
-    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 42 52"><path d="M21 1C10 1 2 9.5 2 20c0 14.2 19 30.4 19 30.4S40 34.2 40 20C40 9.5 32 1 21 1z" fill="#ef3340" stroke="#facc15" stroke-width="3"/></svg>';
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 42 52"><path d="M21 1C10 1 2 9.5 2 20c0 14.2 19 30.4 19 30.4S40 34.2 40 20C40 9.5 32 1 21 1z" fill="#b94050" stroke="#a97924" stroke-width="3"/></svg>';
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   };
-  const datasetColors = { agencies: "#2563eb", resources: "#0f766e", workforce: "#2563eb", teams: "#ea580c", consumables: "#16a34a", population: "#475569", custom: "#9333ea" };
+  const datasetColors = { agencies: "#527f9d", resources: "#438a61", workforce: "#567f6d", teams: "#b96132", consumables: "#438a61", population: "#806f5f", custom: "#795f94" };
   const datasetIcons = { agencies: "account_balance", resources: "construction", workforce: "person", teams: "groups", consumables: "inventory_2", population: "home", custom: "location_on" };
   const importedDatasetLayers = new Map([...page.querySelectorAll("[data-city-dataset-toggle]")].map((input) => {
     const source = new ol.source.Vector();
-    const color = datasetColors[input.dataset.datasetType] || "#7c3aed";
+    const color = datasetColors[input.dataset.datasetType] || "#795f94";
     const icon = datasetIcons[input.dataset.datasetType] || "location_on";
     const layer = new ol.layer.Vector({ source, zIndex: 17, style: (feature) => {
       const geometryType = feature.getGeometry()?.getType();
       const highlighted = !lastAssessmentGeometry || geometryType !== "Point" || lastAssessmentGeometry.intersectsCoordinate(feature.getGeometry().getCoordinates());
-      const displayColor = highlighted ? color : "#94a3b8";
+      const displayColor = highlighted ? color : "#89796a";
       if (geometryType === "Polygon" || geometryType === "MultiPolygon") return new ol.style.Style({ stroke: new ol.style.Stroke({ color: displayColor, width: 2.5 }), fill: new ol.style.Fill({ color: `${displayColor}22` }) });
       return new ol.style.Style({
         image: new ol.style.Icon({ src: placeMarkerIcon(displayColor), anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
@@ -58,34 +58,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const config = placeConfig[category] || placeConfig.service;
     const key = `${category}:${highlighted}`;
     if (!placeStyleCache[key]) placeStyleCache[key] = new ol.style.Style({
-      image: new ol.style.Icon({ src: placeMarkerIcon(highlighted ? config.color : "#94a3b8"), anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
+      image: new ol.style.Icon({ src: placeMarkerIcon(highlighted ? config.color : "#89796a"), anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
       text: new ol.style.Text({ text: config.icon, font: '20px "Material Symbols Outlined"', fill: new ol.style.Fill({ color: "#fff" }), offsetY: -25 })
     });
     return placeStyleCache[key];
   };
-  const boundaryLayer = new ol.layer.Vector({ source: boundarySource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#42b99a", width: 3 }), fill: new ol.style.Fill({ color: "rgba(0,0,0,0)" }) }) });
+  const boundaryLayer = new ol.layer.Vector({ source: boundarySource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#5f9279", width: 3 }), fill: new ol.style.Fill({ color: "rgba(0,0,0,0)" }) }) });
   const villageBoundaryLayer = new ol.layer.Vector({ source: villageBoundarySource, style: (feature) => new ol.style.Style({
-    stroke: new ol.style.Stroke({ color: "#2563eb", width: 2.5 }),
-    fill: new ol.style.Fill({ color: "rgba(37,99,235,0)" }),
-    text: new ol.style.Text({ text: feature.get("village_name") || `หมู่ ${feature.get("village_number") || ""}`, font: '600 11px "Google Sans",sans-serif', fill: new ol.style.Fill({ color: "#17457a" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }), overflow: true })
+    stroke: new ol.style.Stroke({ color: "#355f7a", width: 2.5 }),
+    fill: new ol.style.Fill({ color: "rgba(86,127,109,0)" }),
+    text: new ol.style.Text({ text: feature.get("village_name") || `หมู่ ${feature.get("village_number") || ""}`, font: '600 11px "Google Sans",sans-serif', fill: new ol.style.Fill({ color: "#674427" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }), overflow: true })
   }) });
-  const maskLayer = new ol.layer.Vector({ source: maskSource, style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(12,29,48,.55)" }) }) });
+  const maskLayer = new ol.layer.Vector({ source: maskSource, style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(44,57,48,.55)" }) }) });
   const placesLayer = new ol.layer.Vector({ source: placesSource, declutter: true, style: (feature) => {
     const selectedGeometry = lastAssessmentGeometry;
     const highlighted = !selectedGeometry || selectedGeometry.intersectsCoordinate(feature.getGeometry().getCoordinates());
     return cityPlaceStyle(feature.get("category"), highlighted);
   } });
-  const waterLayer = new ol.layer.Vector({ source: waterSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 6, fill: new ol.style.Fill({ color: "#0891b2" }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) }) }) });
-  const selectionLayer = new ol.layer.Vector({ source: selectionSource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#f97316", width: 3, lineDash: [8, 5] }), fill: new ol.style.Fill({ color: "rgba(249,115,22,.18)" }) }) });
+  const waterLayer = new ol.layer.Vector({ source: waterSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 6, fill: new ol.style.Fill({ color: "#438f86" }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) }) }) });
+  const selectionLayer = new ol.layer.Vector({ source: selectionSource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#b96132", width: 3, lineDash: [8, 5] }), fill: new ol.style.Fill({ color: "rgba(185,97,50,.18)" }) }) });
   const simulationGridLayer = new ol.layer.Vector({ source: simulationGridSource, zIndex: 18, style: (feature) => {
     const severity = Number(feature.get("severity") || 1);
-    const colors = severity >= .67 ? ["#dc2626", "rgba(220,38,38,.58)"] : severity >= .34 ? ["#f59e0b", "rgba(245,158,11,.5)"] : ["#2563eb", "rgba(37,99,235,.42)"];
+    const colors = severity >= .67 ? ["#b7474d", "rgba(183,71,77,.58)"] : severity >= .34 ? ["#a97924", "rgba(169,121,36,.5)"] : ["#567f6d", "rgba(86,127,109,.42)"];
     return new ol.style.Style({ stroke: new ol.style.Stroke({ color: colors[0], width: 1 }), fill: new ol.style.Fill({ color: colors[1] }) });
   } });
-  const simulationPointLayer = new ol.layer.Vector({ source: simulationPointSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 7, fill: new ol.style.Fill({ color: "#176fe5" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) }) }) });
+  const simulationPointLayer = new ol.layer.Vector({ source: simulationPointSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 7, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) }) }) });
   const longitude = Number(mapElement.dataset.incidentLongitude);
   const latitude = Number(mapElement.dataset.incidentLatitude);
-  const incidentMarkerSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="56" height="70" viewBox="-7 -7 56 70"><defs><filter id="shadow" x="-60%" y="-50%" width="220%" height="230%"><feDropShadow dx="0" dy="4" stdDeviation="3.5" flood-color="#7f1d1d" flood-opacity=".5"/></filter></defs><circle cx="21" cy="21" r="25" fill="#facc15" opacity=".24"/><path fill="#ef3340" stroke="#fff" stroke-width="6" stroke-linejoin="round" filter="url(#shadow)" d="M21 1.5C10.2 1.5 1.5 10.2 1.5 21c0 15.2 19.5 31.5 19.5 31.5S40.5 36.2 40.5 21C40.5 10.2 31.8 1.5 21 1.5z"/><path fill="#ef3340" stroke="#facc15" stroke-width="2.5" stroke-linejoin="round" d="M21 1.5C10.2 1.5 1.5 10.2 1.5 21c0 15.2 19.5 31.5 19.5 31.5S40.5 36.2 40.5 21C40.5 10.2 31.8 1.5 21 1.5z"/><path fill="#ffffff" stroke="#ffffff" stroke-width="18" stroke-linejoin="round" transform="translate(10 33) scale(.023)" d="M720-440v-80h160v80H720Zm48 280-128-96 48-64 128 96-48 64Zm-80-480-48-64 128-96 48 64-128 96ZM200-200v-160h-40q-33 0-56.5-23.5T80-440v-80q0-33 23.5-56.5T160-600h160l200-120v480L320-360h-40v160h-80Zm240-182v-196l-98 58H160v80h182l98 58Zm120 36v-268q27 24 43.5 58.5T620-480q0 41-16.5 75.5T560-346ZM300-480Z"/></svg>';
+  const incidentMarkerSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="56" height="70" viewBox="-7 -7 56 70"><defs><filter id="shadow" x="-60%" y="-50%" width="220%" height="230%"><feDropShadow dx="0" dy="4" stdDeviation="3.5" flood-color="#923a4d" flood-opacity=".5"/></filter></defs><circle cx="21" cy="21" r="25" fill="#a97924" opacity=".24"/><path fill="#b94050" stroke="#fff" stroke-width="6" stroke-linejoin="round" filter="url(#shadow)" d="M21 1.5C10.2 1.5 1.5 10.2 1.5 21c0 15.2 19.5 31.5 19.5 31.5S40.5 36.2 40.5 21C40.5 10.2 31.8 1.5 21 1.5z"/><path fill="#b94050" stroke="#a97924" stroke-width="2.5" stroke-linejoin="round" d="M21 1.5C10.2 1.5 1.5 10.2 1.5 21c0 15.2 19.5 31.5 19.5 31.5S40.5 36.2 40.5 21C40.5 10.2 31.8 1.5 21 1.5z"/><path fill="#ffffff" stroke="#ffffff" stroke-width="18" stroke-linejoin="round" transform="translate(10 33) scale(.023)" d="M720-440v-80h160v80H720Zm48 280-128-96 48-64 128 96-48 64Zm-80-480-48-64 128-96 48 64-128 96ZM200-200v-160h-40q-33 0-56.5-23.5T80-440v-80q0-33 23.5-56.5T160-600h160l200-120v480L320-360h-40v160h-80Zm240-182v-196l-98 58H160v80h182l98 58Zm120 36v-268q27 24 43.5 58.5T620-480q0 41-16.5 75.5T560-346ZM300-480Z"/></svg>';
   const incidentMarkerUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(incidentMarkerSvg)}`;
   const incidentSource = new ol.source.Vector();
   if (Number.isFinite(longitude) && Number.isFinite(latitude)) incidentSource.addFeature(new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([longitude, latitude]))));
@@ -181,7 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const showIncidentDetail = (incident) => {
     if (!placeDetail || !incident) return;
     placeDetail.querySelector("[data-place-detail-icon]").textContent = "campaign";
-    placeDetail.querySelector("[data-place-detail-icon]").style.backgroundColor = "#dc2635";
+    placeDetail.querySelector("[data-place-detail-icon]").style.backgroundColor = "#b94050";
     placeDetail.querySelector("[data-place-detail-category]").textContent = `แจ้งเหตุโดย ${incident.source || "ไม่ระบุแหล่งที่มา"}`;
     placeDetail.querySelector("[data-place-detail-name]").textContent = incident.title || "เหตุการณ์";
     const severityLabels = { critical: "วิกฤต", very_urgent: "เร่งด่วนมาก", urgent: "เร่งด่วน", non_urgent: "ไม่เร่งด่วน", general: "ทั่วไป", waiting: "ไม่เร่งด่วน", watch: "เร่งด่วน" };
@@ -202,7 +202,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const title = properties[titleKey] || properties.name || properties.title || properties.dataset_name || "ข้อมูลบนแผนที่";
     const details = Object.entries(properties).filter(([key, value]) => !ignored.has(key) && key !== titleKey && value !== null && value !== "").slice(0, 3).map(([, value]) => value).join(" · ");
     placeDetail.querySelector("[data-place-detail-icon]").textContent = datasetIcons[dataType] || "location_on";
-    placeDetail.querySelector("[data-place-detail-icon]").style.backgroundColor = datasetColors[dataType] || "#7c3aed";
+    placeDetail.querySelector("[data-place-detail-icon]").style.backgroundColor = datasetColors[dataType] || "#795f94";
     placeDetail.querySelector("[data-place-detail-category]").textContent = properties.dataset_name || "ชุดข้อมูลบนแผนที่";
     placeDetail.querySelector("[data-place-detail-name]").textContent = title;
     const address = placeDetail.querySelector("[data-place-detail-address]");
@@ -276,8 +276,8 @@ document.addEventListener("DOMContentLoaded", () => {
     cesiumViewer.scene.screenSpaceCameraController.enableCollisionDetection = true;
     cesiumViewer.scene.screenSpaceCameraController.minimumZoomDistance = 1_200;
     cesiumViewer.scene.screenSpaceCameraController.maximumZoomDistance = 4_000_000;
-    cesiumViewer.scene.globe.baseColor = Cesium.Color.fromCssColorString("#d9e2e8");
-    cesiumViewer.scene.backgroundColor = Cesium.Color.fromCssColorString("#d9e2e8");
+    cesiumViewer.scene.globe.baseColor = Cesium.Color.fromCssColorString("#d8cfbd");
+    cesiumViewer.scene.backgroundColor = Cesium.Color.fromCssColorString("#d8cfbd");
     if (isCityMap) {
       const placeClickHandler = new Cesium.ScreenSpaceEventHandler(cesiumViewer.scene.canvas);
       placeClickHandler.setInputAction((movement) => {
@@ -288,13 +288,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     }
     if (accessBoundaryGeoJSON) {
-      cesiumBoundary = await Cesium.GeoJsonDataSource.load(accessBoundaryGeoJSON, { clampToGround: true, stroke: Cesium.Color.fromCssColorString("#42b99a"), fill: Cesium.Color.TRANSPARENT, strokeWidth: 4 });
+      cesiumBoundary = await Cesium.GeoJsonDataSource.load(accessBoundaryGeoJSON, { clampToGround: true, stroke: Cesium.Color.fromCssColorString("#5f9279"), fill: Cesium.Color.TRANSPARENT, strokeWidth: 4 });
       cesiumViewer.dataSources.add(cesiumBoundary);
       const boundaryGeometry = accessBoundaryGeoJSON.type === "Feature" ? accessBoundaryGeoJSON.geometry : accessBoundaryGeoJSON;
       const boundaryPolygons = boundaryGeometry?.type === "Polygon" ? [boundaryGeometry.coordinates] : boundaryGeometry?.type === "MultiPolygon" ? boundaryGeometry.coordinates : [];
       boundaryPolygons.forEach((polygon) => polygon.forEach((ring) => {
         const positions = ring.flatMap((coordinate) => [Number(coordinate[0]), Number(coordinate[1])]);
-        cesiumBoundary.entities.add({ polyline: { positions: Cesium.Cartesian3.fromDegreesArray(positions), width: 5, material: Cesium.Color.fromCssColorString("#42b99a"), clampToGround: true, arcType: Cesium.ArcType.GEODESIC } });
+        cesiumBoundary.entities.add({ polyline: { positions: Cesium.Cartesian3.fromDegreesArray(positions), width: 5, material: Cesium.Color.fromCssColorString("#5f9279"), clampToGround: true, arcType: Cesium.ArcType.GEODESIC } });
       }));
       cesiumBoundary.show = page.querySelector('[data-layer-toggle="boundary"]').checked;
       await cesiumViewer.flyTo(cesiumBoundary, { duration: 0.8 });
@@ -323,7 +323,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const Cesium = window.Cesium;
     if (cesiumVillageBoundaries) cesiumViewer.dataSources.remove(cesiumVillageBoundaries, true);
     const geojson = new ol.format.GeoJSON().writeFeaturesObject(villageBoundarySource.getFeatures(), { featureProjection: "EPSG:3857", dataProjection: "EPSG:4326" });
-    cesiumVillageBoundaries = await Cesium.GeoJsonDataSource.load(geojson, { clampToGround: true, stroke: Cesium.Color.fromCssColorString("#2563eb"), fill: Cesium.Color.TRANSPARENT, strokeWidth: 3 });
+    cesiumVillageBoundaries = await Cesium.GeoJsonDataSource.load(geojson, { clampToGround: true, stroke: Cesium.Color.fromCssColorString("#355f7a"), fill: Cesium.Color.TRANSPARENT, strokeWidth: 3 });
     cesiumVillageBoundaries.show = page.querySelector('[data-layer-toggle="village-boundaries"]')?.checked !== false;
     cesiumViewer.dataSources.add(cesiumVillageBoundaries);
   };
@@ -346,7 +346,7 @@ document.addEventListener("DOMContentLoaded", () => {
     waterPayload.forEach((station) => {
       const lon = Number(station.lon); const lat = Number(station.lat);
       if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
-      cesiumWater.entities.add({ position: Cesium.Cartesian3.fromDegrees(lon, lat, 3), point: { pixelSize: 12, color: Cesium.Color.fromCssColorString("#0891b2"), outlineColor: Cesium.Color.WHITE, outlineWidth: 2, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY } });
+      cesiumWater.entities.add({ position: Cesium.Cartesian3.fromDegrees(lon, lat, 3), point: { pixelSize: 12, color: Cesium.Color.fromCssColorString("#438f86"), outlineColor: Cesium.Color.WHITE, outlineWidth: 2, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY } });
     });
     cesiumViewer.dataSources.add(cesiumPlaces); cesiumViewer.dataSources.add(cesiumWater);
     cesiumPlaces.show = placesLayer.getVisible(); cesiumWater.show = waterLayer.getVisible();
@@ -360,18 +360,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const highlighted = !lastAssessmentGeometry || lastAssessmentGeometry.intersectsCoordinate(ol.proj.fromLonLat([lon, lat]));
       if (entity.billboard) {
         const category = entity.properties?.category?.getValue(now);
-        entity.billboard.image = placeMarkerIcon(highlighted ? (placeConfig[category] || placeConfig.service).color : "#94a3b8");
+        entity.billboard.image = placeMarkerIcon(highlighted ? (placeConfig[category] || placeConfig.service).color : "#89796a");
         return;
       }
-      entity.point.color = window.Cesium.Color.fromCssColorString(highlighted ? "#176fe5" : "#9aa8b5");
-      entity.label.fillColor = window.Cesium.Color.fromCssColorString(highlighted ? "#173653" : "#7e8c98");
+      entity.point.color = window.Cesium.Color.fromCssColorString(highlighted ? "#567f6d" : "#89796a");
+      entity.label.fillColor = window.Cesium.Color.fromCssColorString(highlighted ? "#674427" : "#89796a");
     });
   };
   const syncCesiumSelection = async (geometryGeoJSON) => {
     if (!cesiumViewer || !geometryGeoJSON) return;
     const Cesium = window.Cesium;
     if (cesiumSelection) cesiumViewer.dataSources.remove(cesiumSelection, true);
-    cesiumSelection = await Cesium.GeoJsonDataSource.load({ type: "Feature", properties: {}, geometry: geometryGeoJSON }, { clampToGround: true, stroke: Cesium.Color.fromCssColorString("#f97316"), fill: Cesium.Color.fromCssColorString("#f97316").withAlpha(0.28), strokeWidth: 4 });
+    cesiumSelection = await Cesium.GeoJsonDataSource.load({ type: "Feature", properties: {}, geometry: geometryGeoJSON }, { clampToGround: true, stroke: Cesium.Color.fromCssColorString("#b96132"), fill: Cesium.Color.fromCssColorString("#b96132").withAlpha(0.28), strokeWidth: 4 });
     cesiumViewer.dataSources.add(cesiumSelection);
   };
   const formatArea = () => {

@@ -1,12 +1,20 @@
-<main class="users-page">
-  <header><div><h1>จัดการผู้ใช้</h1><p><%= current_user.system_admin? ? "จัดการบัญชีและขอบเขตพื้นที่ของทุกหน่วยงาน" : "จัดการบัญชีผู้ดูแลและเจ้าหน้าที่ภายใน อบต. ของคุณ" %></p></div><%= link_to "กลับหน้าหลัก", root_path, class: "button-link" %></header>
-  <section class="users-card">
-    <div class="users-toolbar"><h2>ผู้ใช้งาน</h2><%= link_to "เพิ่มผู้ใช้", new_user_path, class: "button-link primary" %></div>
-    <table><thead><tr><th>ชื่อผู้ใช้งาน</th><th>สิทธิ์</th><th>พื้นที่/หน่วยงาน</th><th>จัดการ</th></tr></thead><tbody>
-      <% @users.each do |user| %><tr><td><b><%= user.username %></b><%= tag.small("บัญชีที่กำลังใช้งาน", class: "current-account-label") if user == current_user %></td><td><%= user.role_label %></td><td><%= user.access_area&.name.presence || (user.subdistrict ? "#{user.subdistrict.name_th}, #{user.subdistrict.province.name_th}" : "ทุกพื้นที่") %></td><td class="user-actions"><%= link_to "แก้ไข", edit_user_path(user), class: "user-edit" %><% unless user == current_user %><%= button_to "ลบ", user_path(user), method: :delete, class: "user-delete", form: { data: { delete_user_form: true, username: user.username } } %><% end %></td></tr><% end %>
-    </tbody></table>
+<% users_area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<div class="shell dashboard-shell gis-dashboard users-shell">
+  <%= render "dashboard/sidebar", active_nav: :users, initial_area: users_area %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker">SMART TAMBON SAFETY THAILAND</p><span class="breadcrumb"><span id="selection-label"><%= users_area %></span><b>›</b><span>จัดการผู้ใช้</span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker">การบริหารสิทธิ์ผู้ใช้งาน</p><h1>จัดการผู้ใช้</h1><p><%= current_user.system_admin? ? "จัดการบัญชีและขอบเขตพื้นที่ของทุกหน่วยงาน" : "จัดการบัญชีผู้ดูแลและเจ้าหน้าที่ภายใน อบต. ของคุณ" %></p></div><%= link_to "＋ เพิ่มผู้ใช้", new_user_path, class: "button-link primary users-create-button", data: { user_modal_url: new_user_path } %></section>
+      <section class="users-card users-list-card">
+    <div class="users-toolbar"><div><h2>ผู้ใช้งาน</h2><p>รายชื่อบัญชีและสิทธิ์การเข้าถึงข้อมูลในระบบ</p></div><span><%= @users.size %> บัญชี</span></div>
+    <div class="users-table-wrap"><table class="users-table"><thead><tr><th>ชื่อผู้ใช้งาน</th><th>สิทธิ์</th><th>พื้นที่/หน่วยงาน</th><th>จัดการ</th></tr></thead><tbody>
+      <% @users.each do |user| %><tr><td><b><%= user.username %></b><%= tag.small("บัญชีที่กำลังใช้งาน", class: "current-account-label") if user == current_user %></td><td><%= user.role_label %></td><td><%= user.access_area&.name.presence || (user.subdistrict ? "#{user.subdistrict.name_th}, #{user.subdistrict.province.name_th}" : "ทุกพื้นที่") %></td><td class="user-actions"><%= link_to edit_user_path(user), class: "user-icon-button edit", title: "แก้ไขผู้ใช้", data: { user_modal_url: edit_user_path(user) }, aria: { label: "แก้ไขผู้ใช้ #{user.username}" } do %><span class="material-symbols-outlined" aria-hidden="true">edit</span><% end %><% unless user == current_user %><%= button_to user_path(user), method: :delete, class: "user-icon-button delete", title: "ลบผู้ใช้", aria: { label: "ลบผู้ใช้ #{user.username}" }, form: { data: { delete_user_form: true, username: user.username } } do %><span class="material-symbols-outlined" aria-hidden="true">delete_outline</span><% end %><% end %></td></tr><% end %>
+    </tbody></table></div>
   </section>
-  <dialog class="delete-user-dialog" data-delete-user-dialog aria-labelledby="delete-user-title">
+  <dialog class="user-form-dialog" data-user-form-dialog aria-labelledby="user-form-dialog-title">
+    <header><div><p>การบริหารสิทธิ์ผู้ใช้งาน</p><h2 id="user-form-dialog-title" data-user-form-dialog-title>ข้อมูลผู้ใช้</h2></div><button type="button" data-user-form-dialog-close aria-label="ปิด"><span class="material-symbols-outlined">close</span></button></header>
+    <div class="user-form-dialog-body" data-user-form-dialog-body><div class="user-form-loading">กำลังโหลดข้อมูล…</div></div>
+  </dialog>  <dialog class="delete-user-dialog" data-delete-user-dialog aria-labelledby="delete-user-title">
     <h2 id="delete-user-title">ยืนยันการลบบัญชี</h2>
     <p>ต้องการลบบัญชี <strong data-delete-user-name></strong> ใช่หรือไม่?</p>
     <small>การกระทำนี้ไม่สามารถย้อนกลับได้</small>
@@ -16,7 +24,9 @@
       <div class="delete-user-dialog-actions"><button type="button" class="button-link" data-delete-user-cancel>ยกเลิก</button><button type="submit" class="delete-user-confirm">ลบบัญชี</button></div>
     </form>
   </dialog>
-</main>
+    </div>
+  </main>
+</div>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     const dialog = document.querySelector("[data-delete-user-dialog]");
@@ -31,4 +41,85 @@
     }));
     document.querySelector("[data-delete-user-cancel]")?.addEventListener("click", () => dialog.close());
   });
+</script>
+<script>
+  (() => {
+    const dialog = document.querySelector("[data-user-form-dialog]");
+    const body = dialog?.querySelector("[data-user-form-dialog-body]");
+    const title = dialog?.querySelector("[data-user-form-dialog-title]");
+    if (!dialog || !body || dialog.dataset.ready === "true") return;
+    dialog.dataset.ready = "true";
+
+    const initializeForm = () => {
+      const form = body.querySelector("form");
+      if (!form) return;
+      const modeInputs = [...form.querySelectorAll("[data-access-area-mode]")];
+      const cards = [...form.querySelectorAll("[data-access-area-card]")];
+      const setMode = mode => {
+        cards.forEach(card => { card.hidden = card.dataset.accessAreaCard !== mode; });
+        modeInputs.forEach(input => input.closest("label")?.classList.toggle("active", input.value === mode));
+      };
+      modeInputs.forEach(input => input.addEventListener("change", () => setMode(input.value)));
+      if (modeInputs.length) setMode(form.querySelector("[data-access-area-mode]:checked")?.value || "subdistricts");
+
+      const options = [...form.querySelectorAll("[data-subdistrict-option]")];
+      const count = form.querySelector("[data-selected-subdistrict-count]");
+      const syncCount = () => { if (count) count.value = options.filter(option => option.querySelector("input[type=checkbox]")?.checked).length; };
+      options.forEach(option => option.querySelector("input[type=checkbox]")?.addEventListener("change", syncCount));
+      syncCount();
+      let timer;
+      form.querySelector("[data-subdistrict-search]")?.addEventListener("input", event => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          const query = event.currentTarget.value.trim().toLocaleLowerCase();
+          options.forEach(option => { option.hidden = query.length > 0 && !option.dataset.searchText.includes(query); });
+        }, 180);
+      });
+
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        const submit = form.querySelector('[type="submit"]');
+        submit?.setAttribute("disabled", "disabled");
+        try {
+          const response = await fetch(form.action, { method: form.method || "post", body: new FormData(form), headers: { Accept: "text/html", "X-Requested-With": "XMLHttpRequest" } });
+          if (response.redirected || response.ok) { window.location.assign(response.url || "/users"); return; }
+          const documentBody = new DOMParser().parseFromString(await response.text(), "text/html");
+          const card = documentBody.querySelector(".users-card");
+          if (!card) throw new Error("ไม่สามารถแสดงแบบฟอร์มได้");
+          body.innerHTML = card.outerHTML;
+          initializeForm();
+        } catch (error) {
+          body.innerHTML = `<p class="form-errors">${error.message || "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง"}</p>`;
+        } finally {
+          submit?.removeAttribute("disabled");
+        }
+      });
+    };
+
+    const openForm = async url => {
+      body.innerHTML = '<div class="user-form-loading">กำลังโหลดข้อมูล…</div>';
+      if (!dialog.open) dialog.showModal();
+      try {
+        const response = await fetch(url, { headers: { Accept: "text/html", "X-Requested-With": "XMLHttpRequest" } });
+        if (!response.ok) throw new Error("ไม่สามารถโหลดข้อมูลผู้ใช้ได้");
+        const page = new DOMParser().parseFromString(await response.text(), "text/html");
+        const card = page.querySelector(".users-card");
+        const heading = page.querySelector(".users-title-row h1");
+        if (!card) throw new Error("ไม่พบแบบฟอร์มผู้ใช้");
+        title.textContent = heading?.textContent?.trim() || "ข้อมูลผู้ใช้";
+        body.innerHTML = card.outerHTML;
+        initializeForm();
+      } catch (error) {
+        body.innerHTML = `<p class="form-errors">${error.message}</p>`;
+      }
+    };
+
+    document.querySelectorAll("[data-user-modal-url]").forEach(trigger => trigger.addEventListener("click", event => {
+      event.preventDefault();
+      openForm(trigger.dataset.userModalUrl || trigger.href);
+    }));
+    dialog.querySelector("[data-user-form-dialog-close]")?.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
+  })();
 </script>

@@ -5,7 +5,7 @@
 
 .rules-heading.city-heading h1 {
   margin: 0;
-  color: #152b45;
+  color: #674427;
   font-size: 28px;
   line-height: 1.2;
   letter-spacing: -0.04em;
@@ -13,7 +13,7 @@
 
 .rules-heading.city-heading > div > p:last-child {
   margin: 5px 0 0;
-  color: #7d8da0;
+  color: #806f5f;
   font-size: 12px;
   line-height: 1.55;
 }
@@ -26,14 +26,14 @@
 
 .rules-topbar-title h1 {
   margin: 0;
-  color: #152b45;
+  color: #674427;
   font-size: 15px;
   font-weight: 700;
 }
 
 .rules-topbar-title p {
   margin: 4px 0 0;
-  color: #8294a7;
+  color: #806f5f;
   font-size: 10px;
 }
 
@@ -51,10 +51,10 @@
   width: 34px;
   height: 34px;
   padding: 0;
-  border: 1px solid #dbe5ef;
+  border: 1px solid #e2dac8;
   border-radius: 9px;
   background: #fff;
-  color: #34516f;
+  color: #607466;
   font: inherit;
   cursor: pointer;
 }
@@ -67,7 +67,7 @@
   height: 6px;
   border: 1px solid #fff;
   border-radius: 50%;
-  background: #ef5565;
+  background: #b94050;
 }
 
 .rule-wizard-modal .formula-head,
@@ -97,17 +97,17 @@
 
 .resource-rule-card .rule-main em.severity-watch {
   background: #fff5d9;
-  color: #b77905;
+  color: #b96132;
 }
 
 .resource-rule-card .rule-main em.severity-urgent {
   background: #fff0e5;
-  color: #df6c1d;
+  color: #b96132;
 }
 
 .resource-rule-card .rule-main em.severity-critical {
   background: #ffe9eb;
-  color: #df4755;
+  color: #b94050;
 }
 
 .rules-empty-state {
@@ -115,10 +115,10 @@
   place-items: center;
   min-height: 220px;
   padding: 32px;
-  border: 1px dashed #cbd9e7;
+  border: 1px dashed #d8cfbd;
   border-radius: 12px;
   background: #fff;
-  color: #8394a7;
+  color: #806f5f;
   text-align: center;
 }
 
@@ -128,14 +128,14 @@
   width: 46px;
   height: 46px;
   border-radius: 12px;
-  background: #eaf3ff;
-  color: #176fe5;
+  background: #edf2ee;
+  color: #2C3930;
   font-size: 22px;
 }
 
 .rules-empty-state b {
   margin-top: 12px;
-  color: #334d68;
+  color: #607466;
   font-size: 14px;
 }
 
