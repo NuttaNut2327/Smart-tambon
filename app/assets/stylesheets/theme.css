@@ -261,3 +261,191 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--theme-primary)
 .audit-action.delete, .dataset-danger { color: #b94050; }
 .success, .status-success, .audit-action.add { color: #607466; }
 .warning, .status-warning, .stock-low { color: #b96132; }
+
+/* Login page redesign */
+.auth-page{min-height:100vh;background:#f4f2ec!important}.login-shell{grid-template-columns:minmax(520px,1.08fr) minmax(480px,.92fr);min-height:100vh}.login-story{position:relative;isolation:isolate;padding:42px clamp(42px,6vw,92px);background-image:linear-gradient(90deg,rgba(27,43,34,.92),rgba(35,53,43,.68)),var(--login-hero-image)!important;background-position:center;background-size:cover!important}.login-story:before{z-index:-1;background:linear-gradient(180deg,rgba(18,31,24,.05),rgba(18,31,24,.42))!important}.login-story:after{display:none}.login-brand{position:relative;z-index:1}.brand-mark,.login-card-mark{clip-path:none;border:0;border-radius:14px}.login-brand .brand-mark{width:48px;height:48px;background:rgba(255,255,255,.14);color:#fff;font-size:27px}.login-brand strong{font-size:25px}.login-brand small{color:rgba(255,255,255,.76);font-size:13px}.story-copy{position:relative;z-index:1;margin:auto 0 32px;max-width:650px}.story-copy .eyebrow{color:#e5eee8;font-size:13px;font-weight:700;letter-spacing:.14em;opacity:1}.story-copy h1{max-width:620px;margin:14px 0;color:#fff;font-size:clamp(40px,4vw,64px);line-height:1.2;text-shadow:0 3px 22px rgba(0,0,0,.24)}.story-rule{width:80px;height:4px;border-radius:99px;background:#d7bb7e!important}.story-copy>p:last-child{margin-top:18px;color:rgba(255,255,255,.92);font-size:clamp(16px,1.1vw,20px);line-height:1.75}.login-benefits{position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:9px;margin-bottom:22px}.login-benefits>span{display:flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid rgba(255,255,255,.22);border-radius:999px;background:rgba(23,39,30,.4);color:#fff;font-size:12px;backdrop-filter:blur(8px)}.login-benefits i{font-size:17px}.story-note{position:relative;z-index:1;max-width:460px;padding:15px 17px;border-color:rgba(255,255,255,.27);background:rgba(23,39,30,.48)}.story-note>span{width:40px;height:40px;border:0;background:rgba(255,255,255,.13);color:#fff}.story-note b{font-size:14px}.story-note small{font-size:12px;line-height:1.5}.login-story footer{position:relative;z-index:1;margin-top:24px;color:rgba(255,255,255,.72);opacity:1}.login-panel{padding:clamp(28px,5vw,76px)!important;background:#f4f2ec!important}.login-card{width:min(100%,520px);padding:clamp(32px,4vw,52px);border:1px solid #d8cfbd!important;border-radius:20px;background:#fff!important;box-shadow:0 22px 60px rgba(44,57,48,.13)!important;text-align:left}.login-card-mark{display:grid;width:56px;height:56px;margin:0 0 22px;background:#e7eee9;color:#2c3930!important;font-size:28px}.login-card h2{font-size:clamp(29px,2.3vw,37px);line-height:1.2}.login-intro{margin:9px 0 28px;color:#607466!important;font-size:14px;line-height:1.7}.login-form{gap:18px}.login-form label{gap:8px;font-size:14px!important}.login-form input[type=text],.login-form input[type=email],.login-form input[type=password]{min-height:50px;padding:12px 14px;border:1px solid #bfb5a3;border-radius:10px;background:#fff;color:#2c3930;font-size:15px}.login-form input::placeholder{color:#8a7e70;opacity:1}.login-form input:focus{border-color:#2c3930!important;box-shadow:0 0 0 4px rgba(44,57,48,.12)!important}.remember-option{color:#674427!important;font-size:13px!important}.remember-option input{accent-color:#2c3930}.login-submit{min-height:50px;border-radius:10px;background:#2c3930!important;font-size:15px;box-shadow:0 7px 16px rgba(44,57,48,.2)}.login-submit:hover{background:#3f4f44!important;filter:none;transform:translateY(-1px)}.login-access-note{margin-top:22px;color:#806f5f;font-size:12px;line-height:1.6;text-align:left}
+@media(max-width:1050px){.login-shell{grid-template-columns:minmax(430px,.9fr) minmax(440px,1.1fr)}.login-story{padding:34px 44px}.story-copy h1{font-size:42px}}
+@media(max-width:850px){.login-shell{grid-template-columns:1fr}.login-story{min-height:250px;padding:24px}.story-copy{margin:34px 0 12px}.story-copy h1{font-size:32px}.story-copy>p:last-child,.login-benefits,.story-note,.login-story footer{display:none}.login-panel{padding:24px 16px!important}.login-card{padding:30px 24px}}
+/* Full bilingual brand name */
+.dashboard-brand{height:auto!important;min-height:76px;padding-top:11px!important;padding-bottom:11px!important}.dashboard-brand>div{min-width:0}.dashboard-brand strong{font-size:12px!important;line-height:1.25}.dashboard-brand small{margin-top:3px;font-size:8px!important;line-height:1.35;white-space:normal}.login-brand>div{min-width:0}.login-brand small{max-width:560px;line-height:1.45}
+
+/* Login readability */
+.login-brand strong{font-size:27px;line-height:1.25;text-shadow:0 2px 10px rgba(0,0,0,.32)}
+.login-brand small{margin-top:5px;color:#fff;font-size:15px;line-height:1.55;text-shadow:0 2px 8px rgba(0,0,0,.38)}
+.story-copy{padding:22px 24px;border-radius:16px;background:linear-gradient(90deg,rgba(24,39,30,.58),rgba(24,39,30,.18) 78%,transparent)}
+.story-copy .eyebrow{font-size:15px;line-height:1.5;letter-spacing:.1em;text-shadow:0 2px 8px rgba(0,0,0,.35)}
+.story-copy h1{font-size:clamp(44px,4.2vw,66px);line-height:1.22;text-shadow:0 3px 18px rgba(0,0,0,.48)}
+.story-copy>p:last-child{color:#fff;font-size:clamp(18px,1.25vw,21px);font-weight:500;line-height:1.8;text-shadow:0 2px 10px rgba(0,0,0,.45)}
+.login-benefits>span{padding:10px 14px;background:rgba(24,39,30,.68);font-size:14px;font-weight:600;line-height:1.4}
+.login-benefits i{font-size:20px}
+.story-note{background:rgba(24,39,30,.7)}
+.story-note b{color:#fff;font-size:16px;line-height:1.4}
+.story-note small{color:rgba(255,255,255,.92);font-size:14px;line-height:1.6}
+.login-story footer{color:rgba(255,255,255,.9);font-size:13px}
+.login-card h2{font-size:clamp(32px,2.4vw,39px)}
+.login-intro{color:#4f6055!important;font-size:16px;line-height:1.75}
+.login-form label{color:#26382d!important;font-size:16px!important;font-weight:700;line-height:1.5}
+.login-form input[type=text],.login-form input[type=email],.login-form input[type=password]{min-height:54px;padding:13px 15px;border-color:#9f9585;color:#25352b;font-size:16px;font-weight:500}
+.login-form input::placeholder{color:#6f675d}
+.remember-option{font-size:15px!important;font-weight:600!important}
+.remember-option input{width:18px;height:18px}
+.login-submit{min-height:54px;font-size:17px;font-weight:700}
+.login-access-note{color:#65594d;font-size:14px;line-height:1.7}
+@media(max-width:850px){.login-brand strong{font-size:21px}.login-brand small{font-size:13px}.story-copy{padding:16px 18px}.story-copy h1{font-size:34px}.login-card h2{font-size:32px}.login-intro,.login-form label,.login-form input[type=text],.login-form input[type=email],.login-form input[type=password]{font-size:16px}}
+/* Login hero contrast correction */
+.login-story .story-copy{max-width:680px;padding:24px 28px;border:1px solid rgba(255,255,255,.16);background:linear-gradient(90deg,rgba(20,34,26,.88) 0%,rgba(20,34,26,.7) 72%,rgba(20,34,26,.18) 100%);box-shadow:0 16px 40px rgba(9,18,12,.18);backdrop-filter:blur(2px)}
+.login-story .story-copy .eyebrow{color:#fff7dc!important;font-size:16px;font-weight:800}
+.login-story .story-copy h1{color:#fff!important;font-size:clamp(24px,2.15vw,34px);font-weight:800;line-height:1.42;text-shadow:0 3px 16px rgba(0,0,0,.72)}
+.login-story .story-copy h1 span{display:block;white-space:nowrap}
+.login-story .story-copy>p:last-child{color:#fff!important;font-weight:650;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+.login-story .login-benefits>span{border-color:rgba(255,255,255,.42);background:rgba(20,34,26,.82);color:#fff!important;box-shadow:0 4px 14px rgba(0,0,0,.16)}
+.login-story .story-note{border-color:rgba(255,255,255,.38);background:rgba(20,34,26,.84)}
+.login-story .story-note b,.login-story .story-note small{color:#fff!important;opacity:1}
+@media(max-width:850px){.login-story .story-copy{padding:18px 20px;background:rgba(20,34,26,.78)}.login-story .story-copy h1{font-size:19px}}
+/* Login responsive typography and layout */
+.login-brand strong{font-size:clamp(20px,1.55vw,27px)}
+.login-brand small{font-size:clamp(12px,.9vw,15px)}
+.login-story .story-copy h1{font-size:clamp(24px,2.15vw,34px)}
+.login-story .story-copy>p:last-child{font-size:clamp(16px,1.2vw,21px)}
+.login-story .login-benefits>span{font-size:clamp(12px,.85vw,14px)}
+.login-card h2{font-size:clamp(29px,2.25vw,38px)}
+.login-intro{font-size:clamp(14px,1vw,16px)}
+.login-form label,.login-form input[type=text],.login-form input[type=email],.login-form input[type=password]{font-size:clamp(15px,1vw,16px)!important}
+.login-submit{font-size:clamp(16px,1.05vw,17px)}
+.login-access-note{font-size:clamp(12px,.9vw,14px)}
+@media(max-width:1200px){
+  .login-shell{grid-template-columns:minmax(450px,.95fr) minmax(430px,1.05fr)}
+  .login-story{padding:34px clamp(34px,4vw,54px)}
+  .login-story .story-copy{padding:20px 22px}
+  .login-story .story-copy h1{font-size:clamp(22px,2.2vw,29px)}
+  .login-panel{padding:32px!important}
+  .login-card{padding:36px 40px}
+}
+@media(max-width:900px){
+  .login-shell{display:block;min-height:100vh}
+  .login-story{min-height:auto;padding:24px 28px 30px;background-position:left center}
+  .login-brand .brand-mark{width:44px;height:44px;font-size:24px}
+  .login-brand strong{font-size:clamp(18px,3vw,23px)}
+  .login-brand small{font-size:12px}
+  .login-story .story-copy{margin:28px 0 0;max-width:720px;padding:18px 20px}
+  .login-story .story-copy h1{font-size:clamp(20px,3.2vw,27px)}
+  .login-story .story-copy>p:last-child,.login-benefits,.story-note,.login-story footer{display:none}
+  .login-panel{min-height:auto;padding:30px 18px 42px!important}
+  .login-card{width:min(100%,560px);padding:32px 34px}
+}
+@media(max-width:520px){
+  .login-story{padding:18px 16px 22px}
+  .login-brand{gap:10px;align-items:flex-start}
+  .login-brand .brand-mark{flex:0 0 40px;width:40px;height:40px;border-radius:11px;font-size:22px}
+  .login-brand strong{font-size:16px;line-height:1.3}
+  .login-brand small{margin-top:3px;font-size:10px;line-height:1.45}
+  .login-story .story-copy{margin-top:20px;padding:14px 12px;border-radius:12px}
+  .login-story .story-copy .eyebrow{font-size:11px;letter-spacing:.06em}
+  .login-story .story-copy h1{font-size:clamp(15px,4vw,18px);line-height:1.55}
+  .story-rule{width:54px;height:3px}
+  .login-panel{padding:20px 12px 30px!important}
+  .login-card{padding:26px 20px;border-radius:16px}
+  .login-card-mark{width:48px;height:48px;margin-bottom:16px;font-size:24px}
+  .login-card h2{font-size:28px}
+  .login-intro{margin-bottom:22px;font-size:14px}
+  .login-form{gap:16px}
+  .login-form label,.login-form input[type=text],.login-form input[type=email],.login-form input[type=password]{font-size:15px!important}
+  .login-form input[type=text],.login-form input[type=email],.login-form input[type=password],.login-submit{min-height:50px}
+  .remember-option{font-size:14px!important}
+  .login-access-note{font-size:12px}
+}
+@media(max-width:370px){
+  .login-brand strong{font-size:14px}
+  .login-brand small{font-size:9px}
+  .login-story .story-copy h1{font-size:14px}
+  .login-card{padding:24px 16px}
+}
+@media(max-height:720px) and (min-width:901px){
+  .login-story{padding-top:26px;padding-bottom:26px}
+  .story-copy{margin-bottom:18px}
+  .login-story .story-copy{padding-top:16px;padding-bottom:16px}
+  .login-benefits{margin-bottom:14px}
+  .story-note{padding-top:11px;padding-bottom:11px}
+  .login-story footer{margin-top:16px;padding-top:14px}
+  .login-card{padding-top:30px;padding-bottom:30px}
+}
+/* Smart Tambon brand logo */
+.smart-tambon-logo{display:block;max-width:100%;height:auto;object-fit:contain}
+.login-brand-logo{flex:0 0 auto;width:104px;height:52px;filter:none}
+.login-card-logo{width:170px;height:100px;margin:0 0 20px;object-position:left center}
+.sidebar-brand-logo{flex:0 0 auto;width:48px;height:38px}
+.public-brand-logo{flex:0 0 auto;width:50px;height:34px}
+@media(max-width:900px){.login-brand-logo{width:90px;height:45px}.login-card-logo{width:155px;height:91px}}
+@media(max-width:520px){.login-brand-logo{width:76px;height:38px}.login-card-logo{width:138px;height:81px;margin-bottom:15px}.sidebar-brand-logo{width:42px;height:32px}}
+/* Login card centered heading */
+.login-card .login-card-logo{margin-left:auto;margin-right:auto;object-position:center}
+.login-card h2,.login-card .login-intro{text-align:center}
+/* Login card spacing refinement */
+.login-card .login-card-logo{width:142px;height:84px;margin-bottom:28px}
+.login-card h2{font-size:clamp(28px,1.9vw,33px);line-height:1.25}
+.login-card .login-intro{margin-top:13px;margin-bottom:34px;font-size:15px;line-height:1.75}
+.login-card .login-form{gap:22px}
+.login-card .login-form label{gap:10px}
+.login-card .login-submit{margin-top:2px}
+.login-card .login-access-note{margin-top:26px}
+@media(max-width:900px){.login-card .login-card-logo{width:132px;height:78px;margin-bottom:24px}.login-card .login-intro{margin-bottom:29px}}
+@media(max-width:520px){.login-card .login-card-logo{width:116px;height:69px;margin-bottom:21px}.login-card h2{font-size:27px}.login-card .login-intro{margin-top:10px;margin-bottom:25px;font-size:14px}.login-card .login-form{gap:18px}.login-card .login-access-note{margin-top:22px}}
+/* Sidebar logo contrast */
+.dashboard-sidebar .sidebar-brand-logo,.data-layers-sidebar .sidebar-brand-logo{width:58px;height:44px;padding:6px 7px;border:1px solid rgba(255,255,255,.72);border-radius:10px;background:#fffaf0;box-shadow:0 3px 10px rgba(13,25,18,.22)}
+.dashboard-sidebar .dashboard-brand strong,.data-layers-sidebar .dashboard-brand strong{color:#fff!important;font-size:15px!important;line-height:1.3;letter-spacing:.025em;text-shadow:0 1px 4px rgba(0,0,0,.18)}
+@media(max-width:760px){.dashboard-sidebar .sidebar-brand-logo,.data-layers-sidebar .sidebar-brand-logo{width:50px;height:38px;padding:5px 6px}.dashboard-sidebar .dashboard-brand strong,.data-layers-sidebar .dashboard-brand strong{font-size:14px!important}}
+/* Sidebar logo clean treatment */
+.dashboard-sidebar .sidebar-brand-logo,.data-layers-sidebar .sidebar-brand-logo{width:56px;height:40px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;filter:brightness(0) invert(1);opacity:.96}
+.dashboard-sidebar .dashboard-brand,.data-layers-sidebar .dashboard-brand{gap:12px}
+@media(max-width:760px){.dashboard-sidebar .sidebar-brand-logo,.data-layers-sidebar .sidebar-brand-logo{width:50px;height:36px;padding:0}}
+/* Sidebar brand header treatment */
+.dashboard-sidebar .dashboard-brand,.data-layers-sidebar .dashboard-brand{min-height:76px;padding:12px 18px!important;border-bottom:1px solid #d8cfbd!important;background:#f5f1e7;box-shadow:0 3px 12px rgba(18,31,24,.12)}
+.dashboard-sidebar .sidebar-brand-logo,.data-layers-sidebar .sidebar-brand-logo{width:62px;height:44px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;filter:none;opacity:1}
+.dashboard-sidebar .dashboard-brand strong,.data-layers-sidebar .dashboard-brand strong{color:#2c3930!important;font-size:15px!important;font-weight:800;text-shadow:none}
+@media(max-width:760px){.dashboard-sidebar .dashboard-brand,.data-layers-sidebar .dashboard-brand{min-height:60px;padding:9px 14px!important}.dashboard-sidebar .sidebar-brand-logo,.data-layers-sidebar .sidebar-brand-logo{width:54px;height:38px}.dashboard-sidebar .dashboard-brand strong,.data-layers-sidebar .dashboard-brand strong{font-size:14px!important}}
+/* Align sidebar and main headers */
+.dashboard-sidebar .dashboard-brand,.data-layers-sidebar .dashboard-brand{height:64px!important;min-height:64px;padding:8px 16px!important}
+.dashboard-sidebar .sidebar-brand-logo,.data-layers-sidebar .sidebar-brand-logo{width:54px;height:38px}
+.dashboard-header,.gis-topbar{height:64px;min-height:64px}
+@media(max-width:760px){.dashboard-sidebar .dashboard-brand,.data-layers-sidebar .dashboard-brand{height:58px!important;min-height:58px;padding:7px 12px!important}.dashboard-header,.gis-topbar{height:58px;min-height:58px}}
+/* Sidebar collapse header refinement */
+@media(min-width:761px){
+  .dashboard-brand .sidebar-collapse-toggle{display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px;width:30px;height:30px;margin-left:auto;padding:0;border:1px solid #536359!important;border-radius:50%;background:#2c3930!important;color:#fff!important;box-shadow:0 2px 7px rgba(20,34,26,.22);cursor:pointer}
+  .dashboard-brand .sidebar-collapse-toggle:hover{border-color:#2c3930!important;background:#3f4f44!important;transform:none}
+  .dashboard-brand .sidebar-collapse-toggle:focus-visible{outline:3px solid rgba(44,57,48,.28);outline-offset:2px}
+  .dashboard-brand .sidebar-collapse-toggle .material-symbols-outlined{font-size:22px;font-variation-settings:"wght" 700;line-height:1}
+  .dashboard-shell.sidebar-collapsed{grid-template-columns:88px minmax(0,1fr)!important}
+  .dashboard-shell.sidebar-collapsed .dashboard-sidebar{width:88px!important}
+  .sidebar-collapsed .dashboard-brand{flex-direction:row;justify-content:center;gap:4px;height:64px!important;min-height:64px;padding:7px 5px!important;background:#f5f1e7}
+  .sidebar-collapsed .dashboard-brand .sidebar-brand-logo{order:0;flex:0 0 48px;width:48px;height:34px}
+  .sidebar-collapsed .dashboard-brand .sidebar-collapse-toggle{order:1;flex:0 0 28px;width:28px;height:28px;margin-left:0;background:#2c3930!important;border-color:#536359!important;color:#fff!important}
+  .sidebar-collapsed .primary-nav{padding-left:16px;padding-right:16px}
+}
+/* Match main header to collapsed sidebar header */
+@media(min-width:761px){
+  .sidebar-collapsed .dashboard-brand{flex-direction:column;justify-content:center;gap:6px;height:96px!important;min-height:96px;padding:8px 5px!important}
+  .sidebar-collapsed .dashboard-brand .sidebar-brand-logo{order:0;flex:0 0 42px;width:54px;height:42px}
+  .sidebar-collapsed .dashboard-brand .sidebar-collapse-toggle{order:1;flex:0 0 28px;width:28px;height:28px;margin:0}
+  .dashboard-shell.sidebar-collapsed .dashboard-header,.dashboard-shell.sidebar-collapsed .gis-topbar{height:96px;min-height:96px}
+}
+/* Light sidebar collapse button */
+@media(min-width:761px){
+  .dashboard-brand .sidebar-collapse-toggle,.sidebar-collapsed .dashboard-brand .sidebar-collapse-toggle{border-color:#b7c8ba!important;background:#dfe9e1!important;color:#2c3930!important;box-shadow:0 2px 7px rgba(44,57,48,.14)}
+  .dashboard-brand .sidebar-collapse-toggle:hover,.sidebar-collapsed .dashboard-brand .sidebar-collapse-toggle:hover{border-color:#9fb4a4!important;background:#cbdccd!important;color:#233128!important}
+}
+/* Refined sidebar collapse button */
+@media(min-width:761px){
+  .dashboard-brand .sidebar-collapse-toggle,.sidebar-collapsed .dashboard-brand .sidebar-collapse-toggle{flex-basis:26px;width:26px;height:26px;border:0!important;border-radius:8px;background:#e7ede7!important;color:#3f4f44!important;box-shadow:none!important}
+  .dashboard-brand .sidebar-collapse-toggle .material-symbols-outlined{font-size:18px;font-variation-settings:"wght" 600}
+  .dashboard-brand .sidebar-collapse-toggle:hover,.sidebar-collapsed .dashboard-brand .sidebar-collapse-toggle:hover{border:0!important;background:#d5e0d7!important;color:#2c3930!important;transform:none}
+  .dashboard-brand .sidebar-collapse-toggle:focus-visible{outline:2px solid #8fa596;outline-offset:2px}
+}
+/* High contrast sidebar collapse button */
+@media(min-width:761px){
+  .dashboard-brand .sidebar-collapse-toggle,.sidebar-collapsed .dashboard-brand .sidebar-collapse-toggle{background:#2c3930!important;color:#fff!important;box-shadow:none!important}
+  .dashboard-brand .sidebar-collapse-toggle:hover,.sidebar-collapsed .dashboard-brand .sidebar-collapse-toggle:hover{background:#3f4f44!important;color:#fff!important}
+}
+/* Circular sidebar collapse button */
+@media(min-width:761px){
+  .dashboard-brand .sidebar-collapse-toggle,.sidebar-collapsed .dashboard-brand .sidebar-collapse-toggle{border-radius:50%}
+}

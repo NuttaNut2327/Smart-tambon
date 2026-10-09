@@ -1,17 +1,17 @@
 <main class="login-shell">
-  <section class="login-story" aria-label="Smart Tambon">
-    <div class="login-brand"><span class="brand-mark">⌂</span><div><strong>SMART TAMBON</strong><small>Smart GIS Platform</small></div></div>
-    <div class="story-copy"><p class="eyebrow">SMART TAMBON GIS PLATFORM</p><h1>บริหารจัดการข้อมูล<br>ตำบลอัจฉริยะ</h1><span class="story-rule"></span><p>เชื่อมโยงข้อมูลพื้นที่ เพื่อการวางแผน<br>และบริการชุมชนอย่างมีประสิทธิภาพ</p></div>
-    <div class="city-network" aria-hidden="true"><span>⌖</span><span>⌂</span><span>✚</span><span>◌</span><i></i><i></i><i></i></div>
-    <div class="story-note"><span>✓</span><div><b>ข้อมูลพื้นที่ปลอดภัย</b><small>สิทธิ์การใช้งานกำหนดตามบทบาทผู้ใช้</small></div></div>
-    <footer>© <%= Time.current.year %> Smart Tambon GIS Platform</footer>
+  <section class="login-story" aria-label="SMART TAMBON SAFETY THAILAND" style="--login-hero-image: url('<%= asset_path("login-smart-tambon-hero.png") %>')">
+    <div class="login-brand"><%= image_tag "logo-smart-tambon.png", class: "smart-tambon-logo login-brand-logo", alt: "" %><div><strong>SMART TAMBON SAFETY THAILAND</strong><small>ระบบบริหารจัดการความปลอดภัยอัจฉริยะสำหรับองค์การบริหารส่วนตำบล</small></div></div>
+    <div class="story-copy"><p class="eyebrow">SMART TAMBON SAFETY THAILAND</p><h1><span>ระบบบริหารจัดการความปลอดภัยอัจฉริยะ</span><span>สำหรับองค์การบริหารส่วนตำบล</span></h1><span class="story-rule"></span><p>เชื่อมโยงข้อมูล แผนที่ และเหตุการณ์สำคัญ<br>เพื่อบริหารจัดการชุมชนได้อย่างมั่นใจ</p></div>
+    <div class="login-benefits" aria-label="ความสามารถของระบบ"><span><i class="material-symbols-outlined">map</i>แผนที่และข้อมูลพื้นที่</span><span><i class="material-symbols-outlined">notifications_active</i>ติดตามเหตุการณ์</span><span><i class="material-symbols-outlined">analytics</i>ประเมินสถานการณ์</span></div>
+    <div class="story-note"><span class="material-symbols-outlined">verified_user</span><div><b>การเข้าถึงข้อมูลเป็นไปตามขอบเขตพื้นที่รับผิดชอบ</b><small>ผู้ใช้งานสามารถเข้าถึงข้อมูลส่วนบุคคลได้เฉพาะภายในตำบลที่ตนได้รับมอบหมายเท่านั้น</small></div></div>
+    <footer>© <%= Time.current.year %> SMART TAMBON SAFETY THAILAND</footer>
   </section>
 
   <section class="login-panel">
     <div class="login-card">
-      <div class="login-card-mark">⌂</div>
+      <%= image_tag "logo-smart-tambon-name.png", class: "smart-tambon-logo login-card-logo", alt: "SMART TAMBON" %>
       <h2>เข้าสู่ระบบ</h2>
-      <p class="login-intro">กรุณาเข้าสู่ระบบเพื่อใช้งานแผนที่และข้อมูลเมืองอัจฉริยะ</p>
+      <p class="login-intro">เข้าสู่ระบบเพื่อจัดการข้อมูลพื้นที่ แผนที่ และเหตุการณ์ของชุมชน</p>
 
       <% if flash[:alert].present? %><div class="login-alert"><%= flash[:alert] %></div><% end %>
       <% if flash[:notice].present? %><div class="login-notice"><%= flash[:notice] %></div><% end %>
@@ -19,7 +19,6 @@
       <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "login-form" }) do |form| %>
         <label>ชื่อผู้ใช้งาน<%= form.text_field :username, autofocus: true, autocomplete: "username", placeholder: "กรอกชื่อผู้ใช้งาน" %></label>
         <label>รหัสผ่าน<%= form.password_field :password, autocomplete: "current-password", placeholder: "กรอกรหัสผ่าน" %></label>
-        <% if devise_mapping.rememberable? %><label class="remember-option"><%= form.check_box :remember_me %><span>จดจำการเข้าสู่ระบบ</span></label><% end %>
         <%= form.submit "เข้าสู่ระบบ", class: "login-submit" %>
       <% end %>
       <p class="login-access-note">บัญชีผู้ใช้ถูกสร้างและกำหนดสิทธิ์โดยผู้ดูแลระบบ</p>

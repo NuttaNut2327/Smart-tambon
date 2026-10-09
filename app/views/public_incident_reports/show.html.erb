@@ -2,7 +2,7 @@
   <script type="application/json" data-public-boundary><%= raw json_escape(@report_boundary_feature.to_json) %></script>
   <script type="application/json" data-public-important-places><%= raw json_escape(@important_places.to_json) %></script>
   <header class="public-report-header">
-    <div class="public-report-brand"><span class="material-symbols-outlined">campaign</span><div><strong>SMART TAMBON</strong><small>ระบบรับแจ้งเหตุประชาชน</small></div></div>
+    <div class="public-report-brand"><%= image_tag "logo-smart-tambon.png", class: "smart-tambon-logo public-brand-logo", alt: "" %><div><strong>SMART TAMBON SAFETY THAILAND</strong><small>ระบบรับแจ้งเหตุประชาชน</small></div></div>
     <span class="public-report-secure"><span class="material-symbols-outlined">lock</span>แบบฟอร์มสาธารณะ</span>
   </header>
 
