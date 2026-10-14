@@ -158,6 +158,29 @@ class AiAssistantTest < ActionDispatch::IntegrationTest
     admin&.destroy
   end
 
+  test "system admin switches the default provider from the list" do
+    second = AiProvider.create!(name: "สำรอง", api_format: "openai", base_url: "http://llm2.test/v1", model: "other-model")
+    disabled = AiProvider.create!(name: "ปิดไว้", api_format: "openai", base_url: "http://llm3.test/v1", model: "off", enabled: false)
+    admin = User.create!(username: "ai_default_admin", password: "Password123!", role: :system_admin)
+    sign_in admin
+
+    get ai_providers_path
+    assert_select "a[href=?]", edit_ai_provider_path(second)
+    assert_select "form[action=?]", make_default_ai_provider_path(second)
+
+    patch make_default_ai_provider_path(second)
+    assert_redirected_to ai_providers_path
+    assert second.reload.is_default?
+    assert_not @provider.reload.is_default?
+    assert_equal second, AiProvider.default_for_chat
+
+    patch make_default_ai_provider_path(disabled)
+    assert_not disabled.reload.is_default?
+    assert second.reload.is_default?
+  ensure
+    admin&.destroy
+  end
+
   private
 
   def create_subdistrict(code, name, longitude)

@@ -71,7 +71,10 @@ Rails.application.routes.draw do
     end
   end
   resources :ai_providers, except: :show do
-    post :test, on: :member
+    member do
+      post :test
+      patch :make_default
+    end
   end
   namespace :api do
     get "terrain_tiles/:z/:x/:y", to: "terrain_tiles#show", constraints: { z: /\d+/, x: /\d+/, y: /\d+/ }

@@ -1,7 +1,7 @@
 # System admin: the LLMs available to the AI assistant of every อบต.
 class AiProvidersController < ApplicationController
   before_action :require_system_admin!
-  before_action :set_provider, only: %i[edit update destroy test]
+  before_action :set_provider, only: %i[edit update destroy test make_default]
 
   def index
     @providers = AiProvider.ordered.to_a
@@ -26,6 +26,13 @@ class AiProvidersController < ApplicationController
   def destroy
     @provider.destroy
     redirect_to ai_providers_path, notice: "ลบผู้ให้บริการ AI #{@provider.name} แล้ว"
+  end
+
+  def make_default
+    return redirect_to(ai_providers_path, alert: "เปิดใช้งาน #{@provider.name} ก่อนจึงตั้งเป็นค่าเริ่มต้นได้") unless @provider.enabled?
+
+    @provider.update!(is_default: true, updated_by: current_user.username)
+    redirect_to ai_providers_path, notice: "ตั้ง #{@provider.name} เป็นค่าเริ่มต้นแล้ว — แชตใหม่จะใช้ผู้ให้บริการนี้"
   end
 
   def test
