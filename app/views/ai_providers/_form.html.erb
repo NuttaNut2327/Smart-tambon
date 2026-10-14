@@ -1,0 +1,26 @@
+<%= form_with model: @provider, class: "settings-form" do |form| %>
+  <% if @provider.errors.any? %><div class="form-errors"><% @provider.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined">smart_toy</span><div><h2>การเชื่อมต่อ</h2><p>Claude ใช้ Anthropic API โดยตรง ส่วนโมเดลในเครื่องหรือผู้ให้บริการอื่นใช้รูปแบบ OpenAI-compatible (โมเดลต้องรองรับ function/tool calling)</p></div></header>
+    <div class="settings-grid">
+      <label>ชื่อที่แสดง<%= form.text_field :name, required: true, placeholder: "เช่น Claude Opus หรือ Typhoon (ในเครื่อง)" %></label>
+      <label>รูปแบบ API<%= form.select :api_format, AiProvider::API_FORMATS.map { |value, label| [label, value] } %></label>
+      <label>ชื่อโมเดล<%= form.text_field :model, required: true, placeholder: "claude-opus-5-5" %><small>Claude: claude-opus-5-5 (แนะนำ), claude-sonnet-5-5, claude-haiku-5-5 · Ollama เช่น qwen3:14b</small></label>
+      <label>Base URL<%= form.url_field :base_url, placeholder: "เว้นว่างสำหรับ Claude · เช่น http://ollama:11434/v1" %><small>OpenAI-compatible ต้องระบุ (มักลงท้ายด้วย /v1) · Claude เว้นว่างเพื่อใช้ api.anthropic.com</small></label>
+      <label>API key
+        <%= password_field_tag "ai_provider[api_key]", nil, autocomplete: "new-password", placeholder: @provider.masked_api_key || "ยังไม่ได้กำหนด" %>
+        <small>เว้นว่างเพื่อคงค่าเดิม · Claude ที่ไม่กำหนดจะใช้ ANTHROPIC_API_KEY จาก .env · โมเดลในเครื่องส่วนใหญ่ไม่ต้องใช้</small>
+        <% if @provider.api_key? %><span class="settings-check"><%= check_box_tag "ai_provider[clear_api_key]", "1" %> ลบ API key ที่บันทึก</span><% end %>
+      </label>
+      <label>ระดับการคิด (effort — เฉพาะ Claude)<%= form.select :effort, AiProvider::EFFORTS, include_blank: "ไม่ระบุ (ใช้ค่าของโมเดล)" %><small>low เร็วและประหยัด · medium สมดุล (ค่าเริ่มต้นของ Opus 5.5) · high วิเคราะห์ละเอียดขึ้น</small></label>
+      <label>จำนวนโทเค็นคำตอบสูงสุด<%= form.number_field :max_tokens, min: 1024, max: 128_000, step: 1 %></label>
+      <label>ลำดับการแสดง<%= form.number_field :position, step: 1 %></label>
+      <div class="settings-toggles span-2">
+        <label class="settings-switch"><%= form.check_box :enabled %><span><b>เปิดใช้งาน</b><small>ผู้ใช้เลือกผู้ให้บริการนี้ได้ในหน้าผู้ช่วย AI</small></span></label>
+        <label class="settings-switch"><%= form.check_box :is_default %><span><b>ตั้งเป็นค่าเริ่มต้น</b><small>เลือกไว้อัตโนมัติเมื่อเริ่มแชตใหม่</small></span></label>
+      </div>
+    </div>
+  </section>
+  <p class="ai-provider-note"><span class="material-symbols-outlined">info</span>ข้อมูลที่ผู้ใช้ถามและผลสรุปจากระบบ (ไม่รวมชื่อและเบอร์ติดต่อผู้แจ้ง) จะถูกส่งไปยังผู้ให้บริการนี้ หากต้องการให้ข้อมูลอยู่ภายในหน่วยงาน ให้ใช้โมเดลที่ติดตั้งในเครื่องแม่ข่ายของหน่วยงาน</p>
+  <div class="settings-actions"><%= form.submit "บันทึก", class: "button-link primary" %><%= link_to "ยกเลิก", ai_providers_path, class: "button-link" %></div>
+<% end %>

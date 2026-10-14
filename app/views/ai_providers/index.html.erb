@@ -1,0 +1,27 @@
+<%= render layout: "settings/frame", locals: { title: "ผู้ให้บริการ AI (LLM)", kicker: "สำหรับผู้ดูแลระบบ (Super admin)", description: "โมเดลภาษาที่ผู้ช่วย AI ของทุก อบต. ใช้ — เพิ่มได้หลายรายการ ผู้ใช้เลือกได้ในแต่ละแชต", active: :ai } do %>
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined">smart_toy</span><div><h2>รายการผู้ให้บริการ</h2><p>รายการที่ตั้งเป็นค่าเริ่มต้นจะถูกเลือกไว้เมื่อเริ่มแชตใหม่ คีย์ API ถูกเข้ารหัสและไม่แสดงกลับในหน้าเว็บ</p></div></header>
+    <div class="settings-actions"><%= link_to new_ai_provider_path, class: "button-link primary" do %><span class="material-symbols-outlined">add</span>เพิ่มผู้ให้บริการ<% end %></div>
+    <% if @providers.empty? %>
+      <div class="cctv-empty"><span class="material-symbols-outlined">smart_toy</span><b>ยังไม่มีผู้ให้บริการ AI</b><small>เพิ่มอย่างน้อย 1 รายการเพื่อเปิดใช้เมนูผู้ช่วย AI ของทุก อบต.</small></div>
+    <% else %>
+      <div class="users-table-wrap"><table class="users-table ai-provider-table"><thead><tr><th>ชื่อ</th><th>รูปแบบ API</th><th>โมเดล</th><th>Endpoint</th><th>API key</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody>
+        <% @providers.each do |provider| %>
+          <tr>
+            <td><b><%= provider.name %></b><% if provider.is_default? %> <span class="project-approval approved">ค่าเริ่มต้น</span><% end %></td>
+            <td><%= AiProvider::API_FORMATS[provider.api_format]&.split(" (")&.first %></td>
+            <td><code><%= provider.model %></code><% if provider.effort.present? %><small>effort: <%= provider.effort %></small><% end %></td>
+            <td><small><%= provider.base_url.presence || "api.anthropic.com" %></small></td>
+            <td><%= provider.masked_api_key || (provider.anthropic? && ENV["ANTHROPIC_API_KEY"].present? ? "ใช้ค่าจาก .env" : "-") %></td>
+            <td><span class="project-status <%= provider.enabled? ? 'in_progress' : 'suspended' %>"><%= provider.enabled? ? "เปิดใช้" : "ปิดใช้" %></span></td>
+            <td class="cctv-actions">
+              <%= button_to "ทดสอบ", test_ai_provider_path(provider), method: :post, class: "button-link" %>
+              <%= link_to "แก้ไข", edit_ai_provider_path(provider), class: "button-link" %>
+              <%= button_to "ลบ", ai_provider_path(provider), method: :delete, class: "button-link danger", form: { onsubmit: "return confirm('ลบผู้ให้บริการ #{j provider.name}?')" } %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody></table></div>
+    <% end %>
+  </section>
+<% end %>

@@ -1,0 +1,40 @@
+<% ai_area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<%= stylesheet_link_tag "ai_assistant", "data-turbo-track": "reload" %>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+<%= javascript_include_tag "ai_assistant", defer: true, "data-turbo-track": "reload" %>
+<div class="shell dashboard-shell gis-dashboard users-shell ai-shell">
+  <%= render "dashboard/sidebar", active_nav: :ai_assistant, initial_area: ai_area %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= ai_area %></span><b>›</b><span>ผู้ช่วย AI</span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content ai-workspace" data-ai-app
+         data-providers="<%= @providers.map(&:as_option_json).to_json %>"
+         data-area="<%= ai_area %>" data-system-name="<%= system_name %>" data-username="<%= current_user.username %>">
+      <aside class="ai-panel" aria-label="รายการแชตและผลลัพธ์ที่เก็บไว้">
+        <div class="ai-segment" role="tablist">
+          <button type="button" role="tab" class="active" data-ai-tab="chats"><span class="material-symbols-outlined">forum</span>แชต</button>
+          <button type="button" role="tab" data-ai-tab="snippets"><span class="material-symbols-outlined">bookmark</span>ที่เก็บไว้</button>
+        </div>
+        <div class="ai-panel-body" data-ai-panel="chats">
+          <button type="button" class="button-link primary ai-new-chat" data-ai-new-chat><span class="material-symbols-outlined">add</span>แชตใหม่</button>
+          <ul class="ai-list" data-ai-session-list></ul>
+        </div>
+        <div class="ai-panel-body" data-ai-panel="snippets" hidden>
+          <p class="ai-panel-hint">กด “เก็บผลลัพธ์” ใต้คำตอบหรือกราฟ เพื่อเก็บไว้รันใหม่ด้วยข้อมูลล่าสุดได้ทุกเมื่อ</p>
+          <ul class="ai-list" data-ai-snippet-list></ul>
+        </div>
+      </aside>
+
+      <section class="ai-main" data-ai-main>
+        <% if @providers.empty? %>
+          <div class="ai-empty ai-unconfigured">
+            <span class="material-symbols-outlined">smart_toy</span>
+            <h2>ยังไม่ได้เปิดใช้ผู้ช่วย AI</h2>
+            <p><% if system_admin? %>เพิ่มผู้ให้บริการ AI (LLM) อย่างน้อย 1 รายการเพื่อเปิดใช้งานให้ทุก อบต.<% else %>ผู้ดูแลระบบส่วนกลางยังไม่ได้ตั้งค่าโมเดลภาษา (LLM) กรุณาติดต่อผู้ดูแลระบบ<% end %></p>
+            <% if system_admin? %><%= link_to ai_providers_path, class: "button-link primary" do %><span class="material-symbols-outlined">settings</span>ตั้งค่าผู้ให้บริการ AI<% end %><% end %>
+            <p class="ai-hint">ผลลัพธ์ที่เก็บไว้ยังเปิดดูและรันใหม่ได้จากแท็บ “ที่เก็บไว้”</p>
+          </div>
+        <% end %>
+      </section>
+    </div>
+  </main>
+</div>

@@ -27,3 +27,5 @@ group :development, :test do
   gem "minitest", "< 6"
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
 end
+
+gem "anthropic", "~> 1.78"

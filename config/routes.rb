@@ -58,6 +58,21 @@ Rails.application.routes.draw do
   devise_scope :user do
     root to: "devise/sessions#new"
   end
+  get "ai", to: "ai_assistant#index", as: :ai_assistant
+  namespace :ai do
+    resources :sessions, only: %i[index show create update destroy] do
+      resources :messages, only: :create
+    end
+    resources :snippets, only: %i[index create update destroy] do
+      member do
+        post :run
+        post :summarize
+      end
+    end
+  end
+  resources :ai_providers, except: :show do
+    post :test, on: :member
+  end
   namespace :api do
     get "terrain_tiles/:z/:x/:y", to: "terrain_tiles#show", constraints: { z: /\d+/, x: /\d+/, y: /\d+/ }
     get "terrain_color_tiles/:z/:x/:y", to: "terrain_tiles#color", constraints: { z: /\d+/, x: /\d+/, y: /\d+/ }
