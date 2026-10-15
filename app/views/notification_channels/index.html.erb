@@ -1,0 +1,38 @@
+<%= stylesheet_link_tag "notifications", "data-turbo-track": "reload" %>
+<%= render layout: "settings/frame", locals: { title: "ช่องทางแจ้งเตือน", kicker: "ตั้งค่า อบต.", description: "กลุ่ม LINE / Telegram / Signal และ Webhook ที่จะได้รับแจ้งเตือนเมื่อมีเหตุใหม่เข้ามา", active: :notification_channels } do %>
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined">group</span><div><h2>ช่องทางของ อบต.</h2><p>เพิ่มได้หลายกลุ่ม แต่ละช่องทางเลือกได้ว่าจะรับแจ้งเตือนประเภทใด · ข้อความใช้ <%= link_to "เทมเพลตข้อความ", notification_templates_path %> ตามแท็ก</p></div></header>
+    <div class="settings-actions notify-add">
+      <% NotificationChannel::KINDS.each do |kind, info| %>
+        <% if @setting.kind_available?(kind) %>
+          <%= link_to new_notification_channel_path(kind: kind), class: "button-link #{'primary' if kind == 'line'}" do %><span class="material-symbols-outlined"><%= info[:icon] %></span>เพิ่ม <%= info[:label] %><% end %>
+        <% end %>
+      <% end %>
+    </div>
+    <% unless @setting.line_ready? %><p class="notify-warning"><span class="material-symbols-outlined">info</span>ผู้ดูแลระบบยังไม่ได้ตั้งค่า LINE OA ส่วนกลาง — ช่องทาง LINE จะส่งไม่ได้จนกว่าจะตั้งค่า</p><% end %>
+    <% if @channels.empty? %>
+      <div class="cctv-empty"><span class="material-symbols-outlined">notifications_off</span><b>ยังไม่มีช่องทางแจ้งเตือน</b><small>เพิ่มกลุ่ม LINE ของเจ้าหน้าที่ เพื่อรับแจ้งเตือนทันทีเมื่อประชาชนแจ้งเหตุ</small></div>
+    <% else %>
+      <ul class="notify-channels">
+        <% @channels.each do |channel| %>
+          <li class="<%= 'is-disabled' unless channel.enabled? %>">
+            <span class="notify-kind kind-<%= channel.kind %> material-symbols-outlined" title="<%= channel.kind_label %>"><%= channel.kind_icon %></span>
+            <div class="notify-channel-info">
+              <div class="notify-channel-name"><%= link_to channel.name, edit_notification_channel_path(channel) %>
+                <span class="project-status <%= channel.enabled? ? 'in_progress' : 'suspended' %>"><%= channel.enabled? ? "เปิดใช้" : "ปิดใช้" %></span></div>
+              <small><%= channel.kind_label %> · <code><%= channel.masked_target %></code></small>
+              <div class="notify-tags"><% channel.tag_labels.each do |label| %><span><%= label %></span><% end %><% if channel.tags.empty? %><em>ยังไม่ได้เลือกแท็ก</em><% end %></div>
+              <% if channel.last_error.present? %><small class="notify-error">ส่งล่าสุดไม่สำเร็จ: <%= channel.last_error %></small>
+              <% elsif channel.last_sent_at %><small class="notify-ok">ส่งสำเร็จล่าสุด <%= channel.last_sent_at.strftime("%d/%m/%Y %H:%M") %></small><% end %>
+            </div>
+            <div class="notify-actions">
+              <%= button_to test_notification_channel_path(channel), method: :post, class: "button-link" do %><span class="material-symbols-outlined">send</span>ทดสอบ<% end %>
+              <%= link_to edit_notification_channel_path(channel), class: "button-link" do %><span class="material-symbols-outlined">edit</span>แก้ไข<% end %>
+              <%= button_to notification_channel_path(channel), method: :delete, class: "button-link danger", form: { onsubmit: "return confirm('ลบช่องทาง #{j channel.name}?')" } do %><span class="material-symbols-outlined">delete</span>ลบ<% end %>
+            </div>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+<% end %>

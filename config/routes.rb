@@ -70,6 +70,20 @@ Rails.application.routes.draw do
       end
     end
   end
+  resource :notification_settings, only: %i[show update] do
+    post :test_line
+  end
+  resources :notification_channels, except: :show do
+    post :test, on: :member
+    collection do
+      post :telegram_chats
+      get :signal_groups
+    end
+  end
+  resources :notification_templates, except: :show
+  get "notification_tests", to: "notification_tests#show", as: :notification_tests
+  post "notification_tests", to: "notification_tests#create"
+  post "webhooks/line", to: "webhooks/line#create", as: :line_webhook
   resources :ai_providers, except: :show do
     member do
       post :test

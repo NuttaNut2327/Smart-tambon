@@ -1,0 +1,36 @@
+<%= stylesheet_link_tag "notifications", "data-turbo-track": "reload" %>
+<%= render layout: "settings/frame", locals: { title: "เทมเพลตข้อความ", kicker: "ตั้งค่า อบต.", description: "ข้อความที่ส่งเข้ากลุ่มเมื่อเกิดเหตุตามแท็ก — แต่ละแท็กใช้เทมเพลตที่แก้ไขล่าสุด ถ้ายังไม่มีจะใช้ข้อความมาตรฐานของระบบ", active: :notification_templates } do %>
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined">edit_note</span><div><h2>เทมเพลตของ อบต.</h2><p>ใส่ตัวแปรเช่น <code>{{reference_code}}</code> <code>{{title}}</code> <code>{{link}}</code> ระบบจะแทนค่าด้วยข้อมูลจริงตอนส่ง</p></div></header>
+    <div class="settings-actions notify-add">
+      <%= link_to new_notification_template_path, class: "button-link primary" do %><span class="material-symbols-outlined">add</span>สร้างเทมเพลต<% end %>
+      <%= link_to notification_tests_path, class: "button-link" do %><span class="material-symbols-outlined">send</span>ทดสอบส่ง<% end %>
+    </div>
+    <div class="notify-tag-grid">
+      <% NotificationChannel::TAGS.each do |tag, label| %>
+        <% list = @templates.select { |template| template.tag == tag } %>
+        <div class="notify-tag-card">
+          <header><b><%= label %></b><code><%= tag %></code></header>
+          <% if list.empty? %>
+            <p class="notify-muted">ใช้ข้อความมาตรฐานของระบบ</p>
+            <pre class="notify-pre"><%= NotificationTemplate::DEFAULTS[tag] %></pre>
+            <%= link_to "สร้างจากข้อความมาตรฐาน", new_notification_template_path(tag: tag), class: "button-link" %>
+          <% else %>
+            <ul class="notify-list">
+              <% list.each do |template| %>
+                <li>
+                  <div><%= link_to template.name, edit_notification_template_path(template) %><% if @in_use[tag] == template.id %> <span class="project-approval approved">ใช้งานอยู่</span><% end %></div>
+                  <small>แก้ไขล่าสุด <%= template.updated_at.strftime("%d/%m/%Y %H:%M") %> โดย <%= template.updated_by %></small>
+                  <div class="notify-actions">
+                    <%= link_to edit_notification_template_path(template), class: "button-link" do %><span class="material-symbols-outlined">edit</span>แก้ไข<% end %>
+                    <%= button_to notification_template_path(template), method: :delete, class: "button-link danger", form: { onsubmit: "return confirm('ลบเทมเพลต #{j template.name}?')" } do %><span class="material-symbols-outlined">delete</span>ลบ<% end %>
+                  </div>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </section>
+<% end %>

@@ -1,0 +1,80 @@
+<%= stylesheet_link_tag "notifications", "data-turbo-track": "reload" %>
+<% secret_label = ->(name) { { "settings" => "ใช้ค่าจากหน้าตั้งค่า", "env" => "ใช้ค่าจาก .env" }.fetch(@setting.secret_source(name), "ยังไม่ได้กำหนด") } %>
+<% webhook_url = @setting.base_url ? "#{@setting.base_url}#{line_webhook_path}" : line_webhook_url %>
+<%= render layout: "settings/frame", locals: { title: "การแจ้งเตือนส่วนกลาง", kicker: "สำหรับผู้ดูแลระบบ (Super admin)", description: "บัญชี LINE OA บอท Telegram และ Signal gateway ที่ทุก อบต. ใช้ส่งแจ้งเตือนเข้ากลุ่ม — แต่ละ อบต. ใส่ Group ID ของตัวเองได้ที่ ตั้งค่า อบต. → ช่องทางแจ้งเตือน", active: :notifications } do %>
+  <%= form_with model: @setting, url: notification_settings_path, method: :patch, class: "settings-form" do |form| %>
+    <% if @setting.errors.any? %><div class="form-errors"><% @setting.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
+
+    <section class="settings-card">
+      <header><span class="material-symbols-outlined">chat</span><div><h2>LINE Official Account (ส่วนกลาง)</h2><p>สร้าง Messaging API channel ที่ LINE Developers แล้วนำ Channel access token (long-lived) และ Channel secret มาใส่ — ค่าที่บันทึกถูกเข้ารหัส</p></div></header>
+      <div class="settings-grid">
+        <label class="settings-switch span-2"><%= form.check_box :line_enabled %><span><b>เปิดใช้ LINE OA</b><small>ปิดเพื่อหยุดส่งทุกช่องทาง LINE ของทุก อบต. ชั่วคราว<%= " · บัญชี: #{@setting.line_bot_name}" if @setting.line_bot_name %></small></span></label>
+        <label>Channel access token
+          <%= password_field_tag "notification_setting[line_channel_access_token]", nil, autocomplete: "new-password", placeholder: @setting.masked_line_channel_access_token || "ยังไม่ได้กำหนด" %>
+          <small>เว้นว่างเพื่อคงค่าเดิม · <span class="settings-source <%= @setting.secret_source('line_channel_access_token') || 'none' %>"><%= secret_label.call("line_channel_access_token") %></span></small>
+          <% if @setting.line_channel_access_token? %><span class="settings-check"><%= check_box_tag "notification_setting[clear_line_channel_access_token]", "1" %> ลบค่าที่บันทึก</span><% end %>
+        </label>
+        <label>Channel secret
+          <%= password_field_tag "notification_setting[line_channel_secret]", nil, autocomplete: "new-password", placeholder: @setting.masked_line_channel_secret || "ยังไม่ได้กำหนด" %>
+          <small>ใช้ตรวจลายมือชื่อของ Webhook · <span class="settings-source <%= @setting.secret_source('line_channel_secret') || 'none' %>"><%= secret_label.call("line_channel_secret") %></span></small>
+          <% if @setting.line_channel_secret? %><span class="settings-check"><%= check_box_tag "notification_setting[clear_line_channel_secret]", "1" %> ลบค่าที่บันทึก</span><% end %>
+        </label>
+        <div class="span-2 notify-webhook-box">
+          <b>Webhook URL สำหรับใส่ใน LINE Developers</b>
+          <code data-copy-source><%= webhook_url %></code>
+          <button type="button" class="button-link" data-copy-button><span class="material-symbols-outlined">content_copy</span>คัดลอก</button>
+          <small>เปิด “Use webhook” และ “Allow bot to join group chats” ใน LINE OA — เมื่อเชิญบอทเข้ากลุ่ม ระบบจะบันทึกกลุ่มไว้ด้านล่าง และบอทตอบ Group ID ในกลุ่ม (พิมพ์ “groupid” ในกลุ่มเพื่อขอซ้ำได้) · LINE ต้องเรียก URL นี้ผ่าน HTTPS ได้จากอินเทอร์เน็ต</small>
+        </div>
+        <label class="settings-switch span-2"><%= form.check_box :line_reply_group_id %><span><b>ให้บอทตอบ Group ID เมื่อถูกเชิญเข้ากลุ่ม</b><small>การตอบกลับ (reply) ไม่นับโควตาข้อความของ LINE OA</small></span></label>
+      </div>
+      <div class="settings-actions"><%= button_tag type: "submit", form: "test-line-form", class: "button-link" do %><span class="material-symbols-outlined">network_check</span>ทดสอบการเชื่อมต่อ LINE OA<% end %></div>
+    </section>
+
+    <section class="settings-card">
+      <header><span class="material-symbols-outlined">send</span><div><h2>Telegram</h2><p>บอทกลาง (ไม่บังคับ) — แต่ละ อบต. ใช้บอทของตัวเองได้ ถ้าไม่ใส่ token จะใช้บอทนี้</p></div></header>
+      <div class="settings-grid">
+        <label class="settings-switch span-2"><%= form.check_box :telegram_enabled %><span><b>เปิดใช้ Telegram</b><small>สร้างบอทได้จาก @BotFather</small></span></label>
+        <label class="span-2">Bot token ของบอทกลาง
+          <%= password_field_tag "notification_setting[telegram_bot_token]", nil, autocomplete: "new-password", placeholder: @setting.masked_telegram_bot_token || "ยังไม่ได้กำหนด" %>
+          <small>เว้นว่างเพื่อคงค่าเดิม · <span class="settings-source <%= @setting.secret_source('telegram_bot_token') || 'none' %>"><%= secret_label.call("telegram_bot_token") %></span></small>
+          <% if @setting.telegram_bot_token? %><span class="settings-check"><%= check_box_tag "notification_setting[clear_telegram_bot_token]", "1" %> ลบค่าที่บันทึก</span><% end %>
+        </label>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <header><span class="material-symbols-outlined">forum</span><div><h2>Signal</h2><p>Signal ไม่มี API ทางการ — ใช้ <code>signal-cli-rest-api</code> (bbernhard/signal-cli-rest-api) ที่ลงทะเบียนด้วยเบอร์โทรเฉพาะของระบบ</p></div></header>
+      <div class="settings-grid">
+        <label class="settings-switch span-2"><%= form.check_box :signal_enabled %><span><b>เปิดใช้ Signal</b><small>ต้องรัน gateway แยก และลงทะเบียนเบอร์ผู้ส่งก่อน</small></span></label>
+        <label>URL ของ signal-cli-rest-api<%= form.url_field :signal_api_url, placeholder: "เช่น http://signal-api:8080" %></label>
+        <label>เบอร์ผู้ส่ง (ที่ลงทะเบียนแล้ว)<%= form.text_field :signal_number, placeholder: "+66812345678" %></label>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <header><span class="material-symbols-outlined">webhook</span><div><h2>Webhook และลิงก์ในข้อความ</h2><p>ให้ อบต. ส่งแจ้งเตือนต่อไปยังระบบอื่นผ่าน HTTP POST และกำหนดที่อยู่เว็บของระบบสำหรับลิงก์ในข้อความ</p></div></header>
+      <div class="settings-grid">
+        <label class="settings-switch span-2"><%= form.check_box :webhook_enabled %><span><b>อนุญาต Webhook ขาออก</b><small>ระบบปฏิเสธ URL ที่ชี้ไปยังเครือข่ายภายในโดยอัตโนมัติ</small></span></label>
+        <label class="span-2">ที่อยู่เว็บของระบบ (Public URL)<%= form.url_field :public_base_url, placeholder: ENV["APP_URL"].presence || "https://tambon.example.go.th" %><small>ใช้สร้างลิงก์ “เปิดในระบบ” ในข้อความแจ้งเตือน และ Webhook URL ของ LINE ด้านบน</small></label>
+      </div>
+    </section>
+
+    <div class="settings-actions"><%= form.submit "บันทึกการตั้งค่าการแจ้งเตือน", class: "button-link primary" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %></small><% end %></div>
+  <% end %>
+  <%= form_with url: test_line_notification_settings_path, method: :post, id: "test-line-form" do %><% end %>
+
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined">groups</span><div><h2>กลุ่ม LINE ที่บอทอยู่</h2><p>บันทึกจาก Webhook เมื่อบอทถูกเชิญเข้า/ออกจากกลุ่ม · ช่องทางที่ทุก อบต. ตั้งไว้: <%= NotificationChannel::KINDS.map { |kind, info| "#{info[:label]} #{@channel_counts[kind].to_i}" }.join(" · ") %></p></div></header>
+    <% if @line_groups.empty? %>
+      <p class="notify-muted">ยังไม่มีกลุ่ม — ตั้ง Webhook URL ใน LINE Developers แล้วเชิญบอทเข้ากลุ่ม</p>
+    <% else %>
+      <ul class="notify-list">
+        <% @line_groups.each do |group| %>
+          <li><div><b><%= group.group_name || "(ไม่ทราบชื่อกลุ่ม)" %></b><code><%= group.group_id %></code></div>
+            <small><%= group.active? ? "อยู่ในกลุ่ม" : "ออกจากกลุ่มแล้ว" %> · กิจกรรมล่าสุด <%= group.last_event_at&.strftime("%d/%m/%Y %H:%M") %></small></li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+<% end %>
+<%= javascript_include_tag "notifications", defer: true, "data-turbo-track": "reload" %>

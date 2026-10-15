@@ -1,0 +1,64 @@
+<%= stylesheet_link_tag "notifications", "data-turbo-track": "reload" %>
+<%= render layout: "settings/frame", locals: { title: "ทดสอบการส่งแจ้งเตือน", kicker: "ตั้งค่า อบต.", description: "ดูตัวอย่างข้อความและลองส่งจริง — “จำลองเหตุใหม่เข้ามา” ใช้ขั้นตอนเดียวกับตอนมีเหตุจริง (เทมเพลตตามแท็ก + ช่องทางที่รับแท็กนั้น)", active: :notification_tests } do %>
+  <%= form_with url: notification_tests_path, method: :post, class: "settings-form", data: { notify_test_form: true } do %>
+    <section class="settings-card">
+      <header><span class="material-symbols-outlined">send</span><div><h2>ตั้งค่าการทดสอบ</h2><p>ข้อความจะถูกส่งจริงเข้ากลุ่มที่เลือก</p></div></header>
+      <div class="notify-modes">
+        <% NotificationTestsController::MODES.each do |mode, label| %>
+          <label class="notify-mode"><%= radio_button_tag :mode, mode, @form["mode"] == mode, data: { notify_mode: true } %><span><b><%= label %></b>
+            <small><%= { "simulate" => "เลือกแท็กแล้วระบบส่งไปทุกช่องทางที่รับแท็กนั้น เหมือนตอนมีเหตุจริง",
+                         "template" => "เลือกเทมเพลตและช่องทางเอง",
+                         "custom" => "พิมพ์ข้อความเองแล้วส่งไปยังช่องทางที่เลือก" }[mode] %></small></span></label>
+        <% end %>
+      </div>
+      <div class="settings-grid">
+        <label data-notify-show="simulate template">แท็ก (เหตุการณ์)<%= select_tag :tag, options_for_select(NotificationChannel::TAGS.map { |tag, label| ["#{label} (#{tag})", tag] }, @form["tag"]) %></label>
+        <label data-notify-show="simulate template">ข้อมูลที่ใช้แทนตัวแปร<%= select_tag :data, options_for_select(NotificationTestsController::DATA_SOURCES.invert, @form["data"]) %></label>
+        <label class="span-2" data-notify-show="template">เทมเพลต<%= select_tag :template_id, options_for_select(@templates.map { |template| ["#{template.name} — #{template.tag_label}", template.id.to_s] }, @form["template_id"]), include_blank: "ใช้เทมเพลตที่ใช้งานอยู่ของแท็กนี้" %></label>
+        <label class="span-2" data-notify-show="custom announcement">ข้อความ<%= text_area_tag :message, @form["message"], rows: 4, maxlength: 2000, placeholder: "พิมพ์ข้อความ (โหมดเทมเพลต/จำลองใช้เป็นค่า {{message}})" %></label>
+        <fieldset class="settings-layers span-2" data-notify-show="template custom"><legend>ส่งไปยังช่องทาง</legend>
+          <% if @channels.empty? %><p class="notify-muted">ยังไม่มีช่องทาง — <%= link_to "เพิ่มช่องทางแจ้งเตือน", notification_channels_path %></p><% end %>
+          <% @channels.each do |channel| %>
+            <label class="settings-check"><%= check_box_tag "channel_ids[]", channel.id.to_s, Array(@form["channel_ids"]).include?(channel.id.to_s), id: "test_channel_#{channel.id}" %> <%= channel.name %> <small>(<%= channel.kind_label %><%= ", ปิดใช้" unless channel.enabled? %>)</small></label>
+          <% end %>
+        </fieldset>
+        <div class="span-2 notify-targets" data-notify-show="simulate">
+          <b>ช่องทางที่จะได้รับ (เปิดใช้และรับแท็กที่เลือก):</b>
+          <% @channels.select(&:enabled?).each do |channel| %><span data-channel-tags="<%= channel.tags.join(' ') %>"><%= channel.name %></span><% end %>
+          <em data-notify-no-target>ไม่มีช่องทางที่รับแท็กนี้</em>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <header><span class="material-symbols-outlined">preview</span><div><h2>ตัวอย่างข้อความ</h2><p><%= @preview[:incident] ? "ใช้ข้อมูลจริงจากเรื่อง #{@preview[:incident].reference_code}" : "ใช้ข้อมูลตัวอย่าง" %> — กด “แสดงตัวอย่าง” หลังเปลี่ยนตัวเลือก</p></div></header>
+      <pre class="notify-pre notify-preview-box"><%= @preview[:text].presence || "(ข้อความว่าง)" %></pre>
+    </section>
+
+    <div class="settings-actions">
+      <%= button_tag type: "submit", name: "commit_action", value: "preview", class: "button-link" do %><span class="material-symbols-outlined">visibility</span>แสดงตัวอย่าง<% end %>
+      <%= button_tag type: "submit", name: "commit_action", value: "send", class: "button-link primary", data: { notify_send: true } do %><span class="material-symbols-outlined">send</span>ส่งทดสอบ<% end %>
+    </div>
+  <% end %>
+
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined">history</span><div><h2>ประวัติการส่งล่าสุด</h2><p>30 รายการล่าสุดของ อบต. ทั้งที่ส่งอัตโนมัติเมื่อมีเหตุใหม่และจากการทดสอบ (เก็บไว้ 90 วัน)</p></div></header>
+    <% if @deliveries.empty? %>
+      <p class="notify-muted">ยังไม่มีการส่ง</p>
+    <% else %>
+      <div class="users-table-wrap"><table class="users-table notify-log"><thead><tr><th>เวลา</th><th>ช่องทาง</th><th>แท็ก</th><th>ที่มา</th><th>ผล</th></tr></thead><tbody>
+        <% @deliveries.each do |delivery| %>
+          <tr>
+            <td><%= delivery.created_at.strftime("%d/%m %H:%M:%S") %></td>
+            <td><b><%= delivery.channel_name %></b><small><%= NotificationChannel::KINDS.dig(delivery.kind, :label) %></small></td>
+            <td><%= NotificationChannel::TAGS.fetch(delivery.tag, delivery.tag) %></td>
+            <td><%= delivery.source_label %><% if delivery.sent_by %><small><%= delivery.sent_by %></small><% end %></td>
+            <td><% if delivery.sent? %><span class="notify-ok">ส่งสำเร็จ</span><% else %><span class="notify-error">ไม่สำเร็จ</span><small><%= delivery.error %></small><% end %>
+              <details><summary>ข้อความ</summary><pre class="notify-pre"><%= delivery.text %></pre></details></td>
+          </tr>
+        <% end %>
+      </tbody></table></div>
+    <% end %>
+  </section>
+<% end %>
+<%= javascript_include_tag "notifications", defer: true, "data-turbo-track": "reload" %>

@@ -1,0 +1,38 @@
+<%= stylesheet_link_tag "notifications", "data-turbo-track": "reload" %>
+<% kind = NotificationChannel::KINDS.fetch(@channel.kind) %>
+<%= form_with model: @channel, class: "settings-form", data: { notify_channel_form: true } do |form| %>
+  <% if @channel.errors.any? %><div class="form-errors"><% @channel.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
+  <%= form.hidden_field :kind %>
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined"><%= kind[:icon] %></span><div><h2><%= kind[:label] %></h2><p><%= kind[:hint] %></p></div></header>
+    <div class="settings-grid">
+      <label>ชื่อช่องทาง<%= form.text_field :name, required: true, placeholder: "เช่น กลุ่มเวรรับแจ้งเหตุ อบต." %></label>
+      <label><%= kind[:target] %>
+        <%= form.text_field :target, required: true, data: { notify_target: true }, placeholder: { "line" => "C1234567890abcdef1234567890abcdef", "telegram" => "-1001234567890", "signal" => "group.xxxxxxxx= หรือ +66812345678", "webhook" => "https://example.com/hooks/smart-tambon" }[@channel.kind] %>
+      </label>
+      <% if %w[telegram webhook].include?(@channel.kind) %>
+        <label class="span-2"><%= @channel.kind == "telegram" ? "Bot token ของ อบต. (ไม่บังคับ)" : "Secret สำหรับลงลายมือชื่อ (ไม่บังคับ)" %>
+          <%= password_field_tag "notification_channel[token]", nil, autocomplete: "new-password", data: { notify_token: true }, placeholder: @channel.masked_token || (@channel.kind == "telegram" ? "เว้นว่างเพื่อใช้บอทกลางของระบบ" : "ยังไม่ได้กำหนด") %>
+          <small><%= @channel.kind == "telegram" ? "สร้างบอทจาก @BotFather แล้วเพิ่มบอทเข้ากลุ่ม · เว้นว่างเพื่อคงค่าเดิม" : "ระบบปลายทางตรวจหัว X-SmartTambon-Signature: sha256=HMAC(secret, body) · เว้นว่างเพื่อคงค่าเดิม" %></small>
+          <% if @channel.token? %><span class="settings-check"><%= check_box_tag "notification_channel[clear_token]", "1" %> ลบค่าที่บันทึก</span><% end %>
+        </label>
+      <% end %>
+      <% if %w[telegram signal].include?(@channel.kind) %>
+        <div class="span-2 notify-lookup" data-notify-lookup="<%= @channel.kind %>" data-url="<%= @channel.kind == 'telegram' ? telegram_chats_notification_channels_path : signal_groups_notification_channels_path %>" data-channel-id="<%= @channel.id if @channel.persisted? %>">
+          <button type="button" class="button-link" data-notify-lookup-button><span class="material-symbols-outlined">search</span><%= @channel.kind == "telegram" ? "ค้นหา Chat ID จากข้อความล่าสุดที่บอทได้รับ" : "ดึงรายชื่อกลุ่ม Signal" %></button>
+          <ul data-notify-lookup-results></ul>
+        </div>
+      <% end %>
+      <fieldset class="settings-layers span-2"><legend>รับแจ้งเตือนเมื่อ (แท็ก)</legend>
+        <% NotificationChannel::TAGS.each do |tag, label| %>
+          <label class="settings-check"><%= check_box_tag "notification_channel[tags][]", tag, @channel.tags.include?(tag), id: "channel_tag_#{tag.tr('.', '_')}" %> <%= label %> <code><%= tag %></code></label>
+        <% end %>
+        <%= hidden_field_tag "notification_channel[tags][]", "" %>
+      </fieldset>
+      <label class="settings-switch span-2"><%= form.check_box :enabled %><span><b>เปิดใช้งาน</b><small>ปิดเพื่อหยุดส่งชั่วคราวโดยไม่ต้องลบ</small></span></label>
+    </div>
+  </section>
+  <p class="notify-warning"><span class="material-symbols-outlined">shield</span>ข้อความแจ้งเตือนจะเข้าไปอยู่ในกลุ่มแชตภายนอกระบบ ระบบจึงไม่ส่งชื่อและเบอร์ติดต่อของผู้แจ้งเหตุ ควรใช้กลุ่มที่มีเฉพาะเจ้าหน้าที่</p>
+  <div class="settings-actions"><%= form.submit "บันทึก", class: "button-link primary" %><%= link_to "ยกเลิก", notification_channels_path, class: "button-link" %></div>
+<% end %>
+<%= javascript_include_tag "notifications", defer: true, "data-turbo-track": "reload" %>

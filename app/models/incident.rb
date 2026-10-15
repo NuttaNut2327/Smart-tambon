@@ -61,6 +61,8 @@ class Incident
   before_validation :assign_reference_code, on: :create
   before_validation :clear_occurred_at_unless_backdated
   before_validation :normalize_disaster_incident_type
+  # Group-chat notifications (LINE/Telegram/Signal/webhook); bulk-imported incidents are not announced.
+  after_create :notify_channels, unless: -> { self[:imported_dataset_id].present? }
 
   scope :visible_to, lambda { |user|
     visible = where(deleted_at: nil)
@@ -83,6 +85,12 @@ class Incident
   end
 
   private
+
+  def notify_channels
+    NotificationDispatchJob.perform_later(id.to_s)
+  rescue StandardError => error
+    Rails.logger.error("Could not queue incident notification: #{error.class}: #{error.message}")
+  end
 
   def assign_reference_code
     self.reference_code ||= "INC-#{Time.current.year + 543}-#{SecureRandom.hex(3).upcase}"

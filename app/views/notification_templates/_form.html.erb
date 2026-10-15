@@ -1,0 +1,21 @@
+<%= stylesheet_link_tag "notifications", "data-turbo-track": "reload" %>
+<%= form_with model: @template, class: "settings-form" do |form| %>
+  <% if @template.errors.any? %><div class="form-errors"><% @template.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined">edit_note</span><div><h2>เทมเพลต</h2><p>คลิกตัวแปรเพื่อแทรกที่ตำแหน่งเคอร์เซอร์ ตัวอย่างด้านขวาแสดงผลด้วยข้อมูลตัวอย่าง</p></div></header>
+    <div class="settings-grid">
+      <label>ชื่อ (name)<%= form.text_field :name, required: true, placeholder: "เช่น แจ้งเหตุด่วนกลุ่มเวร" %></label>
+      <label>แท็ก (tag)<%= form.select :tag, NotificationChannel::TAGS.map { |tag, label| ["#{label} (#{tag})", tag] } %></label>
+    </div>
+    <div class="notify-editor" data-notify-template-editor data-sample="<%= Notifications::Dispatcher.sample_variables(organization_key).to_json %>">
+      <label>ข้อความ (template)<%= form.text_area :body, rows: 14, required: true, maxlength: 3000, data: { notify_body: true } %></label>
+      <div class="notify-preview"><b>ตัวอย่างข้อความ</b><pre data-notify-preview></pre></div>
+    </div>
+    <div class="notify-variables">
+      <b>ตัวแปรที่ใช้ได้</b>
+      <div><% NotificationTemplate::VARIABLES.each do |name, label| %><button type="button" class="notify-variable" data-variable="<%= name %>" title="<%= label %>"><code>{{<%= name %>}}</code><span><%= label %></span></button><% end %></div>
+    </div>
+  </section>
+  <div class="settings-actions"><%= form.submit "บันทึกเทมเพลต", class: "button-link primary" %><%= link_to "ยกเลิก", notification_templates_path, class: "button-link" %></div>
+<% end %>
+<%= javascript_include_tag "notifications", defer: true, "data-turbo-track": "reload" %>
