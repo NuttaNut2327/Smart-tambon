@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_10_01_143000) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_14_090000) do
   create_schema "tiger"
   create_schema "tiger_data"
   create_schema "topology"
@@ -34,6 +34,28 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_01_143000) do
     t.datetime "updated_at", null: false
     t.index ["subdistrict_id"], name: "index_analysis_records_on_subdistrict_id"
     t.index ["user_id"], name: "index_analysis_records_on_user_id"
+  end
+
+  create_table "fire_hotspots", force: :cascade do |t|
+    t.string "hotspot_key", null: false
+    t.string "source", null: false
+    t.string "satellite"
+    t.string "instrument"
+    t.geography "location", limit: {:srid=>4326, :type=>"st_point", :geographic=>true}, null: false
+    t.datetime "acquired_at", null: false
+    t.float "brightness"
+    t.float "brightness_t31"
+    t.float "frp"
+    t.string "confidence"
+    t.string "daynight"
+    t.float "scan"
+    t.float "track"
+    t.string "version"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["acquired_at"], name: "index_fire_hotspots_on_acquired_at"
+    t.index ["hotspot_key"], name: "index_fire_hotspots_on_hotspot_key", unique: true
+    t.index ["location"], name: "index_fire_hotspots_on_location", using: :gist
   end
 
   create_table "population_datasets", force: :cascade do |t|

@@ -44,6 +44,7 @@ class IncidentsController < ApplicationController
     area_sq_km = [params[:area_sq_km].to_f, 0].max
     coverage_ratio = params[:coverage_ratio].to_f.clamp(0, 1)
     sensor_metrics = {}
+    selected_wkt = nil
     boundary = current_user.access_boundary
     if params[:geometry].present? && boundary.present?
       connection = ActiveRecord::Base.connection
@@ -57,9 +58,11 @@ class IncidentsController < ApplicationController
         )
         SELECT
           ST_Area(ST_CollectionExtract(ST_Intersection(selected, boundary), 3)::geography) / 1000000.0 AS selected_area,
-          ST_Area(ST_CollectionExtract(boundary, 3)::geography) / 1000000.0 AS boundary_area
+          ST_Area(ST_CollectionExtract(boundary, 3)::geography) / 1000000.0 AS boundary_area,
+          ST_AsText(ST_CollectionExtract(ST_Intersection(selected, boundary), 3)) AS selected_wkt
         FROM shapes
       SQL
+      selected_wkt = area_result["selected_wkt"]
       area_sq_km = area_result["selected_area"].to_f
       boundary_area_sq_km = area_result["boundary_area"].to_f
       coverage_ratio = boundary_area_sq_km.positive? ? (area_sq_km / boundary_area_sq_km).clamp(0, 1) : 0
@@ -99,7 +102,13 @@ class IncidentsController < ApplicationController
     disaster_type = "other" unless ResourceRule::DISASTER_TYPES.include?(disaster_type)
     candidate_rules = ResourceRule.visible_to(current_user).where(active: true, disaster_type: disaster_type).to_a
     hotspot_scopes = candidate_rules.flat_map(&:conditions).select { |condition| condition["variable"] == "hotspot_count" }.map do |condition|
-      { "area_value" => condition["area_value"], "area_unit" => condition["area_unit"], "count" => hotspot_count }
+      count = hotspot_count
+      # Without a simulated value, count real FIRMS detections clustered within the rule's reference area.
+      if simulated["hotspot_count"].blank? && selected_wkt.present?
+        area = ResourceRule.area_in_sqkm(condition["area_value"], condition["area_unit"])
+        count = [count, FireHotspot.max_cluster_count(selected_wkt:, area_sq_km: area)].max
+      end
+      { "area_value" => condition["area_value"], "area_unit" => condition["area_unit"], "count" => count }
     end
     metrics = sensor_metrics.merge(
       "population" => affected_people,
@@ -501,7 +510,7 @@ class IncidentsController < ApplicationController
   def incident_disaster_type(incident)
     value = "#{incident.incident_type} #{incident.title}".downcase
     return "flood" if value.match?(/น้ำ|ท่วม|flood/)
-    return "fire" if value.match?(/ไฟ|hotspot|fire/)
+    return "fire" if value.gsub(/ไฟฟ้า|เสาไฟ/, "").match?(/ไฟ|hotspot|fire/)
     return "wind" if value.match?(/ลม|พายุ|wind|storm/)
     return "landslide" if value.match?(/ดินถล่ม|landslide/)
     return "drought" if value.match?(/แล้ง|drought/)

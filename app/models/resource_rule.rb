@@ -75,6 +75,10 @@ class ResourceRule
   end
 
   def area_in_sqkm(value, unit)
+    self.class.area_in_sqkm(value, unit)
+  end
+
+  def self.area_in_sqkm(value, unit)
     case unit
     when "sqm" then value.to_f / 1_000_000
     when "rai" then value.to_f * 0.0016
