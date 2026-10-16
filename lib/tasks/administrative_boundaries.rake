@@ -53,8 +53,8 @@ namespace :geo do
     # ซ่อม geometry และคำนวณจุดภายใน polygon ของตำบล
     ActiveRecord::Base.connection.execute <<~SQL
       UPDATE subdistricts
-      SET boundary = ST_Multi(ST_CollectionExtract(ST_MakeValid(boundary::geometry), 3))::geography,
-          center = ST_PointOnSurface(ST_MakeValid(boundary::geometry))::geography
+      SET boundary = ST_Multi(ST_CollectionExtract(ST_MakeValid(boundary::geometry), 3)),
+          center = ST_PointOnSurface(ST_MakeValid(boundary::geometry))
       WHERE boundary IS NOT NULL
     SQL
 
@@ -62,7 +62,7 @@ namespace :geo do
     ActiveRecord::Base.connection.execute <<~SQL
       UPDATE provinces p SET
         boundary = boundaries.geometry::geography,
-        center = ST_PointOnSurface(boundaries.geometry)::geography
+        center = ST_PointOnSurface(boundaries.geometry)
       FROM (
         SELECT province_id,
                ST_Multi(ST_CollectionExtract(ST_UnaryUnion(ST_Collect(boundary::geometry)), 3)) AS geometry

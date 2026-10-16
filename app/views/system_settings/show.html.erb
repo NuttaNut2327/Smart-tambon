@@ -1,0 +1,56 @@
+<%= render layout: "settings/frame", locals: { title: "ตั้งค่าทั้งระบบ", kicker: "สำหรับผู้ดูแลระบบ (Super admin)", description: "ค่าที่ใช้กับทุก อบต. — ชื่อระบบ คีย์บริการภายนอก และค่าเริ่มต้นของแผนที่", active: :system } do %>
+  <%= form_with model: @setting, url: system_settings_path, method: :patch, html: { multipart: true, class: "settings-form" } do |form| %>
+    <% if @setting.errors.any? %><div class="form-errors"><% @setting.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
+
+    <section class="settings-card" id="settings-branding">
+      <header><span class="material-symbols-outlined">badge</span><div><h2>ข้อมูลระบบและหน่วยงาน</h2><p>แสดงในแถบด้านข้าง หน้าเข้าสู่ระบบ หัวหน้า และส่วนท้ายของทุกหน้า</p></div></header>
+      <div class="settings-grid">
+        <label>ชื่อระบบ<%= form.text_field :system_name, required: true %><small>แสดงที่หัวหน้าทุกหน้าและหน้าเข้าสู่ระบบ</small></label>
+        <label>ชื่อย่อ<%= form.text_field :system_short_name, required: true, maxlength: 24 %><small>แสดงข้างโลโก้ในแถบด้านข้าง</small></label>
+        <label>หน่วยงานผู้ดูแลระบบ<%= form.text_field :organization_name, placeholder: "เช่น สำนักงานจังหวัดน่าน" %></label>
+        <label>อีเมลติดต่อ<%= form.email_field :contact_email %></label>
+        <label>เบอร์โทรติดต่อ<%= form.telephone_field :contact_phone %></label>
+        <label>ข้อความส่วนท้าย<%= form.text_field :footer_text, placeholder: "© #{Time.current.year} #{system_name}" %><small>เว้นว่างเพื่อใช้ "© ปี ชื่อระบบ"</small></label>
+        <label class="span-2">ข้อความหน้าเข้าสู่ระบบ<%= form.text_area :login_message, rows: 2, placeholder: "เข้าสู่ระบบเพื่อจัดการข้อมูลพื้นที่ แผนที่ และเหตุการณ์ของชุมชน" %></label>
+        <div class="settings-logo span-2">
+          <%= image_tag system_logo_src, alt: "โลโก้ระบบ" %>
+          <div>
+            <label>โลโก้ระบบ<%= file_field_tag "system_setting[logo_file]", accept: "image/jpeg,image/png,image/webp" %><small>PNG พื้นหลังโปร่งใส แนะนำขนาดอย่างน้อย 128×128 px</small></label>
+            <% if @setting.logo.present? %><label class="settings-check"><%= check_box_tag "system_setting[remove_logo]", "1" %> ใช้โลโก้เริ่มต้น</label><% end %>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-card" id="settings-integrations">
+      <header><span class="material-symbols-outlined">key</span><div><h2>คีย์และบริการภายนอก</h2><p>ค่าที่บันทึกที่นี่ถูกเข้ารหัส และใช้แทนค่าในไฟล์ .env — เว้นว่างเพื่อคงค่าเดิม</p></div></header>
+      <div class="settings-grid">
+        <% { "longdo_map_key" => ["Longdo Map API key", "ใช้ค้นหาสถานที่สำคัญและที่อยู่จากพิกัด — สมัครที่ map.longdo.com/console"], "maptiler_key" => ["MapTiler key", "ใช้แผนที่ภาพดาวเทียม (ถ้าไม่ระบุจะใช้ OpenStreetMap)"] }.each do |name, (label, help)| %>
+          <% source = @setting.secret_source(name) %>
+          <label><%= label %>
+            <%= password_field_tag "system_setting[#{name}]", nil, autocomplete: "new-password", placeholder: @setting.masked_secret(name) || "ยังไม่ได้กำหนด" %>
+            <small><%= help %> · <span class="settings-source <%= source || 'none' %>"><%= { "settings" => "ใช้ค่าจากหน้าตั้งค่า", "env" => "ใช้ค่าจาก .env" }.fetch(source, "ยังไม่ได้กำหนด") %></span></small>
+            <% if source == "settings" %><span class="settings-check"><%= check_box_tag "system_setting[clear_#{name}]", "1" %> ลบค่าที่บันทึก (กลับไปใช้ .env)</span><% end %>
+          </label>
+        <% end %>
+        <label class="span-2">URL บริการค้นหาสถานที่ (Geocoder)<%= form.url_field :geocoder_url, placeholder: @setting.effective_geocoder_url %><small>บริการแบบ Nominatim ใช้ในช่องค้นหาสถานที่/ถนนบนทุกแผนที่ — ค่าปัจจุบัน: <code><%= @setting.effective_geocoder_url %></code></small></label>
+      </div>
+    </section>
+
+    <section class="settings-card" id="settings-map">
+      <header><span class="material-symbols-outlined">map</span><div><h2>ค่าเริ่มต้นแผนที่</h2><p>ใช้กับทุก อบต. ที่ไม่ได้กำหนดค่าเอง จุดศูนย์กลางและระดับซูมใช้กับมุมมองทั้งประเทศ</p></div></header>
+      <div class="settings-grid">
+        <label>แผนที่ฐาน<%= form.select :map_basemap, SystemSetting::BASEMAPS.map { |value, label| [label, value] } %></label>
+        <label>ระดับซูมเริ่มต้น (5–18)<%= form.number_field :map_zoom, min: 5, max: 18, step: 1 %></label>
+        <label>ละติจูดจุดศูนย์กลาง<%= form.number_field :map_center_lat, step: "any", min: -90, max: 90 %></label>
+        <label>ลองจิจูดจุดศูนย์กลาง<%= form.number_field :map_center_lon, step: "any", min: -180, max: 180 %></label>
+        <fieldset class="settings-layers span-2"><legend>ชั้นข้อมูลที่เปิดไว้ตั้งแต่แรก</legend>
+          <% SystemSetting::MAP_LAYERS.each do |key, label| %><label class="settings-check"><%= check_box_tag "system_setting[map_layers][]", key, @setting.map_layers.include?(key), id: "system_layer_#{key}" %> <%= label %></label><% end %>
+          <%= hidden_field_tag "system_setting[map_layers][]", "" %>
+        </fieldset>
+      </div>
+    </section>
+
+    <div class="settings-actions"><%= form.submit "บันทึกการตั้งค่าระบบ", class: "button-link primary" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %></div>
+  <% end %>
+<% end %>

@@ -1,0 +1,57 @@
+<% project_area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<% total_budget = @projects.sum { |project| project.budget.to_f } %>
+<div class="shell dashboard-shell gis-dashboard users-shell cctv-shell project-shell">
+  <%= render "dashboard/sidebar", active_nav: :projects, initial_area: project_area %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= project_area %></span><b>›</b><span>โครงการ</span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker">โครงการพัฒนาพื้นที่</p><h1>โครงการ</h1><p>บันทึกโครงการ งบประมาณ หน่วยงาน และสถานะ เพื่อแสดงบนแผนที่</p></div><%= link_to new_project_path, class: "button-link primary" do %><span class="material-symbols-outlined">add</span>เพิ่มโครงการ<% end %></section>
+      <% if notice.present? %><p class="cctv-flash notice"><%= notice %></p><% end %>
+      <% if alert.present? %><p class="cctv-flash alert"><%= alert %></p><% end %>
+      <section class="users-card users-list-card">
+        <%= form_with url: projects_path, method: :get, class: "project-filters", data: { turbo: false } do %>
+          <label>ค้นหา<input type="search" name="q" value="<%= @filters["q"] %>" placeholder="ชื่อ รหัส หน่วยงาน ประเภท"></label>
+          <label>ปีงบประมาณ<%= select_tag :fiscal_year, options_for_select(@fiscal_years, @filters["fiscal_year"]&.to_i), include_blank: "ทุกปี" %></label>
+          <label>กลุ่ม<%= select_tag :group, options_for_select(Project::GROUPS.map { |value, group| [group[:label], value] }, @filters["group"]), include_blank: "ทุกกลุ่ม" %></label>
+          <label>การอนุมัติ<%= select_tag :approval_status, options_for_select(Project::APPROVAL_STATUSES.map { |value, label| [label, value] }, @filters["approval_status"]), include_blank: "ทั้งหมด" %></label>
+          <label>สถานะ<%= select_tag :status, options_for_select(Project::STATUSES.map { |value, label| [label, value] }, @filters["status"]), include_blank: "ทุกสถานะ" %></label>
+          <button type="submit" class="button-link"><span class="material-symbols-outlined">filter_alt</span>กรอง</button>
+          <% if @filters.any? %><%= link_to "ล้าง", projects_path, class: "button-link" %><% end %>
+        <% end %>
+        <%= render "budget_chart", summary: @budget_summary, filters: @filters %>
+        <div class="users-toolbar"><div><h2>รายการโครงการ<%= " ปี #{@filters["fiscal_year"]}" if @filters["fiscal_year"] %></h2><p>งบประมาณรวม <b><%= number_with_precision(total_budget, precision: 2, delimiter: ",") %></b> บาท</p></div><span><%= @projects.size %> โครงการ</span></div>
+        <% if @projects.empty? %>
+          <div class="cctv-empty"><span class="material-symbols-outlined">assignment</span><b><%= @filters.any? ? "ไม่พบโครงการตามเงื่อนไข" : "ยังไม่มีโครงการในพื้นที่" %></b><small>เพิ่มโครงการพร้อมที่ตั้ง แล้วโครงการจะแสดงบนหน้าแผนที่</small></div>
+        <% else %>
+          <div class="users-table-wrap"><table class="users-table cctv-table project-table"><thead><tr><th>โครงการ</th><th>กลุ่ม / ประเภท</th><th>ปีงบ</th><th class="numeric">งบประมาณ (บาท)</th><th>หน่วยงาน</th><th>สถานะ</th><th>ที่ตั้ง</th><th>จัดการ</th></tr></thead><tbody>
+            <% @projects.each do |project| %>
+              <% area = @subdistricts_by_id[project.subdistrict_id] %>
+              <tr>
+                <td><div class="project-name-cell"><% if (cover = project.photos.first) %><%= image_tag photo_project_path(project, cover["id"]), class: "project-cover", alt: "", loading: "lazy" %><% else %><span class="project-cover empty material-symbols-outlined">image</span><% end %><div><b><%= project.name %></b><% if project.code.present? %><small><%= project.code %></small><% end %><% if project.photos.size > 1 %><small><%= project.photos.size %> ภาพ</small><% end %></div></div></td>
+                <td><span class="project-group <%= project.group %>"><%= project.group_label %></span><small><%= project.project_type %></small></td>
+                <td><%= project.fiscal_year %></td>
+                <td class="numeric"><%= project.budget ? number_with_precision(project.budget, precision: 2, delimiter: ",") : "-" %><span class="project-approval <%= project.approval_status %>"><%= project.approval_status_label %></span><% if project.budget_source.present? %><small><%= project.budget_source %></small><% end %></td>
+                <td><%= project.agency %></td>
+                <td><span class="project-status <%= project.status %>"><%= project.status_label %></span><div class="project-progress" title="ความคืบหน้า <%= project.progress_percent %>%"><i style="width: <%= project.progress_percent.to_i.clamp(0, 100) %>%"></i></div><small><%= project.progress_percent %>%</small></td>
+                <td><% if project.located? %><span class="material-symbols-outlined project-pin" title="มีพิกัดบนแผนที่">location_on</span><% end %><%= [project.location_name, area && "ต.#{area.name_th}"].compact.join(" ").presence || "-" %></td>
+                <td class="cctv-actions">
+                  <% if current_user.can_manage_organization_data?(project.user_id) %>
+                    <%= link_to "แก้ไข", edit_project_path(project), class: "button-link" %>
+                    <%= button_to "ลบ", project_path(project), method: :delete, class: "button-link danger", form: { data: { project_delete: project.name } } %>
+                  <% else %><small>ดูได้อย่างเดียว</small><% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody></table></div>
+        <% end %>
+      </section>
+    </div>
+  </main>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("[data-project-delete]").forEach(form => form.addEventListener("submit", event => {
+      if (!window.confirm(`ต้องการลบโครงการ "${form.dataset.projectDelete}" และภาพทั้งหมดใช่หรือไม่?`)) event.preventDefault();
+    }));
+  });
+</script>

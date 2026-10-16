@@ -1,0 +1,92 @@
+<% area_name = current_user.access_area&.name.presence || current_user.subdistrict&.name_th %>
+<% system_map = system_setting.map_defaults %>
+<% custom_layers = !@setting.map_layers.nil? %>
+<%= render layout: "settings/frame", locals: { title: "ตั้งค่า อบต.", kicker: "สำหรับผู้ดูแลประจำ อบต. · #{area_name}", description: "ใช้กับผู้ใช้ทุกคนของหน่วยงานนี้ — ข้อมูล อบต. การแจ้งเตือน แผนที่ และลิงก์แจ้งเหตุสาธารณะ", active: :organization } do %>
+  <%= form_with model: @setting, url: organization_settings_path, method: :patch, html: { multipart: true, class: "settings-form" } do |form| %>
+    <% if @setting.errors.any? %><div class="form-errors"><% @setting.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
+
+    <section class="settings-card" id="settings-organization">
+      <header><span class="material-symbols-outlined">account_balance</span><div><h2>ข้อมูล อบต.</h2><p>แสดงบนหน้าแบบฟอร์มแจ้งเหตุสาธารณะ เพื่อให้ประชาชนรู้ว่าแจ้งถึงหน่วยงานใด</p></div></header>
+      <div class="settings-grid">
+        <label>ชื่อหน่วยงาน<%= form.text_field :organization_name, placeholder: "เช่น องค์การบริหารส่วนตำบล#{area_name}" %></label>
+        <label>ผู้บริหาร/นายก อบต.<%= form.text_field :executive_name %></label>
+        <label class="span-2">ที่อยู่<%= form.text_area :address, rows: 2 %></label>
+        <label>เบอร์โทร (แสดงบนหน้าแจ้งเหตุ)<%= form.telephone_field :phone, placeholder: "เช่น 054-123456" %></label>
+        <label>อีเมล<%= form.email_field :email %></label>
+        <label>เว็บไซต์<%= form.url_field :website, placeholder: "https://" %></label>
+        <div class="settings-logo">
+          <%= image_tag(@setting.logo.present? ? logo_organization_settings_path(key: @setting.organization_key, v: @setting.logo["id"]) : system_logo_src, alt: "โลโก้ อบต.") %>
+          <div>
+            <label>โลโก้ อบต.<%= file_field_tag "organization_setting[logo_file]", accept: "image/jpeg,image/png,image/webp" %><small>ถ้าไม่ใส่ จะใช้โลโก้ของระบบ</small></label>
+            <% if @setting.logo.present? %><label class="settings-check"><%= check_box_tag "organization_setting[remove_logo]", "1" %> ลบโลโก้</label><% end %>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="settings-card" id="settings-notifications">
+      <header><span class="material-symbols-outlined">notifications</span><div><h2>การแจ้งเตือน</h2><p>ใช้กับผู้ใช้ทุกคนของ อบต. นี้</p></div></header>
+      <div class="settings-toggles">
+        <label class="settings-switch"><%= form.check_box :notify_new_incidents %><span><b>แจ้งเตือนเหตุการณ์ใหม่</b><small>แสดงหน้าต่างแจ้งเตือนมุมขวาบนเมื่อมีเหตุการณ์ที่รอรับเรื่อง (ตัวเลขบนเมนูยังแสดงเสมอ)</small></span></label>
+        <label class="settings-switch"><%= form.check_box :notification_sound %><span><b>เสียงแจ้งเตือน</b><small>เล่นเสียงสั้น ๆ เมื่อมีเหตุการณ์ใหม่เข้ามา (เบราว์เซอร์อาจต้องคลิกหน้าเว็บก่อนหนึ่งครั้ง)</small></span></label>
+        <label class="settings-switch"><%= form.check_box :notify_pending_activities %><span><b>แสดงจำนวนกิจกรรมที่รอรับเรื่อง</b><small>แสดงตัวเลขบนเมนู "กิจกรรมในพื้นที่"</small></span></label>
+      </div>
+    </section>
+
+    <section class="settings-card" id="settings-map">
+      <header><span class="material-symbols-outlined">map</span><div><h2>ค่าเริ่มต้นแผนที่ของตำบล</h2><p>ใช้แทนค่าเริ่มต้นของระบบ สำหรับผู้ใช้ทุกคนของ อบต. นี้</p></div></header>
+      <div class="settings-grid">
+        <label>แผนที่ฐาน<%= form.select :map_basemap, SystemSetting::BASEMAPS.map { |value, label| [label, value] }, { include_blank: "ใช้ค่าของระบบ (#{SystemSetting::BASEMAPS[system_map[:basemap]]})" } %></label>
+        <label>ระดับซูมเมื่อเปิดแผนที่ (8–18)<%= form.number_field :map_zoom, min: 8, max: 18, step: 1, placeholder: "อัตโนมัติตามขอบเขตพื้นที่" %><small>เว้นว่างเพื่อให้แผนที่ขยายพอดีกับขอบเขตพื้นที่</small></label>
+        <fieldset class="settings-layers span-2"><legend>ชั้นข้อมูลที่เปิดไว้ตั้งแต่แรก</legend>
+          <label class="settings-check"><%= radio_button_tag "organization_setting[map_layers_mode]", "system", !custom_layers, data: { layers_mode: true } %> ใช้ค่าของระบบ (<%= system_map[:layers].map { |key| SystemSetting::MAP_LAYERS[key] }.join(", ").presence || "ไม่เปิดชั้นใด" %>)</label>
+          <label class="settings-check"><%= radio_button_tag "organization_setting[map_layers_mode]", "custom", custom_layers, data: { layers_mode: true } %> กำหนดเอง</label>
+          <div class="settings-layer-options" data-layer-options>
+            <% SystemSetting::MAP_LAYERS.each do |key, label| %><label class="settings-check"><%= check_box_tag "organization_setting[map_layers][]", key, (custom_layers ? @setting.map_layers : system_map[:layers]).include?(key), id: "org_layer_#{key}" %> <%= label %></label><% end %>
+          </div>
+        </fieldset>
+      </div>
+    </section>
+
+    <section class="settings-card" id="settings-public-report">
+      <header><span class="material-symbols-outlined">link</span><div><h2>ลิงก์แจ้งเหตุสาธารณะ</h2><p>แบบฟอร์มให้ประชาชนและหน่วยงานเครือข่ายแจ้งเหตุในพื้นที่ โดยไม่ต้องเข้าสู่ระบบ</p></div></header>
+      <div class="settings-toggles">
+        <label class="settings-switch"><%= form.check_box :public_report_enabled %><span><b>เปิดรับแจ้งเหตุผ่านลิงก์สาธารณะ</b><small>เมื่อปิด ผู้ที่เปิดลิงก์จะเห็นข้อความปิดรับแจ้งชั่วคราวพร้อมเบอร์โทรของ อบต.</small></span></label>
+      </div>
+      <div class="settings-grid">
+        <label class="span-2">ข้อความต้อนรับบนแบบฟอร์ม<%= form.text_area :public_report_welcome, rows: 3, placeholder: "เช่น กรณีเร่งด่วนที่มีผู้บาดเจ็บ กรุณาโทร 1669 ก่อนกรอกแบบฟอร์ม" %></label>
+        <label class="span-2">แหล่งที่มาของผู้แจ้ง (บรรทัดละ 1 รายการ)<%= text_area_tag "organization_setting[report_sources_text]", @setting.report_sources_text, rows: 5 %><small>บรรทัดแรกคือแบบฟอร์มสำหรับประชาชน บรรทัดถัดไปคือหน่วยงานเครือข่าย — แต่ละรายการมีลิงก์ของตัวเองในหน้าเหตุการณ์ทั่วไป</small></label>
+      </div>
+      <div class="settings-links">
+        <% @setting.report_sources.each do |source| %>
+          <% url = public_incident_report_link(source_type: source["type"], source_name: source["name"]) %>
+          <div class="settings-link-row"><span class="material-symbols-outlined"><%= source["type"] == "citizen" ? "groups" : "apartment" %></span><b><%= source["name"] %></b><input type="text" readonly value="<%= url %>" data-copy-source><button type="button" class="button-link" data-copy-link><span class="material-symbols-outlined">content_copy</span>คัดลอก</button></div>
+        <% end %>
+      </div>
+    </section>
+
+    <div class="settings-actions"><%= form.submit "บันทึกการตั้งค่า อบต.", class: "button-link primary" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %></div>
+  <% end %>
+
+  <section class="settings-card settings-danger">
+    <header><span class="material-symbols-outlined">sync_lock</span><div><h2>สร้างลิงก์แจ้งเหตุใหม่</h2><p>ใช้เมื่อลิงก์รั่วไหลหรือถูกใช้ผิดวัตถุประสงค์ ลิงก์ที่เคยแชร์ไว้ทั้งหมดจะใช้งานไม่ได้ทันที (ลิงก์ปัจจุบันรุ่นที่ <%= @setting.public_report_version %>)</p></div></header>
+    <%= button_to regenerate_public_link_organization_settings_path, method: :post, class: "button-link danger", form: { data: { confirm_regenerate: true } } do %><span class="material-symbols-outlined">autorenew</span>สร้างลิงก์ใหม่<% end %>
+  </section>
+<% end %>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const options = document.querySelector("[data-layer-options]");
+    const sync = () => options?.querySelectorAll("input").forEach(input => { input.disabled = document.querySelector("[data-layers-mode]:checked")?.value !== "custom"; });
+    document.querySelectorAll("[data-layers-mode]").forEach(input => input.addEventListener("change", sync));
+    sync();
+    document.querySelectorAll("[data-copy-link]").forEach(button => button.addEventListener("click", async () => {
+      const input = button.parentElement.querySelector("[data-copy-source]");
+      try { await navigator.clipboard.writeText(input.value); } catch { input.select(); document.execCommand("copy"); }
+      button.lastChild.textContent = "คัดลอกแล้ว";
+      setTimeout(() => { button.lastChild.textContent = "คัดลอก"; }, 1500);
+    }));
+    document.querySelector("[data-confirm-regenerate]")?.addEventListener("submit", event => {
+      if (!window.confirm("สร้างลิงก์ใหม่? ลิงก์แจ้งเหตุที่เคยแชร์ไว้ทั้งหมดจะใช้งานไม่ได้")) event.preventDefault();
+    });
+  });
+</script>

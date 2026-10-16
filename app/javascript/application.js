@@ -115,6 +115,26 @@ document.addEventListener("DOMContentLoaded", () => {
       image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#438f86"}),stroke:new ol.style.Stroke({color:"#fff",width:2})})
     })
   });
+  const cctvLayer = new ol.layer.Vector({
+    source:new ol.source.Vector(),
+    zIndex:20,
+    style:feature=>window.SmartTambonCctv?.markerStyle(feature.get("cctv_camera")?.status)
+  });
+  const activityLayer = new ol.layer.Vector({
+    source:new ol.source.Vector(),
+    zIndex:21,
+    style:feature=>window.SmartTambonActivities?.markerStyle(feature.get("activity"),()=>activityLayer.changed())
+  });
+  const hotspotLayer = new ol.layer.Vector({
+    source:new ol.source.Vector(),
+    zIndex:18,
+    style:feature=>window.SmartTambonHotspots?.markerStyle(feature.get("fire_hotspot"))
+  });
+  const projectLayer = new ol.layer.Vector({
+    source:new ol.source.Vector(),
+    zIndex:19,
+    style:feature=>window.SmartTambonProjects?.markerStyle(feature.get("project")?.status)
+  });
   const areaSelectionLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
     style:new ol.style.Style({
@@ -131,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
     source:new ol.source.Vector(),
     style:new ol.style.Style({image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#438a61"}),stroke:new ol.style.Stroke({color:"white",width:3})})})
   });
-  const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,villageBoundaryLayer,...Object.values(placeLayers),importedPlacesLayer,importedDatasetLayer,waterStationLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5,maxZoom:19,extent:ol.proj.get("EPSG:3857").getExtent()}) });
+  const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,villageBoundaryLayer,...Object.values(placeLayers),importedPlacesLayer,importedDatasetLayer,waterStationLayer,hotspotLayer,projectLayer,cctvLayer,activityLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5,maxZoom:19,extent:ol.proj.get("EPSG:3857").getExtent()}) });
   window.smartCityMap=map;
   fetch("/api/imported_datasets",{headers:{Accept:"application/json"}}).then(response=>response.ok?response.json():null).then(data=>{
     if(!data)return;
@@ -707,6 +727,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const popupElement = document.querySelector("#place-popup");
   const popup = new ol.Overlay({element:popupElement,positioning:"bottom-center",stopEvent:true});
   map.addOverlay(popup);
+  // Stop the popup's live stream whenever the popup is hidden or replaced.
+  let stopCctvPopupPlayer=null;
+  const stopCctvPopup=()=>{stopCctvPopupPlayer?.();stopCctvPopupPlayer=null;};
+  new MutationObserver(()=>{if(popupElement.hidden && stopCctvPopupPlayer) stopCctvPopup();}).observe(popupElement,{attributes:true,attributeFilter:["hidden"]});
   requestAnimationFrame(() => map.updateSize());
   window.addEventListener("resize", () => map.updateSize());
 
@@ -717,7 +741,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const features=new ol.format.GeoJSON().readFeatures(data,{featureProjection:"EPSG:3857"});
       overviewBoundaries.getSource().addFeatures(features);
       if(document.querySelector(".dashboard-shell")?.dataset.userRole==="system_admin" && features.length){
-        map.getView().fit(overviewBoundaries.getSource().getExtent(),{padding:[48,48,48,48],maxZoom:6,duration:0});
+        const mapDefaults=window.SMART_TAMBON_MAP_DEFAULTS;
+        // A centre/zoom set in the system settings replaces the fit-to-Thailand view.
+        if(mapDefaults?.custom_view) map.getView().animate({center:ol.proj.fromLonLat(mapDefaults.center),zoom:mapDefaults.zoom,duration:0});
+        else map.getView().fit(overviewBoundaries.getSource().getExtent(),{padding:[48,48,48,48],maxZoom:6,duration:0});
         document.querySelector("#map-message").hidden=true;
       }
     } catch (error) {
@@ -1086,7 +1113,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const waterStationsCount=waterStationsRow?.querySelector("small");
   if(waterStationsToggle){
     waterStationsToggle.disabled=false;
-    waterStationsToggle.checked=true;
+    waterStationsToggle.checked=(window.SMART_TAMBON_MAP_DEFAULTS?.layers || ["water"]).includes("water");
     waterStationsRow.querySelector("b").textContent="สถานีวัดน้ำและฝน";
     waterStationsToggle.addEventListener("change",()=>waterStationLayer.setVisible(waterStationsToggle.checked));
   }
@@ -1109,6 +1136,107 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
   loadWaterStations();
+  const cctvToggle=document.querySelector("[data-cctv-layer-toggle]");
+  const cctvCount=document.querySelector("[data-cctv-layer-count]");
+  cctvToggle?.addEventListener("change",()=>cctvLayer.setVisible(cctvToggle.checked));
+  async function loadCctvCameras() {
+    if(!cctvToggle) return;
+    cctvCount.textContent="กำลังโหลด…";
+    try {
+      const response=await fetch("/api/cctv_cameras",{headers:{Accept:"application/json"}});
+      if(!response.ok) throw new Error(response.status);
+      const cameras=(await response.json()).filter(camera=>Number.isFinite(Number(camera.longitude)) && Number.isFinite(Number(camera.latitude)));
+      const visibleCameras=cameras.filter(camera=>!selectedAreaGeometry || selectedAreaGeometry.intersectsCoordinate(ol.proj.fromLonLat([Number(camera.longitude),Number(camera.latitude)])));
+      const source=cctvLayer.getSource();
+      source.clear();
+      visibleCameras.forEach(camera=>source.addFeature(new ol.Feature({geometry:new ol.geom.Point(ol.proj.fromLonLat([Number(camera.longitude),Number(camera.latitude)])),cctv_camera:camera})));
+      cctvLayer.setVisible(cctvToggle.checked);
+      const online=visibleCameras.filter(camera=>camera.status==="active").length;
+      cctvCount.textContent=visibleCameras.length ? `${online}/${visibleCameras.length} ตัว` : "ยังไม่มีกล้อง";
+    } catch (error) {
+      cctvCount.textContent="โหลดไม่สำเร็จ";
+      console.warn("Unable to load CCTV cameras",error);
+    }
+  }
+  loadCctvCameras();
+  const hotspotToggle=document.querySelector("[data-hotspot-layer-toggle]");
+  const hotspotCount=document.querySelector("[data-hotspot-layer-count]");
+  const hotspotHours=document.querySelector("[data-hotspot-layer-hours]");
+  const hotspotSynced=document.querySelector("[data-hotspot-layer-synced]");
+  hotspotToggle?.addEventListener("change",()=>hotspotLayer.setVisible(hotspotToggle.checked));
+  hotspotHours?.addEventListener("change",()=>loadHotspots());
+  let hotspotRequest=0;
+  async function loadHotspots() {
+    if(!hotspotToggle || !window.SmartTambonHotspots) return;
+    const request=++hotspotRequest;
+    hotspotCount.textContent="กำลังโหลด…";
+    try {
+      const payload=await window.SmartTambonHotspots.load(hotspotHours?.value || 24);
+      if(request!==hotspotRequest) return;
+      const visibleHotspots=payload.hotspots.filter(hotspot=>!selectedAreaGeometry || selectedAreaGeometry.intersectsCoordinate(ol.proj.fromLonLat([Number(hotspot.lon),Number(hotspot.lat)])));
+      const source=hotspotLayer.getSource();
+      source.clear();
+      visibleHotspots.forEach(hotspot=>source.addFeature(new ol.Feature({geometry:new ol.geom.Point(ol.proj.fromLonLat([Number(hotspot.lon),Number(hotspot.lat)])),fire_hotspot:hotspot})));
+      hotspotLayer.setVisible(hotspotToggle.checked);
+      hotspotCount.textContent=visibleHotspots.length ? `${visibleHotspots.length.toLocaleString()} จุด` : "ไม่พบจุดความร้อน";
+      if(hotspotSynced) hotspotSynced.textContent=payload.synced_at ? `ซิงก์ล่าสุด: ${window.SmartTambonHotspots.formatTime(payload.synced_at)}` : "ยังไม่เคยซิงก์ข้อมูล";
+    } catch (error) {
+      if(request!==hotspotRequest) return;
+      hotspotCount.textContent="โหลดไม่สำเร็จ";
+      console.warn("Unable to load fire hotspots",error);
+    }
+  }
+  loadHotspots();
+  const projectToggle=document.querySelector("[data-project-layer-toggle]");
+  const projectCount=document.querySelector("[data-project-layer-count]");
+  const projectGroupFilter=document.querySelector("[data-project-layer-group]");
+  const projectStatusFilter=document.querySelector("[data-project-layer-status]");
+  let loadedProjects=[];
+  function renderProjects() {
+    const source=projectLayer.getSource();
+    source.clear();
+    const visibleProjects=loadedProjects.filter(project=>(!projectGroupFilter?.value || project.group===projectGroupFilter.value) && (!projectStatusFilter?.value || project.status===projectStatusFilter.value));
+    visibleProjects.forEach(project=>source.addFeature(new ol.Feature({geometry:new ol.geom.Point(ol.proj.fromLonLat([Number(project.longitude),Number(project.latitude)])),project})));
+    projectLayer.setVisible(projectToggle.checked);
+    projectCount.textContent=loadedProjects.length ? (visibleProjects.length===loadedProjects.length ? `${loadedProjects.length} โครงการ` : `${visibleProjects.length}/${loadedProjects.length} โครงการ`) : "ยังไม่มีโครงการ";
+  }
+  projectToggle?.addEventListener("change",()=>projectLayer.setVisible(projectToggle.checked));
+  [projectGroupFilter,projectStatusFilter].forEach(select=>select?.addEventListener("change",()=>{popupElement.hidden=true;popup.setPosition(undefined);renderProjects();}));
+  async function loadProjects() {
+    if(!projectToggle) return;
+    projectCount.textContent="กำลังโหลด…";
+    try {
+      const response=await fetch("/api/projects",{headers:{Accept:"application/json"}});
+      if(!response.ok) throw new Error(response.status);
+      const projects=(await response.json()).filter(project=>project.latitude!==null && project.longitude!==null && Number.isFinite(Number(project.longitude)) && Number.isFinite(Number(project.latitude)));
+      loadedProjects=projects.filter(project=>!selectedAreaGeometry || selectedAreaGeometry.intersectsCoordinate(ol.proj.fromLonLat([Number(project.longitude),Number(project.latitude)])));
+      renderProjects();
+    } catch (error) {
+      projectCount.textContent="โหลดไม่สำเร็จ";
+      console.warn("Unable to load projects",error);
+    }
+  }
+  loadProjects();
+  const activityToggle=document.querySelector("[data-activity-layer-toggle]");
+  const activityCount=document.querySelector("[data-activity-layer-count]");
+  activityToggle?.addEventListener("change",()=>activityLayer.setVisible(activityToggle.checked));
+  async function loadActivities() {
+    if(!activityToggle || !window.SmartTambonActivities) return;
+    activityCount.textContent="กำลังโหลด…";
+    try {
+      const activities=(await window.SmartTambonActivities.load()).filter(activity=>!selectedAreaGeometry || selectedAreaGeometry.intersectsCoordinate(ol.proj.fromLonLat([Number(activity.longitude),Number(activity.latitude)])));
+      const source=activityLayer.getSource();
+      source.clear();
+      activities.forEach(activity=>source.addFeature(new ol.Feature({geometry:new ol.geom.Point(ol.proj.fromLonLat([Number(activity.longitude),Number(activity.latitude)])),activity})));
+      activityLayer.setVisible(activityToggle.checked);
+      const ongoing=activities.filter(activity=>activity.phase==="ongoing").length;
+      activityCount.textContent=activities.length ? `${activities.length} กิจกรรม${ongoing ? ` · กำลังจัด ${ongoing}` : ""}` : "ไม่มีกิจกรรม";
+    } catch (error) {
+      activityCount.textContent="โหลดไม่สำเร็จ";
+      console.warn("Unable to load activities",error);
+    }
+  }
+  loadActivities();
   async function loadImportedPlaces() {
     try {
       const response=await fetch("/api/dynamic_layers?layer_key=important_place",{headers:{Accept:"application/json"}});
@@ -1350,13 +1478,57 @@ document.addEventListener("DOMContentLoaded", () => {
   if(!hasAssignedSubdistrict) {
     if(currentUserRole !== "system_admin") loadInitialPlaceCategories();
   }
+  // Tall popups (CCTV video, project photos) would be clipped by the map edges; pan the map to fit them.
+  const panPopupIntoView=()=>requestAnimationFrame(()=>{
+    const mapRect=map.getTargetElement().getBoundingClientRect(), popupRect=popupElement.getBoundingClientRect(), margin=12;
+    const dy=Math.min(0,popupRect.top-(mapRect.top+margin));
+    const dx=popupRect.left<mapRect.left+margin ? popupRect.left-(mapRect.left+margin) : Math.max(0,popupRect.right-(mapRect.right-margin));
+    if(!dx && !dy) return;
+    const centerPixel=map.getPixelFromCoordinate(map.getView().getCenter());
+    map.getView().animate({center:map.getCoordinateFromPixel([centerPixel[0]+dx,centerPixel[1]+dy]),duration:250});
+  });
   map.on("singleclick", event => {
     if(areaSelectionToolActive && areaSelectionMode==="point") {
       setAreaSelection(new ol.geom.Circle(event.coordinate,areaSelectionDistance()),event.coordinate);
       return;
     }
     if(areaSelectionToolActive) return;
-    const feature = map.forEachFeatureAtPixel(event.pixel, item => (item.get("place") || item.get("water_station") || item.get("data_type")==="agencies") ? item : null);
+    stopCctvPopup();
+    const feature = map.forEachFeatureAtPixel(event.pixel, item => (item.get("cctv_camera") || item.get("fire_hotspot") || item.get("activity") || item.get("project") || item.get("place") || item.get("water_station") || item.get("data_type")==="agencies") ? item : null);
+    const cctvCamera=feature?.get("cctv_camera");
+    if(cctvCamera){
+      const place=[cctvCamera.location_name,cctvCamera.subdistrict_name&&`ต.${cctvCamera.subdistrict_name}`].filter(Boolean).join(" ");
+      popupElement.innerHTML=`<div class="cctv-popup"><strong>${escapeHtml(cctvCamera.name)}</strong><p><span class="cctv-status ${escapeHtml(cctvCamera.status)}">${escapeHtml(cctvCamera.status_label)}</span>${place ? ` ${escapeHtml(place)}` : ""}</p><div class="cctv-popup-player" data-cctv-popup-player></div><button type="button" class="cctv-popup-expand" data-cctv-expand><span class="material-symbols-outlined">open_in_full</span>ดูจอใหญ่</button></div>`;
+      popupElement.hidden=false; popup.setPosition(feature.getGeometry().getCoordinates());
+      stopCctvPopupPlayer=window.SmartTambonCctv?.mount(popupElement.querySelector("[data-cctv-popup-player]"),cctvCamera);
+      panPopupIntoView();
+      popupElement.querySelector("[data-cctv-expand]").addEventListener("click",()=>{stopCctvPopup();popupElement.hidden=true;popup.setPosition(undefined);window.SmartTambonCctv?.openViewer(cctvCamera);});
+      return;
+    }
+    const fireHotspot=feature?.get("fire_hotspot");
+    if(fireHotspot){
+      popupElement.innerHTML=window.SmartTambonHotspots?.popupHtml(fireHotspot) || "";
+      popupElement.hidden=false; popup.setPosition(feature.getGeometry().getCoordinates());
+      panPopupIntoView();
+      return;
+    }
+    const activity=feature?.get("activity");
+    if(activity){
+      popupElement.innerHTML=window.SmartTambonActivities?.popupHtml(activity) || "";
+      popupElement.hidden=false; popup.setPosition(feature.getGeometry().getCoordinates());
+      popupElement.querySelectorAll("img").forEach(image=>image.addEventListener("load",panPopupIntoView,{once:true}));
+      panPopupIntoView();
+      return;
+    }
+    const project=feature?.get("project");
+    if(project){
+      popupElement.innerHTML=window.SmartTambonProjects?.popupHtml(project) || "";
+      popupElement.hidden=false; popup.setPosition(feature.getGeometry().getCoordinates());
+      // Photos load after the popup opens, so re-check the fit once they have their size.
+      popupElement.querySelectorAll("img").forEach(image=>image.addEventListener("load",panPopupIntoView,{once:true}));
+      panPopupIntoView();
+      return;
+    }
     const place = feature?.get("place");
     const waterStation=feature?.get("water_station");
     const agency=feature?.get("data_type")==="agencies" ? feature.getProperties() : null;
@@ -1608,6 +1780,9 @@ document.addEventListener("DOMContentLoaded", () => {
           padding:[80,80,80,80], duration:options.initialFocus ? 0 : 700,
           maxZoom:isProvince ? 10 : 15
         });
+        // อบต. setting: fixed zoom level for the first view of the area.
+        const areaZoom=window.SMART_TAMBON_MAP_DEFAULTS?.area_zoom;
+        if(options.initialFocus && areaZoom && !isProvince) map.getView().setZoom(areaZoom);
       }
       document.querySelector("#map-message").textContent=`แสดงขอบเขต: ${name}`;
     } else if(featureData.properties?.center){
@@ -1638,6 +1813,10 @@ document.addEventListener("DOMContentLoaded", () => {
     Object.keys(allProvincePlacesByCategory).forEach(category => delete allProvincePlacesByCategory[category]);
     renderImportantPlaces();
     loadWaterStations();
+    loadCctvCameras();
+    loadHotspots();
+    loadProjects();
+    loadActivities();
     if(options.loadPlaces!==false){
       loadImportedPlaces();
       document.querySelectorAll('[data-place-category][aria-pressed="true"]').forEach(placeButton=>loadPlaces(placeButton.dataset.placeCategory));
@@ -1681,6 +1860,7 @@ document.addEventListener("DOMContentLoaded", () => {
     selectAccessArea();
   });
   document.querySelectorAll("[data-basemap]").forEach(b=>b.onclick=()=>{setMapMode(false);const sat=b.dataset.basemap==="satellite";street.setVisible(!sat);satellite.setVisible(sat);document.querySelectorAll("[data-basemap]").forEach(x=>x.classList.toggle("active",x===b));if(sat&&!key)document.querySelector("#map-message").textContent="กำหนด MAPTILER_KEY เพื่อเปิดภาพดาวเทียม"});
+  if(window.SMART_TAMBON_MAP_DEFAULTS?.basemap==="satellite") document.querySelector('[data-basemap="satellite"]')?.click();
   document.querySelectorAll("[data-map-mode]").forEach(button=>button.addEventListener("click",()=>setMapMode(button.dataset.mapMode==="3d")));
   const areaSearch = document.querySelector("#area-search");
   const searchResults = document.querySelector("#area-search-results");

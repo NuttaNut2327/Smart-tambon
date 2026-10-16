@@ -62,7 +62,7 @@ module Api
         track_usage(cache_hits: 1)
         return render_cache(cached, stale: true)
       end
-      return render json: { error: "ยังไม่ได้กำหนด LONGDO_MAP_KEY" }, status: :service_unavailable if api_key.blank?
+      return render json: { error: "ยังไม่ได้กำหนด Longdo Map API key (ตั้งค่าระบบ)" }, status: :service_unavailable if api_key.blank?
 
       base_places = cached ? cached.places : []
       tag_states = cached ? cached_tag_states(cached.response_meta, longdo_tags) : initial_tag_states(longdo_tags)
@@ -107,7 +107,7 @@ module Api
     private
 
     def api_key
-      ENV["LONGDO_MAP_KEY"]
+      @api_key ||= SystemSetting.current.longdo_map_key
     end
 
     def coordinate(name, fallback, range)

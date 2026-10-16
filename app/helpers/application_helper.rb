@@ -1,11 +1,35 @@
 module ApplicationHelper
   THAI_SHORT_MONTHS = %w[ม.ค. ก.พ. มี.ค. เม.ย. พ.ค. มิ.ย. ก.ค. ส.ค. ก.ย. ต.ค. พ.ย. ธ.ค.].freeze
 
+  def system_setting = @system_setting ||= SystemSetting.current
+  def organization_setting = defined?(@organization_setting) ? @organization_setting : (@organization_setting = OrganizationSetting.for(current_user))
+  def system_name = system_setting.system_name
+  def system_short_name = system_setting.system_short_name
+
+  def system_logo_src
+    system_setting.logo.present? ? logo_system_settings_path(v: system_setting.logo["id"]) : image_path("logo-smart-tambon.png")
+  end
+
+  # Map basemap, layers and initial view for the signed-in user: the อบต. settings override the system defaults.
+  def map_defaults
+    organization_setting ? organization_setting.map_defaults(system_setting) : system_setting.map_defaults
+  end
+
+  def map_layer_default?(key) = map_defaults[:layers].include?(key.to_s)
+
   def thai_short_datetime(value)
     return "—" if value.blank?
 
     time = value.in_time_zone("Asia/Bangkok")
     "#{time.day} #{THAI_SHORT_MONTHS[time.month - 1]} #{time.year + 543} #{time.strftime('%H:%M')} น."
+  end
+
+  # "14 ต.ค. 2569 09:00–17:00 น." on one day, otherwise both full date-times.
+  def thai_period(starts_at, ends_at)
+    return thai_short_datetime(starts_at || ends_at) if starts_at.blank? || ends_at.blank?
+    return "#{thai_short_date(starts_at)} #{starts_at.in_time_zone('Asia/Bangkok').strftime('%H:%M')}–#{thai_short_time(ends_at)}" if starts_at.in_time_zone("Asia/Bangkok").to_date == ends_at.in_time_zone("Asia/Bangkok").to_date
+
+    "#{thai_short_datetime(starts_at)} – #{thai_short_datetime(ends_at)}"
   end
 
   def thai_short_date(value)
@@ -54,6 +78,17 @@ module ApplicationHelper
     0
   end
 
+  # Activities still waiting for someone to acknowledge them ("รับเรื่อง").
+  def pending_activity_count
+    return 0 unless current_user
+
+    return 0 if organization_setting&.notify_pending_activities == false
+
+    @pending_activity_count ||= Incident.visible_to(current_user).activities.where(status: "pending", :ends_at.gt => Time.current).count
+  rescue Mongoid::Errors::MongoidError
+    0
+  end
+
   def pending_disaster_count
     return 0 unless current_user
 
@@ -62,14 +97,10 @@ module ApplicationHelper
     0
   end
 
+  # Reporting sources each get their own permanent public form link; edited in the อบต. settings.
   def public_report_sources
-    [
-      { type: "citizen", name: "ประชาชน", label: "ประชาชน" },
-      { type: "organization", name: "หน่วยงาน 1", label: "หน่วยงาน 1" },
-      { type: "organization", name: "หน่วยงาน 2", label: "หน่วยงาน 2" },
-      { type: "organization", name: "โรงพยาบาลส่งเสริมสุขภาพตำบล", label: "โรงพยาบาลส่งเสริมสุขภาพตำบล" },
-      { type: "organization", name: "สถานีตำรวจภูธร", label: "สถานีตำรวจภูธร" }
-    ]
+    sources = organization_setting&.report_sources || OrganizationSetting::DEFAULT_REPORT_SOURCES
+    sources.map { |source| { type: source["type"], name: source["name"], label: source["name"] } }
   end
 
   def public_incident_report_link(source_type: "citizen", source_name: "ประชาชน")
@@ -78,6 +109,8 @@ module ApplicationHelper
     else
       { scope: "account", id: current_user.id, version: 1 }
     end
+    # Bumped by "สร้างลิงก์ใหม่" in the อบต. settings, which invalidates previously shared links.
+    scope[:version] = organization_setting&.public_report_version || 1
     scope[:source_type] = source_type
     scope[:source_name] = source_name
     token = Rails.application.message_verifier(:public_incident_form).generate(scope)

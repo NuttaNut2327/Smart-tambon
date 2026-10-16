@@ -1,0 +1,16 @@
+th:
+  mongoid:
+    models:
+      cctv_camera: กล้องวงจรปิด
+    attributes:
+      cctv_camera:
+        name: ชื่อกล้อง
+        code: รหัสกล้อง
+        stream_url: URL สตรีม
+        stream_type: ประเภทสตรีม
+        status: สถานะ
+        location_name: ชื่อสถานที่
+        description: รายละเอียด
+        latitude: ละติจูด
+        longitude: ลองจิจูด
+        user_id: ผู้บันทึก

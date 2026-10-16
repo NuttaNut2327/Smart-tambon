@@ -194,6 +194,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const titleElement = incidentNotification.querySelector("[data-incident-notification-title]");
     const openLink = incidentNotification.querySelector("[data-incident-notification-open]");
     let displayedIncidentId = null;
+    // อบต. settings: the popup and its sound can be switched off; the menu badge always updates.
+    const popupEnabled = incidentNotification.dataset.notificationPopup !== "false";
+    const soundEnabled = incidentNotification.dataset.notificationSound === "true";
+    const playChime = () => {
+      try {
+        const context = new (window.AudioContext || window.webkitAudioContext)();
+        [[880, 0], [660, 0.18]].forEach(([frequency, offset]) => {
+          const oscillator = context.createOscillator(), gain = context.createGain();
+          oscillator.frequency.value = frequency;
+          gain.gain.setValueAtTime(0.0001, context.currentTime + offset);
+          gain.gain.exponentialRampToValueAtTime(0.25, context.currentTime + offset + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + offset + 0.16);
+          oscillator.connect(gain).connect(context.destination);
+          oscillator.start(context.currentTime + offset);
+          oscillator.stop(context.currentTime + offset + 0.18);
+        });
+      } catch (_error) {
+        // Browsers may block audio until the user has interacted with the page.
+      }
+    };
 
     const updatePendingBadge = (count) => {
       const navLink = document.querySelector("[data-incident-nav]");
@@ -232,8 +252,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const payload = await response.json();
         updatePendingBadge(Number(payload.pending_count) || 0);
         const incident = payload.incident;
-        if (!incident || incident.id === sessionStorage.getItem(storageKey)) return;
+        if (!popupEnabled || !incident || incident.id === sessionStorage.getItem(storageKey)) return;
 
+        if (soundEnabled && displayedIncidentId !== incident.id) playChime();
         displayedIncidentId = incident.id;
         codeElement.textContent = incident.reference_code || "เหตุการณ์ใหม่";
         titleElement.textContent = incident.title || "มีรายการแจ้งเหตุที่รอรับเรื่อง";
@@ -435,6 +456,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         const [longitude, latitude] = ol.proj.toLonLat(event.coordinate);
         setMarker(longitude, latitude);
+      });
+      window.SmartTambonLocation?.attachSearch(pickerMap, {
+        onSelect: (longitude, latitude, result) => {
+          if (accessBoundary && !accessBoundary.intersectsCoordinate(ol.proj.fromLonLat([longitude, latitude]))) {
+            coordinateLabel.textContent = `พบ "${result.short_name}" แต่อยู่นอกขอบเขตพื้นที่ที่ดูแล`;
+            return;
+          }
+          setMarker(longitude, latitude);
+          // Keep the searched place name instead of the reverse-geocoded address.
+          addressRequestId += 1;
+          locationNameInput.value = result.short_name;
+          coordinateLabel.textContent = `${result.short_name} · ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+        }
       });
 
       fetch("/api/access_area", { headers: { Accept: "application/json" } })

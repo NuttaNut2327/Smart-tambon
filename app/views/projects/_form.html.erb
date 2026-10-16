@@ -1,0 +1,136 @@
+<% project_area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<% area_center = current_user.subdistrict&.center %>
+<% map_center = project.located? ? [project.longitude, project.latitude] : (area_center ? [area_center.x, area_center.y] : [100.5018, 13.7563]) %>
+<% map_zoom = project.located? || area_center ? 14 : 6 %>
+<% type_suggestions = Project::GROUPS.transform_values { |group| group[:types] } %>
+<div class="shell dashboard-shell gis-dashboard users-shell cctv-shell project-shell">
+  <%= render "dashboard/sidebar", active_nav: :projects, initial_area: project_area %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= project_area %></span><b>›</b><span>โครงการ</span><b>›</b><span><%= title %></span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker">โครงการพัฒนาพื้นที่</p><h1><%= title %></h1><p>กรอกข้อมูลโครงการ แนบภาพ และระบุที่ตั้งบนแผนที่ (ถ้ามี)</p></div></section>
+      <% if alert.present? %><p class="cctv-flash alert"><%= alert %></p><% end %>
+      <section class="users-card cctv-form-card"><%= form_with model: project, url: project.new_record? ? projects_path : project_path(project), multipart: true, data: { project_form: true, type_suggestions: type_suggestions.to_json } do |form| %>
+        <% if project.errors.any? %><div class="form-errors"><% project.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
+        <div class="cctv-form-grid">
+          <fieldset class="cctv-fieldset">
+            <legend>ข้อมูลโครงการ</legend>
+            <label>ชื่อโครงการ<%= form.text_field :name, required: true, placeholder: "เช่น ก่อสร้างถนน คสล. หมู่ 3" %></label>
+            <label>รหัสโครงการ<%= form.text_field :code, placeholder: "เช่น e-plan / เลขที่สัญญา" %><small>ไม่บังคับ</small></label>
+            <label>กลุ่มโครงการ<%= form.select :group, Project::GROUPS.map { |value, group| [group[:label], value] }, { include_blank: "เลือกกลุ่มโครงการ" }, required: true, data: { project_group: true } %></label>
+            <label>ลักษณะ/ประเภทโครงการ<%= form.text_field :project_type, required: true, list: "project-type-options", autocomplete: "off", placeholder: "เลือกจากรายการหรือพิมพ์เอง", data: { project_type: true } %><datalist id="project-type-options"></datalist></label>
+            <label>หน่วยงานรับผิดชอบ<%= form.text_field :agency, required: true, placeholder: "เช่น กองช่าง อบต.ป่ากลาง" %></label>
+            <label>รายละเอียด<%= form.text_area :description, rows: 4, placeholder: "วัตถุประสงค์ ขอบเขตงาน เป้าหมาย ฯลฯ" %></label>
+          </fieldset>
+          <fieldset class="cctv-fieldset">
+            <legend>งบประมาณและสถานะ</legend>
+            <div class="cctv-coordinates">
+              <label>ปีงบประมาณ (พ.ศ.)<%= form.number_field :fiscal_year, required: true, min: 2500, max: 2700, step: 1 %></label>
+              <label>งบประมาณ (บาท)<%= form.number_field :budget, min: 0, step: "0.01", placeholder: "0.00" %></label>
+            </div>
+            <label>ผลการอนุมัติงบประมาณ<%= form.select :approval_status, Project::APPROVAL_STATUSES.map { |value, label| [label, value] } %></label>
+            <label>แหล่งงบประมาณ<%= form.text_field :budget_source, list: "project-budget-sources", placeholder: "เช่น ข้อบัญญัติงบประมาณ, เงินอุดหนุน" %>
+              <datalist id="project-budget-sources"><option value="ข้อบัญญัติงบประมาณรายจ่ายประจำปี"><option value="เงินอุดหนุนเฉพาะกิจ"><option value="เงินอุดหนุนทั่วไป"><option value="เงินสะสม"><option value="เงินทุนสำรองเงินสะสม"><option value="งบกลาง"></datalist></label>
+            <div class="cctv-coordinates">
+              <label>สถานะการดำเนินการ<%= form.select :status, Project::STATUSES.map { |value, label| [label, value] } %></label>
+              <label>ความคืบหน้า (%)<%= form.number_field :progress_percent, min: 0, max: 100, step: 1 %></label>
+            </div>
+            <label>ภาพประกอบ<%= form.file_field :photos, multiple: true, accept: "image/jpeg,image/png,image/webp", data: { project_photos: true } %><small>เลือกได้หลายภาพ (JPG, PNG, WebP ไม่เกิน 10 MB/ภาพ สูงสุด <%= ProjectPhotoUploadService::MAX_FILES %> ภาพ)</small></label>
+            <div class="project-photo-grid" data-project-photo-preview></div>
+            <% if project.persisted? && project.photos.any? %>
+              <div class="project-existing-photos"><small>ภาพที่แนบแล้ว — ติ๊กเพื่อลบ</small><div class="project-photo-grid">
+                <% project.photos.each do |photo| %>
+                  <label class="project-photo-thumb"><%= image_tag photo_project_path(project, photo["id"]), alt: photo["filename"], loading: "lazy" %><span><input type="checkbox" name="project[remove_photo_ids][]" value="<%= photo["id"] %>"> ลบ</span></label>
+                <% end %>
+              </div></div>
+            <% end %>
+          </fieldset>
+          <fieldset class="cctv-fieldset cctv-location">
+            <legend>สถานที่ตั้ง (ถ้ามี)</legend>
+            <label>ชื่อสถานที่<%= form.text_field :location_name, placeholder: "เช่น ซอย 5 หมู่ 3 บ้านป่ากลาง" %></label>
+            <div id="project-location-map" class="cctv-location-map" data-center="<%= map_center.to_json %>" data-zoom="<%= map_zoom %>"></div>
+            <small>คลิกบนแผนที่เพื่อปักหมุดที่ตั้งโครงการ — เว้นว่างได้หากไม่มีจุดที่ตั้ง (โครงการจะไม่แสดงบนแผนที่)</small>
+            <div class="cctv-coordinates project-coordinates">
+              <label>ละติจูด<%= form.number_field :latitude, step: "any", min: -90, max: 90, data: { project_lat: true } %></label>
+              <label>ลองจิจูด<%= form.number_field :longitude, step: "any", min: -180, max: 180, data: { project_lon: true } %></label>
+              <button type="button" class="button-link" data-project-clear-location><span class="material-symbols-outlined">location_off</span>ล้างตำแหน่ง</button>
+            </div>
+          </fieldset>
+        </div>
+        <div class="form-actions"><%= form.submit "บันทึก", class: "button-link primary" %><%= link_to "ยกเลิก", projects_path, class: "button-link" %></div>
+      <% end %></section>
+    </div>
+  </main>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.querySelector("[data-project-form]");
+    if (!form) return;
+    const suggestions = JSON.parse(form.dataset.typeSuggestions || "{}");
+    const groupInput = form.querySelector("[data-project-group]");
+    const typeList = form.querySelector("#project-type-options");
+    const syncTypes = () => {
+      typeList.replaceChildren(...(suggestions[groupInput.value] || []).map(value => Object.assign(document.createElement("option"), { value })));
+    };
+    groupInput.addEventListener("change", syncTypes);
+    syncTypes();
+
+    const photoInput = form.querySelector("[data-project-photos]");
+    const photoPreview = form.querySelector("[data-project-photo-preview]");
+    let previewUrls = [];
+    photoInput.addEventListener("change", () => {
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
+      previewUrls = Array.from(photoInput.files).map(file => URL.createObjectURL(file));
+      photoPreview.replaceChildren(...previewUrls.map(url => {
+        const image = document.createElement("img");
+        image.src = url;
+        image.alt = "";
+        const thumb = document.createElement("div");
+        thumb.className = "project-photo-thumb";
+        thumb.append(image);
+        return thumb;
+      }));
+    });
+
+    const latInput = form.querySelector("[data-project-lat]");
+    const lonInput = form.querySelector("[data-project-lon]");
+    const mapElement = document.querySelector("#project-location-map");
+    if (!window.ol || !mapElement) return;
+    const marker = new ol.Feature();
+    const markerLayer = new ol.layer.Vector({ source: new ol.source.Vector({ features: [marker] }), style: window.SmartTambonProjects?.markerStyle("planned") });
+    const map = new ol.Map({
+      target: mapElement,
+      layers: [new ol.layer.Tile({ source: new ol.source.OSM() }), markerLayer],
+      view: new ol.View({ center: ol.proj.fromLonLat(JSON.parse(mapElement.dataset.center)), zoom: Number(mapElement.dataset.zoom) })
+    });
+    const syncMarker = () => {
+      const lat = parseFloat(latInput.value), lon = parseFloat(lonInput.value);
+      marker.setGeometry(Number.isFinite(lat) && Number.isFinite(lon) ? new ol.geom.Point(ol.proj.fromLonLat([lon, lat])) : undefined);
+    };
+    map.on("singleclick", event => {
+      const [lon, lat] = ol.proj.toLonLat(event.coordinate);
+      latInput.value = lat.toFixed(6);
+      lonInput.value = lon.toFixed(6);
+      syncMarker();
+    });
+    [latInput, lonInput].forEach(input => input.addEventListener("change", () => {
+      syncMarker();
+      if (marker.getGeometry()) map.getView().animate({ center: marker.getGeometry().getCoordinates(), duration: 300 });
+    }));
+    window.SmartTambonLocation?.attachSearch(map, {
+      onSelect: (lon, lat, result) => {
+        latInput.value = lat.toFixed(6);
+        lonInput.value = lon.toFixed(6);
+        syncMarker();
+        const nameInput = form.querySelector('[name="project[location_name]"]');
+        if (nameInput && !nameInput.value.trim()) nameInput.value = result.short_name;
+      }
+    });
+    form.querySelector("[data-project-clear-location]").addEventListener("click", () => {
+      latInput.value = "";
+      lonInput.value = "";
+      syncMarker();
+    });
+    syncMarker();
+  });
+</script>

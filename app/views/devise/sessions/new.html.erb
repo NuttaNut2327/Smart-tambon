@@ -1,17 +1,17 @@
 <main class="login-shell">
-  <section class="login-story" aria-label="SMART TAMBON SAFETY THAILAND" style="--login-hero-image: url('<%= asset_path("login-smart-tambon-hero.png") %>')">
-    <div class="login-brand"><%= image_tag "logo-smart-tambon.png", class: "smart-tambon-logo login-brand-logo", alt: "" %><div><strong>SMART TAMBON SAFETY THAILAND</strong><small>ระบบบริหารจัดการความปลอดภัยอัจฉริยะสำหรับองค์การบริหารส่วนตำบล</small></div></div>
-    <div class="story-copy"><p class="eyebrow">SMART TAMBON SAFETY THAILAND</p><h1><span>ระบบบริหารจัดการความปลอดภัยอัจฉริยะ</span><span>สำหรับองค์การบริหารส่วนตำบล</span></h1><span class="story-rule"></span><p>เชื่อมโยงข้อมูล แผนที่ และเหตุการณ์สำคัญ<br>เพื่อบริหารจัดการชุมชนได้อย่างมั่นใจ</p></div>
+  <section class="login-story" aria-label="<%= system_name %>" style="--login-hero-image: url('<%= asset_path("login-smart-tambon-hero.png") %>')">
+    <div class="login-brand"><%= image_tag system_logo_src, class: "smart-tambon-logo login-brand-logo", alt: "" %><div><strong><%= system_name %></strong><small>ระบบบริหารจัดการความปลอดภัยอัจฉริยะสำหรับองค์การบริหารส่วนตำบล</small></div></div>
+    <div class="story-copy"><p class="eyebrow"><%= system_name %></p><h1><span>ระบบบริหารจัดการความปลอดภัยอัจฉริยะ</span><span>สำหรับองค์การบริหารส่วนตำบล</span></h1><span class="story-rule"></span><p>เชื่อมโยงข้อมูล แผนที่ และเหตุการณ์สำคัญ<br>เพื่อบริหารจัดการชุมชนได้อย่างมั่นใจ</p></div>
     <div class="login-benefits" aria-label="ความสามารถของระบบ"><span><i class="material-symbols-outlined">map</i>แผนที่และข้อมูลพื้นที่</span><span><i class="material-symbols-outlined">notifications_active</i>ติดตามเหตุการณ์</span><span><i class="material-symbols-outlined">analytics</i>ประเมินสถานการณ์</span></div>
     <div class="story-note"><span class="material-symbols-outlined">verified_user</span><div><b>การเข้าถึงข้อมูลเป็นไปตามขอบเขตพื้นที่รับผิดชอบ</b><small>ผู้ใช้งานสามารถเข้าถึงข้อมูลส่วนบุคคลได้เฉพาะภายในตำบลที่ตนได้รับมอบหมายเท่านั้น</small></div></div>
-    <footer>© <%= Time.current.year %> SMART TAMBON SAFETY THAILAND</footer>
+    <footer><%= system_setting.footer_text.presence || "© #{Time.current.year} #{system_name}" %></footer>
   </section>
 
   <section class="login-panel">
     <div class="login-card">
       <%= image_tag "logo-smart-tambon-name.png", class: "smart-tambon-logo login-card-logo", alt: "SMART TAMBON" %>
       <h2>เข้าสู่ระบบ</h2>
-      <p class="login-intro">เข้าสู่ระบบเพื่อจัดการข้อมูลพื้นที่ แผนที่ และเหตุการณ์ของชุมชน</p>
+      <p class="login-intro"><%= system_setting.login_message.presence || "เข้าสู่ระบบเพื่อจัดการข้อมูลพื้นที่ แผนที่ และเหตุการณ์ของชุมชน" %></p>
 
       <% if flash[:alert].present? %><div class="login-alert"><%= flash[:alert] %></div><% end %>
       <% if flash[:notice].present? %><div class="login-notice"><%= flash[:notice] %></div><% end %>

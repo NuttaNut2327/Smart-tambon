@@ -104,11 +104,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const selectedType = form?.elements.data_type?.value || document.querySelector("#file-import-dialog")?.dataset.selectedType;
     const latitudeInput = form?.elements["record[latitude]"];
     const longitudeInput = form?.elements["record[longitude]"];
-    if (selectedType !== "agencies" || !latitudeInput || !longitudeInput || !window.ol) return null;
+    // Any record type with latitude/longitude fields gets the map; agencies also get address auto-fill.
+    if (!latitudeInput || !longitudeInput || !window.ol) return null;
+    const isAgency = selectedType === "agencies";
 
     const panel = document.createElement("section");
     panel.className = "agency-location-picker";
-    panel.innerHTML = `<div class="boundary-editor-heading"><div><b>ปักหมุดสถานที่ตั้งหน่วยงาน *</b><small>คลิกบนแผนที่เพื่อระบุตำแหน่ง ระบบจะเติมข้อมูลที่อยู่ให้อัตโนมัติ</small></div></div><div class="agency-location-state" data-agency-location-state>กำลังโหลดขอบเขตพื้นที่ดูแล…</div><div class="agency-location-map" data-agency-location-map></div>`;
+    panel.innerHTML = `<div class="boundary-editor-heading"><div><b>${isAgency ? "ปักหมุดสถานที่ตั้งหน่วยงาน *" : "ปักหมุดตำแหน่งบนแผนที่"}</b><small>${isAgency ? "คลิกบนแผนที่หรือค้นหาชื่อสถานที่ ระบบจะเติมข้อมูลที่อยู่ให้อัตโนมัติ" : "คลิกบนแผนที่หรือค้นหาชื่อสถานที่/ถนนเพื่อกำหนดละติจูดและลองจิจูด"}</small></div></div><div class="agency-location-state" data-agency-location-state>กำลังโหลดขอบเขตพื้นที่ดูแล…</div><div class="agency-location-map" data-agency-location-map></div>`;
     const anchor = form.querySelector("[data-destination-fields]") || form.querySelector(".record-change-note");
     anchor.before(panel);
     const addressFields = document.createElement("div");
@@ -154,8 +156,21 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!accessSource.getFeatures().length) { state.className = "agency-location-state error"; state.textContent = "ยังโหลดขอบเขตพื้นที่ดูแลไม่สำเร็จ"; return; }
       if (!insideAccessArea(event.coordinate)) { state.className = "agency-location-state error"; state.textContent = "กรุณาปักหมุดภายในขอบเขตพื้นที่ดูแล"; return; }
       const [longitude, latitude] = ol.proj.toLonLat(event.coordinate);
-      setMarker(longitude, latitude); reverseGeocode(longitude, latitude);
+      setMarker(longitude, latitude); if (isAgency) reverseGeocode(longitude, latitude);
     });
+    window.SmartTambonLocation?.attachSearch(map, {
+      onSelect: (longitude, latitude, result) => {
+        if (accessSource.getFeatures().length && !insideAccessArea(ol.proj.fromLonLat([longitude, latitude]))) {
+          state.className = "agency-location-state error"; state.textContent = `พบ "${result.short_name}" แต่อยู่นอกขอบเขตพื้นที่ดูแล`; return;
+        }
+        setMarker(longitude, latitude);
+        if (isAgency) reverseGeocode(longitude, latitude);
+        else { state.className = "agency-location-state ready"; state.textContent = `ปักหมุดที่ ${result.short_name} แล้ว`; }
+      }
+    });
+    [latitudeInput, longitudeInput].forEach(input => input.addEventListener("change", () => {
+      if (latitudeInput.value && longitudeInput.value) setMarker(longitudeInput.value, latitudeInput.value, true);
+    }));
     fetch("/api/access_area", { headers: { Accept: "application/json" } }).then(response => response.ok ? response.json() : null).then(json => {
       if (!json) throw new Error();
       const features = format.readFeatures(json, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" });

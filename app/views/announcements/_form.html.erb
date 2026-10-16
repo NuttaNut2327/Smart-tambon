@@ -1,0 +1,47 @@
+<% area_label = "ทุกพื้นที่ทั่วประเทศ" %>
+<% datetime_value = ->(time) { time&.in_time_zone&.strftime("%Y-%m-%dT%H:%M") } %>
+<div class="shell dashboard-shell gis-dashboard users-shell cctv-shell announcement-shell">
+  <%= render "dashboard/sidebar", active_nav: :announcements, initial_area: area_label %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= area_label %></span><b>›</b><span>ประกาศถึงผู้ใช้</span><b>›</b><span><%= title %></span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker">ผู้ดูแลระบบ</p><h1><%= title %></h1><p>กำหนดข้อความ รูปแบบการแสดง กลุ่มเป้าหมาย และช่วงเวลา</p></div></section>
+      <section class="users-card cctv-form-card"><%= form_with model: announcement, url: announcement.new_record? ? announcements_path : announcement_path(announcement) do |form| %>
+        <% if announcement.errors.any? %><div class="form-errors"><% announcement.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
+        <div class="cctv-form-grid">
+          <fieldset class="cctv-fieldset">
+            <legend>ข้อความประกาศ</legend>
+            <label>หัวข้อ<%= form.text_field :title, required: true, maxlength: 150, placeholder: "เช่น ปิดปรับปรุงระบบ 20 ต.ค. 22:00 น." %></label>
+            <label>รายละเอียด<%= form.text_area :body, rows: 7, required: true, placeholder: "ข้อความที่ต้องการแจ้งผู้ใช้ (ขึ้นบรรทัดใหม่ได้)" %></label>
+            <label>ระดับความสำคัญ<%= form.select :level, Announcement::LEVELS.map { |value, label| [label, value] } %></label>
+            <label class="announcement-check"><%= form.check_box :active %> เปิดใช้งาน</label>
+          </fieldset>
+          <fieldset class="cctv-fieldset">
+            <legend>รูปแบบการแสดง</legend>
+            <div class="announcement-radio-group"><b>ความถี่</b>
+              <% Announcement::FREQUENCIES.each do |value, label| %><label class="announcement-check"><%= form.radio_button :frequency, value %> <%= label %></label><% end %>
+            </div>
+            <div class="announcement-radio-group"><b>การปิด</b>
+              <% Announcement::DISPLAY_MODES.each do |value, label| %><label class="announcement-check"><%= form.radio_button :display_mode, value %> <%= label %></label><% end %>
+            </div>
+            <small>ครั้งเดียว + popup: แสดงจนกว่าผู้ใช้กดรับทราบ · ทุกครั้ง + popup: แสดงทุกครั้งที่เข้าสู่ระบบ (ปิดได้ในรอบนั้น) · ครั้งเดียว + มุมจอ: แสดงตลอดการเข้าใช้งานรอบแรกเท่านั้น · ทุกครั้ง + มุมจอ: แสดงทุกหน้าจนหมดอายุ/ปิดใช้งาน</small>
+            <div class="cctv-coordinates">
+              <label>เริ่มแสดง<%= form.datetime_local_field :starts_at, value: datetime_value.call(announcement.starts_at) %><small>ว่าง = ทันที</small></label>
+              <label>สิ้นสุด<%= form.datetime_local_field :ends_at, value: datetime_value.call(announcement.ends_at) %><small>ว่าง = ไม่กำหนด</small></label>
+            </div>
+          </fieldset>
+          <fieldset class="cctv-fieldset">
+            <legend>กลุ่มเป้าหมาย</legend>
+            <div class="announcement-radio-group"><b>สิทธิ์ผู้ใช้</b><small>ไม่เลือก = ทุกสิทธิ์</small>
+              <%= hidden_field_tag "announcement[target_roles][]", "" %>
+              <% Announcement::ROLES.each do |value, label| %><label class="announcement-check"><%= check_box_tag "announcement[target_roles][]", value, announcement.target_roles.include?(value), id: "announcement_target_roles_#{value}" %> <%= label %></label><% end %>
+            </div>
+            <label>รหัสตำบล<%= form.text_area :target_subdistrict_codes, rows: 3, placeholder: "เช่น 140113, 550513" %><small>คั่นด้วยจุลภาคหรือเว้นวรรค ว่าง = ทุกพื้นที่</small></label>
+            <% if announcement.persisted? && announcement.target_subdistrict_ids.any? %><small>ปัจจุบัน: <%= announcement.target_subdistricts.map { |area| "#{area.code} ต.#{area.name_th}" }.join(", ") %></small><% end %>
+          </fieldset>
+        </div>
+        <div class="form-actions"><%= form.submit "บันทึก", class: "button-link primary" %><%= link_to "ยกเลิก", announcements_path, class: "button-link" %></div>
+      <% end %></section>
+    </div>
+  </main>
+</div>

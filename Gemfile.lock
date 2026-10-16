@@ -169,6 +169,8 @@ GEM
       concurrent-ruby (>= 1.0.5, < 2.0)
       mongo (>= 2.18.0, < 3.0.0)
       ostruct
+    mqtt (0.7.0)
+      logger
     msgpack (1.8.4)
     multi_json (1.21.1)
     net-imap (0.6.6)
@@ -181,6 +183,8 @@ GEM
     net-smtp (0.5.1)
       net-protocol
     nio4r (2.7.5)
+    nokogiri (1.19.4-aarch64-linux-gnu)
+      racc (~> 1.4)
     nokogiri (1.19.4-x86_64-linux-gnu)
       racc (~> 1.4)
     orm_adapter (0.5.0)
@@ -190,6 +194,7 @@ GEM
       afm (>= 0.2.1, < 2)
       hashery (~> 2.0)
       ttfunk
+    pg (1.6.3-aarch64-linux)
     pg (1.6.3-x86_64-linux)
     pp (0.6.4)
       prettyprint
@@ -303,6 +308,7 @@ GEM
     zeitwerk (2.8.3)
 
 PLATFORMS
+  aarch64-linux
   x86_64-linux-gnu
 
 DEPENDENCIES
@@ -316,6 +322,7 @@ DEPENDENCIES
   importmap-rails
   minitest (< 6)
   mongoid (~> 9.0)
+  mqtt (~> 0.6)
   pdf-reader (~> 2.13)
   pg (~> 1.5)
   propshaft

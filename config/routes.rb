@@ -52,11 +52,9 @@ Rails.application.routes.draw do
   end
   get "dataset_templates/:data_type", to: "data_layers#template", as: :dataset_template
   resources :place_imports, only: :create
-  authenticated :user do
-    root "dashboard#index", as: :authenticated_root
-  end
-  devise_scope :user do
-    root to: "devise/sessions#new"
+  resources :cctv_cameras, except: :show
+  resources :activities, except: :show do
+    patch :acknowledge, on: :member
   end
   get "ai", to: "ai_assistant#index", as: :ai_assistant
   namespace :ai do
@@ -90,6 +88,30 @@ Rails.application.routes.draw do
       patch :make_default
     end
   end
+  get "settings", to: "settings#index", as: :settings
+  resource :system_settings, only: %i[show update] do
+    get :status
+    get :logo
+  end
+  resource :organization_settings, only: %i[show update] do
+    post :regenerate_public_link
+    get "logo/:key", action: :logo, as: :logo
+  end
+  resources :announcements, except: :show do
+    member do
+      patch :toggle
+      post :acknowledge
+    end
+  end
+  resources :projects, except: :show do
+    get "photos/:photo_id", action: :photo, on: :member, as: :photo
+  end
+  authenticated :user do
+    root "dashboard#index", as: :authenticated_root
+  end
+  devise_scope :user do
+    root to: "devise/sessions#new"
+  end
   namespace :api do
     get "terrain_tiles/:z/:x/:y", to: "terrain_tiles#show", constraints: { z: /\d+/, x: /\d+/, y: /\d+/ }
     get "terrain_color_tiles/:z/:x/:y", to: "terrain_tiles#color", constraints: { z: /\d+/, x: /\d+/, y: /\d+/ }
@@ -105,7 +127,13 @@ Rails.application.routes.draw do
     resources :imported_datasets, only: %i[index show]
     resources :water_stations, only: :index
     resources :fire_hotspots, only: :index
+    resources :cctv_cameras, only: :index
+    resources :activities, only: :index
+    resources :projects, only: :index
     resources :pm25_readings, only: :create
+    resources :water_level_readings, only: :create
+    get "sensors", to: "sensors#index"
+    get "sensors/:sensor_type/:sensor_id/readings", to: "sensors#readings", as: :sensor_readings
     resource :access_area, only: :show
     resources :places, only: :index do
       get :usage, on: :collection

@@ -1,0 +1,29 @@
+<%# Page frame for the settings pages. locals: title, kicker, description, active (:system, :status, :ai, :notifications, :organization, :notification_channels, :notification_templates, :notification_tests) %>
+<% settings_area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<div class="shell dashboard-shell gis-dashboard users-shell settings-shell">
+  <%= render "dashboard/sidebar", active_nav: :settings, initial_area: settings_area %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= settings_area %></span><b>›</b><span>ตั้งค่าระบบ</span><b>›</b><span><%= title %></span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker"><%= kicker %></p><h1><%= title %></h1><p><%= description %></p></div></section>
+      <% if system_admin? %>
+        <nav class="settings-tabs" aria-label="หมวดการตั้งค่า">
+          <%= link_to system_settings_path, class: ("active" if active == :system) do %><span class="material-symbols-outlined">tune</span>ตั้งค่าทั้งระบบ<% end %>
+          <%= link_to status_system_settings_path, class: ("active" if active == :status) do %><span class="material-symbols-outlined">monitor_heart</span>สถานะระบบ<% end %>
+          <%= link_to ai_providers_path, class: ("active" if active == :ai) do %><span class="material-symbols-outlined">smart_toy</span>ผู้ให้บริการ AI<% end %>
+          <%= link_to notification_settings_path, class: ("active" if active == :notifications) do %><span class="material-symbols-outlined">campaign</span>การแจ้งเตือนส่วนกลาง<% end %>
+        </nav>
+      <% elsif current_user.subdistrict_admin? %>
+        <nav class="settings-tabs" aria-label="หมวดการตั้งค่า">
+          <%= link_to organization_settings_path, class: ("active" if active == :organization) do %><span class="material-symbols-outlined">account_balance</span>ตั้งค่า อบต.<% end %>
+          <%= link_to notification_channels_path, class: ("active" if active == :notification_channels) do %><span class="material-symbols-outlined">group</span>ช่องทางแจ้งเตือน<% end %>
+          <%= link_to notification_templates_path, class: ("active" if active == :notification_templates) do %><span class="material-symbols-outlined">edit_note</span>เทมเพลตข้อความ<% end %>
+          <%= link_to notification_tests_path, class: ("active" if active == :notification_tests) do %><span class="material-symbols-outlined">send</span>ทดสอบการส่ง<% end %>
+        </nav>
+      <% end %>
+      <% if notice.present? %><p class="activity-flash notice"><%= notice %></p><% end %>
+      <% if alert.present? %><p class="activity-flash alert"><%= alert %></p><% end %>
+      <%= yield %>
+    </div>
+  </main>
+</div>

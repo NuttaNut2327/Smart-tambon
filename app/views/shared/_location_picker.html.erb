@@ -1,0 +1,20 @@
+<%# Map picker for a form with latitude/longitude fields.
+    locals: form, record, name_field (optional, e.g. :location_name), required (default false), help (optional) %>
+<% required = local_assigns.fetch(:required, false) %>
+<% area_center = current_user&.subdistrict&.center %>
+<% located = record.latitude.present? && record.longitude.present? %>
+<% center = located ? [record.longitude, record.latitude] : (area_center ? [area_center.x, area_center.y] : [100.5018, 13.7563]) %>
+<% lat_id = "#{form.object_name}_latitude".gsub(/[\[\]]+/, "_").delete_suffix("_") %>
+<% lon_id = "#{form.object_name}_longitude".gsub(/[\[\]]+/, "_").delete_suffix("_") %>
+<% name_id = local_assigns[:name_field] && "#{form.object_name}_#{local_assigns[:name_field]}".gsub(/[\[\]]+/, "_").delete_suffix("_") %>
+<div class="location-picker" data-location-picker data-lat-input="#<%= lat_id %>" data-lon-input="#<%= lon_id %>" <% if name_id %>data-name-input="#<%= name_id %>"<% end %> data-center="<%= center.to_json %>" data-zoom="<%= located || area_center ? 15 : 6 %>">
+  <div class="location-picker-map" data-location-map></div>
+  <div class="location-picker-bar">
+    <small data-location-status><%= local_assigns[:help] || "คลิกบนแผนที่ ลากหมุด หรือค้นหาชื่อสถานที่/ถนนเพื่อกำหนดตำแหน่ง" %></small>
+    <button type="button" class="button-link" data-location-current><span class="material-symbols-outlined">my_location</span>ตำแหน่งปัจจุบัน</button>
+  </div>
+  <div class="location-picker-coordinates">
+    <label>ละติจูด<%= form.number_field :latitude, step: "any", min: -90, max: 90, required:, id: lat_id %></label>
+    <label>ลองจิจูด<%= form.number_field :longitude, step: "any", min: -180, max: 180, required:, id: lon_id %></label>
+  </div>
+</div>

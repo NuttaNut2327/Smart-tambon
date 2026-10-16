@@ -1,0 +1,90 @@
+/* System settings (super admin) and อบต. settings (tambon admin) */
+.settings-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.settings-tabs a{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid #e3e7e2;border-radius:999px;background:#fff;color:#4b5a50;font-size:13px;text-decoration:none}
+.settings-tabs a .material-symbols-outlined{font-size:18px}
+.settings-tabs a.active{border-color:#2c3930;background:#2c3930;color:#fff}
+
+.settings-form{display:grid;gap:16px}
+.settings-card{display:grid;gap:14px;padding:20px;border:1px solid #e3e7e2;border-radius:14px;background:#fff;scroll-margin-top:90px}
+/* The dashboard's global header rule (fixed height, space-between, shadow) must not apply to card headers. */
+.settings-card>header{display:flex;gap:12px;align-items:flex-start;justify-content:flex-start;height:auto;padding:0;background:none;box-shadow:none;border:0}
+.settings-card>header>.material-symbols-outlined{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:#eef4f0;color:#3f6b52;font-size:22px}
+.settings-card>header h2{margin:0;font-size:16px}
+.settings-card>header p{margin:2px 0 0;color:#6b756f;font-size:13px}
+.settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px}
+.settings-grid>label,.settings-grid>.settings-logo{display:grid;gap:5px;margin:0;font-size:13px;color:#4b5a50}
+.settings-grid small{color:#7a847d;font-size:12px}
+.settings-grid code{padding:1px 5px;border-radius:4px;background:#f1f3f0;font-size:12px}
+.settings-grid .span-2{grid-column:1/-1}
+.settings-check{display:inline-flex!important;align-items:center;gap:6px;margin:0 18px 0 0;font-size:13px;color:#4b5a50}
+.settings-check input{width:auto!important;margin:0}
+.settings-layers{margin:0;padding:12px 14px;border:1px solid #eef1ee;border-radius:10px}
+.settings-layers legend{padding:0 6px;font-size:13px;color:#4b5a50}
+.settings-layer-options{display:flex;flex-wrap:wrap;gap:6px 0;margin-top:8px;padding-left:22px}
+.settings-layer-options input:disabled+*{opacity:.5}
+.settings-source{font-weight:600;color:#7a847d}
+.settings-source.settings{color:#2d6a45}
+.settings-source.env{color:#2f6fb0}
+.settings-source.none{color:#b42318}
+.settings-logo{grid-template-columns:72px 1fr!important;align-items:center;gap:14px!important}
+.settings-logo img{width:72px;height:72px;object-fit:contain;padding:8px;border:1px solid #eef1ee;border-radius:12px;background:#fafbf9}
+.settings-logo>div{display:grid;gap:6px}
+.settings-logo label{display:grid;gap:5px}
+
+.settings-toggles{display:grid;gap:10px}
+.settings-switch{display:flex!important;gap:12px;align-items:flex-start;margin:0;padding:12px 14px;border:1px solid #eef1ee;border-radius:10px;cursor:pointer}
+.settings-switch input{width:18px!important;height:18px;margin:2px 0 0;flex:0 0 18px;accent-color:#3f6b52}
+.settings-switch span{display:grid;gap:2px}
+.settings-switch b{font-size:14px}
+.settings-switch small{color:#6b756f;font-size:12px}
+
+.settings-links{display:grid;gap:8px}
+.settings-link-row{display:grid;grid-template-columns:24px minmax(120px,220px) minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px}
+.settings-link-row .material-symbols-outlined{color:#7e8b82}
+.settings-link-row input{min-width:0;margin:0!important;font-size:12px;color:#4b5a50;background:#fafbf9!important}
+.settings-link-row .button-link{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.settings-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.settings-actions small{color:#7a847d;font-size:12px}
+.settings-danger{margin-top:16px;border-color:#f3d4cf;grid-template-columns:1fr auto;align-items:center}
+.settings-danger>header>.material-symbols-outlined{background:#fbeaea;color:#b42318}
+.settings-danger form{margin:0}
+.settings-danger .button-link.danger{display:inline-flex;align-items:center;gap:6px;color:#b42318;border-color:#f1c7c2}
+
+.settings-status-summary{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
+.settings-status-summary>span{padding:8px 14px;border-radius:10px;font-size:13px}
+.settings-status-summary b{font-size:18px;margin-right:4px}
+.settings-status-summary .ok{background:#e8f3ec;color:#2d6a45}
+.settings-status-summary .warning{background:#fbf1de;color:#8a5d0e}
+.settings-status-summary .error{background:#fbeaea;color:#9b2c2c}
+.settings-status-summary .button-link{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+.settings-status{gap:0;padding:6px 20px}
+.settings-status-row{display:grid;grid-template-columns:28px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #eef1ee}
+.settings-status-row:last-child{border-bottom:0}
+.settings-status-row>div{display:grid;gap:2px}
+.settings-status-row small{color:#6b756f;font-size:12px;word-break:break-word}
+.settings-status-row em{color:#9aa59e;font-size:12px;font-style:normal}
+.settings-status-row.ok>.material-symbols-outlined{color:#2e8b57}
+.settings-status-row.warning>.material-symbols-outlined{color:#c98a1b}
+.settings-status-row.error>.material-symbols-outlined{color:#c2463a}
+
+/* Public report page additions */
+.public-report-welcome{display:flex;gap:10px;align-items:flex-start;margin:0 0 16px;padding:12px 14px;border-radius:12px;background:#fff7e6;color:#6b4a0e;font-size:14px}
+.public-report-welcome p{margin:0}
+.public-report-secure a{color:inherit;font-weight:600}
+.public-report-closed .material-symbols-outlined{color:#c98a1b}
+
+@media (max-width:760px){
+  .settings-grid{grid-template-columns:1fr}
+  .settings-link-row{grid-template-columns:24px 1fr auto}
+  .settings-link-row input{grid-column:1/-1}
+  .settings-danger{grid-template-columns:1fr}
+}
+
+/* Form fields: settings cards sit outside .users-card, so they need the app's field styling; textareas had none anywhere. */
+.settings-card input:not([type=checkbox]):not([type=radio]):not([type=file]),.settings-card select,.settings-card textarea,.users-card textarea{width:100%;min-height:38px;margin:0;padding:9px 11px;border:1px solid var(--theme-border,#e2dac8);border-radius:8px;background:#fff;color:inherit;font:inherit;font-size:14px;line-height:1.4;box-shadow:none}
+.settings-card textarea,.users-card textarea{min-height:76px;resize:vertical;line-height:1.5}
+.settings-card input:not([type=checkbox]):not([type=radio]):not([type=file]):focus,.settings-card select:focus,.settings-card textarea:focus,.users-card textarea:focus{outline:none;border-color:#567f6d!important;box-shadow:0 0 0 3px rgba(86,127,109,.15)}
+.settings-card input::placeholder,.settings-card textarea::placeholder{color:#a3aca5}
+.settings-card input[type=file]{font-size:13px}
+.settings-grid{align-items:start}
+.settings-link-row input{min-height:34px!important;padding:6px 10px!important;font-size:12px!important}

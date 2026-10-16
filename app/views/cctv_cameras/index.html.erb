@@ -1,0 +1,44 @@
+<% cctv_area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<div class="shell dashboard-shell gis-dashboard users-shell cctv-shell">
+  <%= render "dashboard/sidebar", active_nav: :cctv_cameras, initial_area: cctv_area %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= cctv_area %></span><b>›</b><span>กล้องวงจรปิด</span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker">อุปกรณ์เฝ้าระวัง</p><h1>กล้องวงจรปิด (CCTV)</h1><p>ลงทะเบียนกล้องและ URL สตรีม เพื่อแสดงภาพสดบนแผนที่</p></div><%= link_to new_cctv_camera_path, class: "button-link primary" do %><span class="material-symbols-outlined">add</span>เพิ่มกล้อง<% end %></section>
+      <% if notice.present? %><p class="cctv-flash notice"><%= notice %></p><% end %>
+      <% if alert.present? %><p class="cctv-flash alert"><%= alert %></p><% end %>
+      <section class="users-card users-list-card">
+        <div class="users-toolbar"><div><h2>กล้องในพื้นที่</h2><p>กดที่ภาพตัวอย่างเพื่อดูสตรีมแบบเต็มจอ</p></div><span><%= @cameras.size %> ตัว</span></div>
+        <% if @cameras.empty? %>
+          <div class="cctv-empty"><span class="material-symbols-outlined">videocam_off</span><b>ยังไม่มีกล้องในพื้นที่</b><small>เพิ่มกล้องตัวแรกพร้อม URL สตรีม แล้วกล้องจะแสดงบนหน้าแผนที่</small></div>
+        <% else %>
+          <div class="users-table-wrap"><table class="users-table cctv-table"><thead><tr><th>กล้อง</th><th>สตรีม</th><th>สถานะ</th><th>พื้นที่</th><th>จัดการ</th></tr></thead><tbody>
+            <% @cameras.each do |camera| %>
+              <% area = @subdistricts_by_id[camera.subdistrict_id] %>
+              <tr>
+                <td><b><%= camera.name %></b><% if camera.code.present? %><small><%= camera.code %></small><% end %><% if camera.location_name.present? %><small><%= camera.location_name %></small><% end %></td>
+                <td><span class="cctv-type"><%= camera.stream_type_label %></span><button type="button" class="cctv-watch" data-cctv-camera="<%= camera.as_map_json.to_json %>" <%= "disabled" if camera.status == "inactive" %>><span class="material-symbols-outlined">live_tv</span>ดูสด</button></td>
+                <td><span class="cctv-status <%= camera.status %>"><%= camera.status_label %></span></td>
+                <td><%= area ? "ต.#{area.name_th} อ.#{area.district_name_th}" : "ไม่อยู่ในขอบเขตตำบล" %></td>
+                <td class="cctv-actions">
+                  <% if camera.editable_by?(current_user) %>
+                    <%= link_to "แก้ไข", edit_cctv_camera_path(camera), class: "button-link" %>
+                    <%= button_to "ลบ", cctv_camera_path(camera), method: :delete, class: "button-link danger", form: { data: { cctv_delete: camera.name } } %>
+                  <% else %><small>ดูได้อย่างเดียว</small><% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody></table></div>
+        <% end %>
+      </section>
+    </div>
+  </main>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("[data-cctv-watch], .cctv-watch").forEach(button => button.addEventListener("click", () => window.SmartTambonCctv?.openViewer(JSON.parse(button.dataset.cctvCamera))));
+    document.querySelectorAll("[data-cctv-delete]").forEach(form => form.addEventListener("submit", event => {
+      if (!window.confirm(`ต้องการลบกล้อง "${form.dataset.cctvDelete}" ใช่หรือไม่?`)) event.preventDefault();
+    }));
+  });
+</script>

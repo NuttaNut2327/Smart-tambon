@@ -1,0 +1,6 @@
+<% org = @organization_setting %>
+<% logo_src = org&.logo.present? ? logo_organization_settings_path(key: org.organization_key, v: org.logo["id"]) : system_logo_src %>
+<header class="public-report-header">
+  <div class="public-report-brand"><%= image_tag logo_src, class: "smart-tambon-logo public-brand-logo", alt: "" %><div><strong><%= org&.display_name || system_name %></strong><small><%= org&.organization_name.present? ? "#{system_name} · ระบบรับแจ้งเหตุประชาชน" : "ระบบรับแจ้งเหตุประชาชน" %></small></div></div>
+  <span class="public-report-secure"><% if org&.phone.present? %><span class="material-symbols-outlined">call</span><a href="tel:<%= org.phone.gsub(/[^\d+]/, "") %>"><%= org.phone %></a><% else %><span class="material-symbols-outlined">lock</span>แบบฟอร์มสาธารณะ<% end %></span>
+</header>

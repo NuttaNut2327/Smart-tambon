@@ -1,0 +1,14 @@
+th:
+  mongoid:
+    attributes:
+      incident:
+        title: ชื่อ
+        incident_type: ประเภท
+        starts_at: เวลาเริ่ม
+        ends_at: เวลาสิ้นสุด
+        organizer: ผู้จัด
+        expected_attendees: จำนวนผู้ร่วมงาน
+        location_name: ชื่อสถานที่
+        latitude: ละติจูด
+        longitude: ลองจิจูด
+        description: รายละเอียด

@@ -2,7 +2,7 @@
 <div class="shell dashboard-shell gis-dashboard users-shell">
   <%= render "dashboard/sidebar", active_nav: :users, initial_area: users_area %>
   <main class="dashboard-main content">
-    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker">SMART TAMBON SAFETY THAILAND</p><span class="breadcrumb"><span id="selection-label"><%= users_area %></span><b>›</b><span>จัดการผู้ใช้</span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= users_area %></span><b>›</b><span>จัดการผู้ใช้</span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
     <div class="dashboard-content users-page users-workspace">
       <section class="city-heading users-title-row"><div><p class="page-kicker">การบริหารสิทธิ์ผู้ใช้งาน</p><h1>จัดการผู้ใช้</h1><p><%= current_user.system_admin? ? "จัดการบัญชีและขอบเขตพื้นที่ของทุกหน่วยงาน" : "จัดการบัญชีผู้ดูแลและเจ้าหน้าที่ภายใน อบต. ของคุณ" %></p></div><%= link_to "＋ เพิ่มผู้ใช้", new_user_path, class: "button-link primary users-create-button", data: { user_modal_url: new_user_path } %></section>
       <section class="users-card users-list-card">

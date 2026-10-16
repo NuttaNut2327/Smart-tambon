@@ -1,0 +1,22 @@
+th:
+  mongoid:
+    models:
+      announcement: ประกาศ
+      announcement_receipt: การรับทราบประกาศ
+    attributes:
+      announcement:
+        title: หัวข้อ
+        body: รายละเอียด
+        level: ระดับความสำคัญ
+        frequency: ความถี่
+        display_mode: รูปแบบการปิด
+        active: เปิดใช้งาน
+        starts_at: วันที่เริ่มแสดง
+        ends_at: วันที่สิ้นสุด
+        target_roles: สิทธิ์ผู้ใช้เป้าหมาย
+        target_subdistrict_ids: ตำบลเป้าหมาย
+        created_by_id: ผู้สร้าง
+      announcement_receipt:
+        user_id: ผู้ใช้
+        first_seen_at: เห็นครั้งแรก
+        acknowledged_at: รับทราบเมื่อ

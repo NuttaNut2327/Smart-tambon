@@ -1,0 +1,133 @@
+/* Projects: management pages and map popup. Layout reuses the cctv-* page classes. */
+.layer-dot.project{background:#2d8a55}
+.project-layer-filter{display:flex;gap:6px;padding:0 0 6px 28px}
+.project-layer-filter select{flex:1;min-width:0;padding:4px 6px;border:1px solid #dfe4df;border-radius:8px;font:inherit;font-size:12px;background:#fff}
+
+.project-status{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;background:#efecf8;color:#5b4f93;white-space:nowrap}
+.project-status.procurement{background:#fbf1de;color:#8a5d0e}
+.project-status.in_progress{background:#e8f0f9;color:#2f6fb0}
+.project-status.completed{background:#e8f3ec;color:#2d6a45}
+.project-status.suspended{background:#eceef0;color:#5f656d}
+.project-group{display:inline-block;font-weight:600;font-size:13px}
+.project-shell .project-table td small{display:block}
+.project-shell .project-table td{white-space:normal;overflow:visible;text-align:left}
+.project-shell .project-table th{white-space:normal}
+.project-shell .project-table th:nth-child(1){width:23%}
+.project-shell .project-table th:nth-child(2){width:15%}
+.project-shell .project-table th:nth-child(3){width:7%}
+.project-shell .project-table th:nth-child(4){width:12%}
+.project-shell .project-table th:nth-child(5){width:12%}
+.project-shell .project-table th:nth-child(6){width:11%}
+.project-shell .project-table th:nth-child(7){width:10%}
+.project-shell .project-table th:nth-child(8){width:10%}
+.project-shell .project-table .numeric{text-align:right}
+.project-name-cell{display:flex;gap:10px;align-items:center}
+.project-cover{width:48px;height:48px;flex:none;border-radius:8px;object-fit:cover;background:#eef1ee}
+.project-cover.empty{display:grid;place-content:center;color:#a3ada6;font-size:22px}
+.project-progress,.project-popup-progress{display:inline-block;width:72px;height:6px;border-radius:999px;background:#e6eae6;overflow:hidden;vertical-align:middle}
+.project-progress{display:block;margin-top:6px}
+.project-progress i,.project-popup-progress i{display:block;height:100%;background:#2d8a55}
+.project-pin{font-size:16px;color:#2d8a55;vertical-align:-3px}
+
+.users-card form.project-filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px}
+.users-card form.project-filters>label{display:grid;gap:4px;width:auto;font-size:13px;color:#5f6b63}
+.project-filters label:first-child{flex:1 1 220px}
+.users-card .project-filters input,.users-card .project-filters select{width:auto;min-width:150px;padding:7px 10px}
+.users-card .project-filters input{width:100%}
+.project-filters .button-link{display:inline-flex;align-items:center;gap:4px}
+
+.project-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+.project-photo-grid:empty{display:none}
+.project-photo-thumb{display:grid;gap:4px;margin:0}
+.project-photo-thumb img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid #e3e7e2}
+.project-photo-thumb span{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:400;color:#9b2c2c}
+.users-card .project-photo-thumb input[type=checkbox]{width:auto;margin:0}
+.project-existing-photos{display:grid;gap:6px}
+.project-coordinates{grid-template-columns:1fr 1fr auto;align-items:end}
+.project-coordinates .button-link{display:inline-flex;align-items:center;gap:4px}
+
+.project-popup{display:grid;gap:6px;width:280px;max-width:72vw}
+.project-popup strong{font-size:15px;line-height:1.35}
+.project-popup p{margin:0;font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.project-popup-code{color:#6b756f;font-size:12px}
+.project-popup dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:0;font-size:12px}
+.project-popup dt{color:#6b756f}
+.project-popup dd{margin:0;word-break:break-word}
+.project-popup-description{color:#3f4943;max-height:72px;overflow:auto;display:block!important}
+.project-popup-gallery{display:flex;gap:6px;overflow-x:auto;scroll-snap-type:x mandatory}
+.project-popup-gallery a{flex:0 0 auto;scroll-snap-align:start}
+.project-popup-gallery img{display:block;height:110px;width:auto;max-width:240px;border-radius:8px;object-fit:cover}
+.project-popup-gallery a:only-child img{width:280px;max-width:100%;height:150px}
+
+@media (max-width:720px){
+  .project-coordinates{grid-template-columns:1fr 1fr}
+  .users-card .project-filters input,.users-card .project-filters select{min-width:0;width:100%}
+  .project-filters label{flex:1 1 140px}
+}
+
+/* Approval badge + budget-by-year stacked bar chart */
+.project-approval{display:block;width:fit-content;margin:4px 0 0 auto;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:600;background:#fdf3dc;color:#7a5600}
+.project-approval.approved{background:#e3f4e3;color:#16661a}
+.project-approval.rejected{background:#fbe7e7;color:#a12c2c}
+.budget-swatch{display:inline-block;width:10px;height:10px;border-radius:3px;flex:none;background:#fab219}
+.budget-swatch.approved,.budget-segment.approved{background:#0ca30c}
+.budget-swatch.pending,.budget-segment.pending{background:#fab219}
+.budget-swatch.rejected,.budget-segment.rejected{background:#d03b3b}
+
+.budget-chart{margin:0 0 20px;padding:16px 18px;border:1px solid #e3e7e2;border-radius:14px;background:#fff}
+.budget-chart-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.budget-chart-head h2{margin:0;font-size:17px}
+.budget-chart-head p{margin:2px 0 0;font-size:12px;color:#6b756f}
+.budget-chart-toggle{display:inline-flex;padding:3px;border-radius:10px;background:#f1f3f0}
+.budget-chart-toggle button{padding:6px 12px;border:0;border-radius:8px;background:transparent;color:#5f6b63;font:inherit;font-size:12px;cursor:pointer}
+.budget-chart-toggle button[aria-pressed=true]{background:#fff;color:#1f2a23;font-weight:600;box-shadow:0 1px 3px rgb(0 0 0 / 10%)}
+.budget-chart-legend{display:flex;flex-wrap:wrap;gap:8px 22px;margin:14px 0 6px;padding:0;list-style:none;font-size:12px;color:#5f6b63}
+.budget-chart-legend li{display:flex;align-items:center;gap:6px}
+.budget-chart-legend b{color:#1f2a23}
+.budget-chart-legend li.total{padding-right:22px;border-right:1px solid #e3e7e2}
+
+.budget-chart-plot{position:relative;height:280px;margin-top:8px}
+.budget-chart-grid{position:absolute;top:22px;bottom:28px;left:0;right:0;pointer-events:none}
+.budget-chart-grid div{position:absolute;left:64px;right:0;border-top:1px solid #edf0ec}
+.budget-chart-grid div:last-child{border-top-color:#c9d0ca}
+.budget-chart-grid span{position:absolute;right:calc(100% + 8px);top:-8px;font-size:11px;color:#7a847d;white-space:nowrap}
+.budget-chart-bars{position:absolute;top:22px;bottom:0;left:64px;right:0;display:flex;gap:4px}
+.budget-chart-column{flex:1 1 0;min-width:0;display:grid;grid-template-rows:1fr 28px;justify-items:center;text-decoration:none;color:inherit;border-radius:8px;outline-offset:2px}
+.budget-chart-column:hover,.budget-chart-column:focus-visible,.budget-chart-column.selected{background:#f5f7f4}
+.budget-chart-stack{position:relative;width:min(56px,70%);display:flex;flex-direction:column-reverse}
+.budget-segment{display:block;box-sizing:border-box;width:100%;flex:none}
+.budget-segment+.budget-segment{border-bottom:2px solid #fff}
+.budget-segment:last-of-type{border-radius:4px 4px 0 0}
+.budget-chart[data-metric=budget] .budget-segment{height:var(--budget)}
+.budget-chart[data-metric=count] .budget-segment{height:var(--count)}
+.budget-chart[data-metric=budget] .budget-segment.zero-budget{display:none}
+.budget-chart-total{position:absolute;left:50%;transform:translate(-50%,-4px);font-size:11px;font-weight:600;color:#1f2a23;white-space:nowrap}
+.budget-chart-year{align-self:center;font-size:12px;color:#5f6b63}
+.budget-chart-column.selected .budget-chart-year{color:#1f2a23;font-weight:700}
+.budget-chart[data-metric=budget] [data-metric-only=count],.budget-chart[data-metric=count] [data-metric-only=budget]{display:none}
+
+.budget-chart-tooltip{position:absolute;top:0;z-index:2;min-width:220px;padding:10px 12px;border-radius:10px;background:#1f2a23;color:#f3f5f2;font-size:12px;box-shadow:0 8px 24px rgb(0 0 0 / 18%);pointer-events:none}
+.budget-chart-tooltip strong{display:block;margin-bottom:6px}
+.budget-chart-tooltip div{display:flex;align-items:center;gap:6px;padding:2px 0}
+.budget-chart-tooltip div b{margin-left:auto;font-weight:600;text-align:right}
+.budget-chart-tooltip small{color:#b9c2bb;font-weight:400}
+.budget-chart-tooltip .total{margin-top:4px;padding-top:6px;border-top:1px solid #3b4740}
+.budget-chart-table{margin-top:12px;font-size:13px}
+.budget-chart-table summary{cursor:pointer;color:#2f6fb0;font-size:12px}
+.budget-chart-table .numeric{text-align:right}
+.budget-chart-table td small{display:block;color:#6b756f}
+@media (max-width:720px){
+  .budget-chart-plot{height:240px}
+  .budget-chart-grid div{left:52px}
+  .budget-chart-bars{left:52px}
+  .budget-chart-legend li.total{border-right:0;padding-right:0;width:100%}
+}
+
+/* Spacing: the theme sets the list card's padding to 0, so give every block the same 20px gutter. */
+.project-shell .users-list-card>form.project-filters{margin:0;padding:20px 20px 0;align-items:flex-end}
+.project-shell .users-list-card>.budget-chart{margin:16px 20px 4px}
+.project-shell .users-list-card>.users-table-wrap{margin:0;padding:0 20px 20px}
+.project-shell .project-filters input,.project-shell .project-filters select,.project-shell .project-filters .button-link{height:38px;margin:0;box-sizing:border-box}
+.project-shell .project-filters .button-link{padding:0 14px}
+.project-shell .project-table th:nth-child(8){width:140px}
+.project-shell .project-table td.cctv-actions{text-align:right}

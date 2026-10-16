@@ -263,6 +263,17 @@ document.addEventListener("DOMContentLoaded", () => {
   form?.addEventListener("change", updateSubmitState);
   updateSubmitState();
   map.on("click", (event) => { const [lon, lat] = ol.proj.toLonLat(event.coordinate); setLocation(lon, lat); });
+  window.SmartTambonLocation?.attachSearch(map, {
+    placeholder: "ค้นหาสถานที่ ถนน หรือหมู่บ้านที่เกิดเหตุ",
+    onSelect: (lon, lat, result) => {
+      if (!setLocation(lon, lat)) return;
+      // Keep the searched place name instead of the reverse-geocoded address.
+      addressRequestId += 1;
+      locationNameInput.value = result.short_name;
+      addressLabel.textContent = result.display_name || result.short_name;
+      addressLabel.classList.remove("loading");
+    }
+  });
   page.querySelector("[data-public-use-location]")?.addEventListener("click", () => {
     if (!navigator.geolocation) return window.alert("อุปกรณ์นี้ไม่รองรับการค้นหาตำแหน่ง");
     navigator.geolocation.getCurrentPosition(

@@ -74,7 +74,7 @@ class DashboardController < ApplicationController
   private
 
   def load_overview_summary
-    incidents = Incident.visible_to(current_user).to_a
+    incidents = Incident.visible_to(current_user).incidents_only.to_a
     now = Time.current
     recent_incidents = incidents.select { |incident| incident.created_at.present? && incident.created_at >= 24.hours.ago }
     today_incidents = incidents.select { |incident| incident.created_at.present? && incident.created_at.in_time_zone.to_date == now.to_date }

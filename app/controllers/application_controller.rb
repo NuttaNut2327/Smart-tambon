@@ -3,7 +3,7 @@ class ApplicationController < ActionController::Base
   before_action :normalize_authentication_flash!
   before_action :require_access_configuration!
 
-  helper_method :system_admin?, :global_viewer?, :user_manager?
+  helper_method :system_admin?, :global_viewer?, :user_manager?, :announcement_feed
 
   private
 
@@ -16,6 +16,17 @@ class ApplicationController < ActionController::Base
 
     flash[:notice] = "คุณเข้าสู่ระบบแล้ว"
     flash.delete(:alert)
+  end
+
+  # Popup announcements for the layout; nil on login, public and non-HTML pages.
+  def announcement_feed
+    return @announcement_feed if defined?(@announcement_feed)
+
+    @announcement_feed = (AnnouncementFeed.new(current_user, session) if show_announcements?)
+  end
+
+  def show_announcements?
+    user_signed_in? && !devise_controller? && request.format.html?
   end
 
   def system_admin?

@@ -1,0 +1,54 @@
+<% cctv_area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<div class="shell dashboard-shell gis-dashboard users-shell cctv-shell">
+  <%= render "dashboard/sidebar", active_nav: :cctv_cameras, initial_area: cctv_area %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= cctv_area %></span><b>›</b><span>กล้องวงจรปิด</span><b>›</b><span><%= title %></span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker">อุปกรณ์เฝ้าระวัง</p><h1><%= title %></h1><p>ระบุ URL สตรีมและคลิกตำแหน่งกล้องบนแผนที่</p></div></section>
+      <section class="users-card cctv-form-card"><%= form_with model: camera, url: camera.new_record? ? cctv_cameras_path : cctv_camera_path(camera), data: { cctv_form: true } do |form| %>
+        <% if camera.errors.any? %><div class="form-errors"><% camera.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
+        <div class="cctv-form-grid">
+          <fieldset class="cctv-fieldset">
+            <legend>ข้อมูลกล้อง</legend>
+            <label>ชื่อกล้อง<%= form.text_field :name, required: true, placeholder: "เช่น กล้องหน้า อบต.ป่ากลาง" %></label>
+            <label>รหัสกล้อง<%= form.text_field :code, placeholder: "เช่น CAM-001" %><small>ไม่บังคับ ใช้อ้างอิงกับอุปกรณ์จริง</small></label>
+            <label>สถานะ<%= form.select :status, CctvCamera::STATUSES.map { |value, label| [label, value] } %></label>
+            <label>ชื่อสถานที่<%= form.text_field :location_name, placeholder: "เช่น สี่แยกตลาดป่ากลาง" %></label>
+            <label>รายละเอียด<%= form.text_area :description, rows: 3, placeholder: "มุมกล้อง จุดที่เฝ้าระวัง ฯลฯ" %></label>
+          </fieldset>
+          <fieldset class="cctv-fieldset">
+            <legend>สตรีมวิดีโอ</legend>
+            <label>URL สตรีม<%= form.url_field :stream_url, required: true, placeholder: "https://example.com/live/cam1/index.m3u8", data: { cctv_stream_url: true } %><small>รองรับ HLS (.m3u8), MJPEG, MP4/WebM หรือหน้า Embed — สำหรับกล้อง RTSP ให้แปลงเป็น HLS ผ่าน gateway (เช่น MediaMTX) ก่อน</small></label>
+            <label>ประเภทสตรีม<%= form.select :stream_type, CctvCamera::STREAM_TYPES.map { |value, label| [label, value] }, { include_blank: "ตรวจจับอัตโนมัติจาก URL" }, data: { cctv_stream_type: true } %></label>
+            <div class="cctv-preview">
+              <div class="cctv-preview-stage" data-cctv-preview><span class="material-symbols-outlined">videocam</span><small>กด "ทดสอบสตรีม" เพื่อดูภาพตัวอย่าง</small></div>
+              <button type="button" class="button-link" data-cctv-preview-button><span class="material-symbols-outlined">play_circle</span>ทดสอบสตรีม</button>
+            </div>
+          </fieldset>
+          <fieldset class="cctv-fieldset cctv-location">
+            <legend>ตำแหน่งกล้อง</legend>
+            <%= render "shared/location_picker", form:, record: camera, name_field: :location_name, required: true %>
+          </fieldset>
+        </div>
+        <div class="form-actions"><%= form.submit "บันทึก", class: "button-link primary" %><%= link_to "ยกเลิก", cctv_cameras_path, class: "button-link" %></div>
+      <% end %></section>
+    </div>
+  </main>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.querySelector("[data-cctv-form]");
+    if (!form) return;
+    const urlInput = form.querySelector("[data-cctv-stream-url]");
+    const typeInput = form.querySelector("[data-cctv-stream-type]");
+    const previewStage = form.querySelector("[data-cctv-preview]");
+    let stopPreview = null;
+
+    form.querySelector("[data-cctv-preview-button]").addEventListener("click", () => {
+      if (!urlInput.reportValidity()) return;
+      stopPreview?.();
+      stopPreview = window.SmartTambonCctv?.mount(previewStage, { stream_url: urlInput.value.trim(), stream_type: typeInput.value || window.SmartTambonCctv.detectType(urlInput.value) });
+    });
+
+  });
+</script>

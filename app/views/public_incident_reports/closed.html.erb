@@ -1,0 +1,11 @@
+<main class="public-report-page">
+  <%= render "public_incident_reports/header" %>
+  <div class="public-report-container">
+    <section class="public-report-success public-report-closed">
+      <span class="material-symbols-outlined">pause_circle</span>
+      <p>ปิดรับแจ้งเหตุชั่วคราว</p>
+      <h1>แบบฟอร์มแจ้งเหตุพื้นที่ <%= @report_area_name %> ปิดรับแจ้งชั่วคราว</h1>
+      <% if @organization_setting&.phone.present? %><p>กรณีเร่งด่วน กรุณาติดต่อ <%= @organization_setting.display_name("อบต.") %> โทร. <a href="tel:<%= @organization_setting.phone.gsub(/[^\d+]/, "") %>"><%= @organization_setting.phone %></a></p><% else %><p>กรณีเร่งด่วน กรุณาติดต่อหน่วยงานในพื้นที่โดยตรง หรือโทร 1669 / 191</p><% end %>
+    </section>
+  </div>
+</main>

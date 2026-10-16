@@ -1,0 +1,62 @@
+<% activity_area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<div class="shell dashboard-shell gis-dashboard users-shell activities-shell">
+  <%= render "dashboard/sidebar", active_nav: :activities, initial_area: activity_area %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= activity_area %></span><b>›</b><span>กิจกรรมในพื้นที่</span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker">ปฏิทินกิจกรรม</p><h1>กิจกรรมในพื้นที่</h1><p>บันทึกงานและกิจกรรมที่จัดในพื้นที่ รับเรื่องเพื่อติดตาม และสิ้นสุดอัตโนมัติตามเวลาที่กำหนด</p></div><%= link_to new_activity_path, class: "button-link primary" do %><span class="material-symbols-outlined">add</span>เพิ่มกิจกรรม<% end %></section>
+      <% if notice.present? %><p class="activity-flash notice"><%= notice %></p><% end %>
+      <% if alert.present? %><p class="activity-flash alert"><%= alert %></p><% end %>
+      <nav class="activity-filters" aria-label="กรองกิจกรรม">
+        <% ActivitiesController::FILTERS.each do |key, label| %>
+          <%= link_to activities_path(filter: key), class: ("active" if @filter == key), aria: { current: (@filter == key ? "page" : nil) } do %><%= label %><span><%= @counts[key] %></span><% end %>
+        <% end %>
+      </nav>
+      <% if @activities.empty? %>
+        <section class="users-card activity-empty"><span class="material-symbols-outlined">event_available</span><b><%= @filter == "finished" ? "ยังไม่มีกิจกรรมที่สิ้นสุด" : "ยังไม่มีกิจกรรมที่กำลังจัดหรือกำลังจะเริ่ม" %></b><small>เพิ่มกิจกรรม เช่น งานประจำปี พร้อมช่วงวันเวลาและรูปหลัก แล้วกิจกรรมจะแสดงบนแผนที่</small></section>
+      <% else %>
+        <section class="activity-grid">
+          <% @activities.each do |activity| %>
+            <% phase = activity.activity_phase %>
+            <% cover = activity.cover_photo %>
+            <article class="activity-card phase-<%= phase %>" id="activity-<%= activity.id %>">
+              <div class="activity-cover">
+                <% if cover %><%= image_tag incident_photo_path(activity, cover["id"]), alt: activity.title, loading: "lazy" %><% else %><span class="material-symbols-outlined"><%= activity.activity_icon %></span><% end %>
+                <span class="activity-phase"><%= activity.activity_phase_label %></span>
+              </div>
+              <div class="activity-body">
+                <small class="activity-type"><span class="material-symbols-outlined"><%= activity.activity_icon %></span><%= activity.activity_type_label %> · <%= activity.reference_code %></small>
+                <h2><%= activity.title %></h2>
+                <p class="activity-period"><span class="material-symbols-outlined">schedule</span><%= thai_period(activity.starts_at, activity.ends_at) %></p>
+                <% if activity.location_name.present? %><p><span class="material-symbols-outlined">location_on</span><%= activity.location_name %></p><% end %>
+                <% if activity.organizer.present? || activity.expected_attendees.present? %><p><span class="material-symbols-outlined">groups</span><%= [activity.organizer, (activity.expected_attendees && "คาดผู้ร่วมงาน #{number_with_delimiter(activity.expected_attendees)} คน")].compact.join(" · ") %></p><% end %>
+                <% if activity.description.present? %><p class="activity-description"><%= activity.description %></p><% end %>
+                <div class="activity-footer">
+                  <span class="activity-status status-<%= activity.status %>"><%= activity.activity_status_label %><% if activity.received_by.present? %> โดย <%= activity.received_by %><% end %></span>
+                  <div class="activity-actions">
+                    <% if activity.status == "pending" && phase != "finished" %>
+                      <%= button_to acknowledge_activity_path(activity, filter: @filter), method: :patch, class: "button-link primary" do %><span class="material-symbols-outlined">task_alt</span>รับเรื่อง<% end %>
+                    <% end %>
+                    <% if current_user.can_manage_organization_data?(activity.owner_user_id) %>
+                      <%= link_to "แก้ไข", edit_activity_path(activity), class: "button-link" %>
+                      <%= button_to "ลบ", activity_path(activity), method: :delete, class: "button-link danger", form: { data: { activity_delete: activity.title } } %>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+            </article>
+          <% end %>
+        </section>
+      <% end %>
+    </div>
+  </main>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("[data-activity-delete]").forEach(form => form.addEventListener("submit", event => {
+      if (!window.confirm(`ต้องการลบกิจกรรม "${form.dataset.activityDelete}" ใช่หรือไม่?`)) event.preventDefault();
+    }));
+    const target = location.hash && document.querySelector(location.hash);
+    target?.classList.add("highlight");
+  });
+</script>

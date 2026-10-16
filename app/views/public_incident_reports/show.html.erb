@@ -1,14 +1,12 @@
 <main class="public-report-page" data-public-report-page data-reverse-geocode-url="<%= reverse_geocode_public_incident_report_path(token: params[:token]) %>">
   <script type="application/json" data-public-boundary><%= raw json_escape(@report_boundary_feature.to_json) %></script>
   <script type="application/json" data-public-important-places><%= raw json_escape(@important_places.to_json) %></script>
-  <header class="public-report-header">
-    <div class="public-report-brand"><%= image_tag "logo-smart-tambon.png", class: "smart-tambon-logo public-brand-logo", alt: "" %><div><strong>SMART TAMBON SAFETY THAILAND</strong><small>ระบบรับแจ้งเหตุประชาชน</small></div></div>
-    <span class="public-report-secure"><span class="material-symbols-outlined">lock</span>แบบฟอร์มสาธารณะ</span>
-  </header>
+  <%= render "public_incident_reports/header" %>
 
   <div class="public-report-container">
     <section class="public-report-intro"><span class="material-symbols-outlined">notification_important</span><div><p>แจ้งเหตุในพื้นที่</p><h1>แบบฟอร์มแจ้งเหตุภายในพื้นที่ <%= @report_area_name %></h1><p>กรอกข้อมูลและปักตำแหน่งภายในขอบเขตพื้นที่ <%= @report_area_name %> เจ้าหน้าที่จะตรวจสอบและรับเรื่องโดยเร็วที่สุด</p></div></section>
 
+    <% if @organization_setting&.public_report_welcome.present? %><section class="public-report-welcome"><span class="material-symbols-outlined">campaign</span><p><%= simple_format(@organization_setting.public_report_welcome, {}, wrapper_tag: "span") %></p></section><% end %>
     <% if @incident.errors.any? %><div class="public-report-errors"><strong>กรุณาตรวจสอบข้อมูล</strong><ul><% @incident.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul></div><% end %>
 
     <%= form_with model: @incident, url: public_incident_report_path(token: params[:token]), method: :post, local: true, html: { class: "public-report-form", multipart: true } do |form| %>

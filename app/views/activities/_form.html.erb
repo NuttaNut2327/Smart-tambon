@@ -1,0 +1,68 @@
+<% activity_area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<% datetime_value = ->(time) { time&.in_time_zone("Asia/Bangkok")&.strftime("%Y-%m-%dT%H:%M") } %>
+<div class="shell dashboard-shell gis-dashboard users-shell activities-shell">
+  <%= render "dashboard/sidebar", active_nav: :activities, initial_area: activity_area %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= activity_area %></span><b>›</b><span>กิจกรรมในพื้นที่</span><b>›</b><span><%= title %></span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker">ปฏิทินกิจกรรม</p><h1><%= title %></h1><p>กำหนดช่วงวันเวลา ระบบจะสิ้นสุดกิจกรรมให้อัตโนมัติเมื่อถึงเวลาสิ้นสุด</p></div></section>
+      <section class="users-card activity-form-card"><%= form_with model: activity, url: activity.new_record? ? activities_path : activity_path(activity), scope: :incident, html: { multipart: true } do |form| %>
+        <% if activity.errors.any? %><div class="form-errors"><% activity.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
+        <div class="cctv-form-grid">
+          <fieldset class="cctv-fieldset">
+            <legend>ข้อมูลกิจกรรม</legend>
+            <label>ชื่อกิจกรรม<%= form.text_field :title, required: true, placeholder: "เช่น งานประจำปีวัดป่ากลาง" %></label>
+            <label>ประเภทกิจกรรม<%= form.select :incident_type, Incident::ACTIVITY_TYPES.map { |key, type| [type[:label], key] }, {}, required: true %></label>
+            <div class="activity-period-fields">
+              <label>เริ่ม<%= form.datetime_local_field :starts_at, value: datetime_value.(activity.starts_at), required: true %></label>
+              <label>สิ้นสุด<%= form.datetime_local_field :ends_at, value: datetime_value.(activity.ends_at), required: true %></label>
+            </div>
+            <small>เมื่อถึงเวลาสิ้นสุด สถานะจะเปลี่ยนเป็น "สิ้นสุดแล้ว" โดยอัตโนมัติ</small>
+            <label>ผู้จัด/หน่วยงานรับผิดชอบ<%= form.text_field :organizer, placeholder: "เช่น อบต.ป่ากลาง ร่วมกับวัดป่ากลาง" %></label>
+            <label>จำนวนผู้ร่วมงานโดยประมาณ (คน)<%= form.number_field :expected_attendees, min: 0, step: 1 %></label>
+            <div class="activity-period-fields">
+              <label>ผู้ประสานงาน<%= form.text_field :reporter_name %></label>
+              <label>เบอร์ติดต่อ<%= form.telephone_field :reporter_contact %></label>
+            </div>
+            <label>รายละเอียด<%= form.text_area :description, rows: 4, placeholder: "กำหนดการ จุดจอดรถ การปิดถนน ฯลฯ" %></label>
+          </fieldset>
+          <fieldset class="cctv-fieldset">
+            <legend>รูปหลัก (แสดงเป็นไอคอนบนแผนที่)</legend>
+            <div class="activity-cover-preview" data-cover-preview>
+              <% if (cover = activity.cover_photo) %><%= image_tag incident_photo_path(activity, cover["id"]), alt: "" %><% else %><span class="material-symbols-outlined"><%= activity.activity_icon %></span><% end %>
+            </div>
+            <label>เลือกรูปหลัก<%= form.file_field :cover_photo, accept: "image/jpeg,image/png,image/webp", data: { cover_input: true } %><small>JPG, PNG หรือ WebP ไม่เกิน 10 MB — ถ้าไม่ใส่ จะใช้ไอคอนตามประเภทกิจกรรม</small></label>
+            <label>รูปประกอบเพิ่มเติม<%= form.file_field :photos, multiple: true, accept: "image/jpeg,image/png,image/webp" %></label>
+            <% if activity.persisted? && activity.photos.any? %>
+              <div class="activity-photo-list">
+                <% activity.photos.each do |photo| %>
+                  <label class="activity-photo"><%= image_tag incident_photo_path(activity, photo["id"]), alt: photo["filename"] %><span><input type="checkbox" name="incident[remove_photo_ids][]" value="<%= photo["id"] %>"> ลบ<%= " (รูปหลัก)" if photo["id"] == activity.cover_photo_id %></span></label>
+                <% end %>
+              </div>
+            <% end %>
+          </fieldset>
+          <fieldset class="cctv-fieldset cctv-location">
+            <legend>สถานที่จัดกิจกรรม</legend>
+            <label>ชื่อสถานที่<%= form.text_field :location_name, placeholder: "เช่น ลานวัดป่ากลาง" %></label>
+            <%= render "shared/location_picker", form:, record: activity, name_field: :location_name, required: true %>
+          </fieldset>
+        </div>
+        <div class="form-actions"><%= form.submit "บันทึก", class: "button-link primary" %><%= link_to "ยกเลิก", activities_path, class: "button-link" %></div>
+      <% end %></section>
+    </div>
+  </main>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const input = document.querySelector("[data-cover-input]");
+    const preview = document.querySelector("[data-cover-preview]");
+    let url;
+    input?.addEventListener("change", () => {
+      if (url) URL.revokeObjectURL(url);
+      const file = input.files[0];
+      if (!file) return;
+      url = URL.createObjectURL(file);
+      preview.replaceChildren(Object.assign(document.createElement("img"), { src: url, alt: "" }));
+    });
+  });
+</script>

@@ -52,6 +52,22 @@ class IncidentPhotoUploadService
     raise ObjectNotFound
   end
 
+  # Stores one image under <prefix>/ (used for system and อบต. logos) and returns its photo record.
+  def self.store!(prefix:, upload:)
+    validate!([upload])
+    id = SecureRandom.uuid
+    content_type = Marcel::MimeType.for(upload.tempfile, name: upload.original_filename, declared_type: upload.content_type)
+    extension = Rack::Mime::MIME_TYPES.key(content_type).to_s.delete_prefix(".").presence || "bin"
+    key = "#{prefix}/#{id}.#{extension}"
+    upload.tempfile.rewind
+    client.put_object(bucket: bucket, key: key, body: upload.tempfile, content_type: content_type)
+    { "id" => id, "key" => key, "filename" => upload.original_filename.to_s, "content_type" => content_type, "byte_size" => upload.size, "uploaded_at" => Time.current }
+  end
+
+  def self.delete_photo(photo)
+    delete_object(photo["key"]) if photo["key"].present?
+  end
+
   def self.purge_for(incident)
     Array(incident.photos).each { |photo| delete_object(photo["key"]) }
     incident.set(photos: []) if incident.persisted?

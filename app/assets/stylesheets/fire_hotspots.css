@@ -1,0 +1,15 @@
+/* NASA FIRMS fire hotspot map layer */
+.layer-dot.hotspot{background:#e8590c}
+.hotspot-layer-filter{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:0 0 6px 28px}
+.hotspot-layer-filter select{flex:0 0 auto;padding:4px 6px;border:1px solid #dfe4df;border-radius:8px;font:inherit;font-size:12px;background:#fff}
+.hotspot-layer-synced{flex:1 1 120px;min-width:0;color:#806f5f;font-size:9px;line-height:1.3}
+.hotspot-popup strong{display:flex;align-items:center;gap:6px}
+.hotspot-popup-dot{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 0 1px rgb(0 0 0 / 15%)}
+.hotspot-popup .hotspot-popup-coords{color:#806f5f;font-size:10px}
+/* แผนที่เมือง (/situation_assessment) layer menu + popup */
+.assessment-layer-panel .assessment-hotspot-count{margin-left:auto;color:#806f5f;font-size:10px}
+.assessment-layer-panel .assessment-hotspot-filter{padding:0 0 8px 20px}
+.assessment-hotspot-popup{position:relative;min-width:220px;max-width:280px;padding:10px 26px 8px 12px;border:1px solid #e2dac8;border-radius:10px;background:#fff;box-shadow:0 6px 18px rgb(44 57 48 / 18%);color:#4a3b2c;font-size:12px}
+.assessment-hotspot-popup::after{content:"";position:absolute;left:50%;bottom:-7px;width:12px;height:12px;border-right:1px solid #e2dac8;border-bottom:1px solid #e2dac8;background:#fff;transform:translateX(-50%) rotate(45deg)}
+.assessment-hotspot-popup p{margin:4px 0 0}
+.assessment-hotspot-popup-close{position:absolute;top:4px;right:6px;border:0;background:none;color:#806f5f;font-size:16px;line-height:1;cursor:pointer}

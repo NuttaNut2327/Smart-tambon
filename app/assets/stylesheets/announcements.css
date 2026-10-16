@@ -1,0 +1,52 @@
+/* Admin list/form */
+.announcement-table td small{display:block;color:#6b756f;font-size:12px;line-height:1.5}
+.announcement-shell .announcement-table{min-width:980px}
+.announcement-shell .users-table.announcement-table td:nth-child(n),.announcement-shell .users-table.announcement-table th:nth-child(n){white-space:normal;overflow:visible;text-align:left;height:auto;vertical-align:middle}
+.announcement-shell .announcement-table th:nth-child(1){width:28%}
+.announcement-shell .announcement-table th:nth-child(2){width:17%}
+.announcement-shell .announcement-table th:nth-child(3){width:17%}
+.announcement-shell .announcement-table th:nth-child(4){width:15%}
+.announcement-shell .announcement-table th:nth-child(5){width:9%}
+.announcement-shell .announcement-table th:nth-child(6){width:14%}
+.announcement-shell .announcement-table .numeric{text-align:right}
+.announcement-shell .announcement-table .cctv-actions{display:flex;flex-wrap:wrap;gap:6px}
+.announcement-shell .announcement-table .cctv-actions form{margin:0}
+.announcement-status{margin-top:4px}
+.announcement-level,.announcement-status{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.announcement-level.info{background:#e7f0fb;color:#1f5a96}
+.announcement-level.warning{background:#fdf2dc;color:#8a5a00}
+.announcement-level.urgent{background:#fbe4e4;color:#a12626}
+.announcement-status.live{background:#e8f3ec;color:#2d6a45}
+.announcement-status.idle{background:#eef0ee;color:#5f6a63}
+.announcement-radio-group{display:grid;gap:6px}
+.cctv-fieldset label.announcement-check{display:flex;align-items:center;gap:8px;font-weight:400}
+.announcement-check input{width:auto;margin:0}
+
+/* Popup */
+body.announcement-open{overflow:hidden}
+.announcement-backdrop{position:fixed;inset:0;z-index:5000;display:grid;place-items:center;padding:16px;background:rgba(20,26,22,.55)}
+.announcement-modal{width:min(560px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:#fff;color:#22302a;border-radius:16px;border-top:6px solid #2f6fb3;box-shadow:0 24px 60px rgba(0,0,0,.25);overflow:hidden}
+.announcement-modal[hidden]{display:none}
+.announcement-modal.warning{border-top-color:#d99a16}
+.announcement-modal.urgent{border-top-color:#c53030}
+.announcement-backdrop .announcement-modal>header{display:flex;justify-content:flex-start;gap:12px;align-items:flex-start;padding:20px 22px 8px;text-align:left;background:transparent;border:0;box-shadow:none;position:static;height:auto}
+.announcement-modal header .material-symbols-outlined{font-size:30px;color:#2f6fb3}
+.announcement-modal.warning header .material-symbols-outlined{color:#d99a16}
+.announcement-modal.urgent header .material-symbols-outlined{color:#c53030}
+.announcement-modal header small{color:#6b756f;font-size:12px}
+.announcement-modal h2{margin:2px 0 0;font-size:20px;line-height:1.35}
+.announcement-modal .announcement-body{padding:4px 22px 8px 64px;overflow:auto;line-height:1.65}
+.announcement-modal footer{display:flex;justify-content:flex-end;padding:12px 22px 20px}
+
+/* Corner boxes (cannot be closed, only collapsed) */
+.announcement-corners{position:fixed;right:16px;bottom:16px;z-index:4500;display:grid;gap:10px;width:min(340px,calc(100vw - 32px))}
+.announcement-corner{background:#fff;color:#22302a;border-radius:12px;border-left:5px solid #2f6fb3;box-shadow:0 10px 30px rgba(0,0,0,.18);overflow:hidden}
+.announcement-corner.warning{border-left-color:#d99a16}
+.announcement-corner.urgent{border-left-color:#c53030}
+.announcement-corner-toggle{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.announcement-corner-toggle b{flex:1;font-size:14px}
+.announcement-corner-toggle .chevron{transition:transform .15s}
+.announcement-corner.collapsed .chevron{transform:rotate(180deg)}
+.announcement-corner .announcement-body{padding:0 14px 12px 40px;font-size:13px;line-height:1.6;max-height:40vh;overflow:auto}
+.announcement-corner .announcement-body p{margin:0 0 6px}
+.announcement-corner.collapsed .announcement-body{display:none}

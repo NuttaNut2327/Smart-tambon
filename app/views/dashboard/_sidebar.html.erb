@@ -7,8 +7,8 @@
 
 <aside class="dashboard-sidebar sidebar">
   <div class="dashboard-brand brand">
-    <%= image_tag "logo-smart-tambon.png", class: "smart-tambon-logo sidebar-brand-logo", alt: "" %>
-    <div><strong>SMART TAMBON</strong></div>
+    <%= image_tag system_logo_src, class: "smart-tambon-logo sidebar-brand-logo", alt: "" %>
+    <div><strong><%= system_short_name %></strong></div>
     <button type="button" class="sidebar-collapse-toggle" data-sidebar-collapse aria-expanded="true" aria-label="ย่อเมนูหลัก" title="ย่อเมนูหลัก">
       <span class="material-symbols-outlined">chevron_left</span>
     </button>
@@ -21,9 +21,14 @@
     <%= link_to general_incidents_path, class: "primary-nav-item #{'active' if active_nav == :general_incidents}", data: { turbo: false, incident_nav: true } do %><span class="material-symbols-outlined">campaign</span>เหตุการณ์ทั่วไป<% if pending_incident_count.positive? %><em class="nav-alert-count" data-pending-incident-count><%= pending_incident_count %></em><% end %><% end %>
     <%= link_to disasters_path, class: "primary-nav-item #{'active' if active_nav == :disasters}", data: { turbo: false } do %><span class="material-symbols-outlined">warning</span>ภัยพิบัติ<% if pending_disaster_count.positive? %><em class="nav-alert-count"><%= pending_disaster_count %></em><% end %><% end %>
     <%= link_to resource_rules_path, class: "primary-nav-item #{'active' if active_nav == :resource_rules}", data: { turbo: false } do %><span class="material-symbols-outlined">rule</span>กฎการประเมินทรัพยากร<% end %>
+    <%= link_to activities_path, class: "primary-nav-item #{'active' if active_nav == :activities}", data: { turbo: false } do %><span class="material-symbols-outlined">festival</span>กิจกรรมในพื้นที่<% if pending_activity_count.positive? %><em class="nav-alert-count"><%= pending_activity_count %></em><% end %><% end %>
+    <%= link_to cctv_cameras_path, class: "primary-nav-item #{'active' if active_nav == :cctv_cameras}", data: { turbo: false } do %><span class="material-symbols-outlined">videocam</span>กล้องวงจรปิด<% end %>
+    <%= link_to projects_path, class: "primary-nav-item #{'active' if active_nav == :projects}", data: { turbo: false } do %><span class="material-symbols-outlined">assignment</span>โครงการ<% end %>
     <%= link_to data_layers_path, class: "primary-nav-item #{'active' if active_nav == :data_layers}", data: { turbo: false } do %><span class="material-symbols-outlined">upload</span>นำเข้าข้อมูล<% end %>
     <%= link_to ai_assistant_path, class: "primary-nav-item #{'active' if active_nav == :ai_assistant}", data: { turbo: false } do %><span class="material-symbols-outlined">smart_toy</span>ผู้ช่วย AI<% end %>
     <% if user_manager? %><%= link_to users_path, class: "primary-nav-item #{'active' if active_nav == :users}" do %><span class="material-symbols-outlined">manage_accounts</span>จัดการผู้ใช้<% end %><% end %>
+    <% if system_admin? %><%= link_to announcements_path, class: "primary-nav-item #{'active' if active_nav == :announcements}", data: { turbo: false } do %><span class="material-symbols-outlined">notifications</span>ประกาศถึงผู้ใช้<% end %><% end %>
+    <% if user_manager? %><%= link_to settings_path, class: "primary-nav-item #{'active' if active_nav == :settings}", data: { turbo: false } do %><span class="material-symbols-outlined">settings</span>ตั้งค่าระบบ<% end %><% end %>
   </nav>
   <% unless sidebar_local_account %><div class="sidebar-search area-search-wrap"><label class="search"><span>⌕</span><input id="area-search" type="search" placeholder="ค้นหาจังหวัดหรือ ตำบล" autocomplete="off" aria-controls="area-search-results" aria-expanded="false"></label><div id="area-search-results" class="area-search-results" role="listbox" hidden></div></div><% end %>
   <% if sidebar_local_account %>
@@ -41,7 +46,7 @@
   <%= button_to "ออกจากระบบ", destroy_user_session_path, method: :delete, class: "logout" %>
 </aside>
 
-<section class="incoming-incident-notification" data-incident-notification data-notification-url="<%= incident_notification_path %>" role="alert" aria-live="assertive" hidden>
+<section class="incoming-incident-notification" data-incident-notification data-notification-url="<%= incident_notification_path %>" data-notification-popup="<%= organization_setting&.notify_new_incidents != false %>" data-notification-sound="<%= organization_setting&.notification_sound == true %>" role="alert" aria-live="assertive" hidden>
   <span class="material-symbols-outlined incoming-incident-icon" aria-hidden="true">notification_important</span>
   <div class="incoming-incident-content">
     <strong>มีเหตุการณ์แจ้งเข้ามาใหม่</strong>

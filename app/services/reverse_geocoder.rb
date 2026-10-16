@@ -5,8 +5,8 @@ class ReverseGeocoder
   class ConfigurationError < Error; end
 
   def self.call(latitude:, longitude:)
-    api_key = ENV["LONGDO_MAP_KEY"]
-    raise ConfigurationError, "ยังไม่ได้กำหนด LONGDO_MAP_KEY" if api_key.blank?
+    api_key = SystemSetting.current.longdo_map_key
+    raise ConfigurationError, "ยังไม่ได้กำหนด Longdo Map API key (ตั้งค่าระบบ)" if api_key.blank?
 
     uri = URI("https://api.longdo.com/map/services/address")
     uri.query = URI.encode_www_form(lat: latitude, lon: longitude, key: api_key, locale: "th", noelevation: 1)

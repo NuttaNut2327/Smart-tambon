@@ -101,6 +101,12 @@ class PublicIncidentReportsController < ApplicationController
     @report_boundary = @report_access_area&.boundary || @report_subdistrict&.boundary
     @report_area_name = @report_access_area&.name.presence || "ตำบล#{@report_subdistrict&.name_th}"
     return head :not_found unless @report_boundary
+
+    # อบต. settings: regenerating the link bumps the version (old links stop working); reporting can be paused.
+    @organization_setting = OrganizationSetting.for(@report_owner)
+    return unless @organization_setting
+    return head :not_found if (payload["version"] || payload[:version]).to_i != @organization_setting.public_report_version.to_i
+    render :closed, status: :service_unavailable unless @organization_setting.public_report_enabled
   rescue ActiveSupport::MessageVerifier::InvalidSignature
     head :not_found
   end
@@ -116,6 +122,8 @@ class PublicIncidentReportsController < ApplicationController
     @report_boundary_feature = @report_access_area ? @report_access_area.as_geojson : @report_subdistrict&.as_geojson
     @important_places = cached_important_places
   end
+
+  def show_announcements? = false
 
   def public_incident_params
     params.require(:incident).permit(

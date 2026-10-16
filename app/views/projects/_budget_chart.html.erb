@@ -1,0 +1,91 @@
+<% metrics = { budget: "งบประมาณ (บาท)", count: "จำนวนโครงการ" } %>
+<% axes = metrics.keys.index_with { |metric| summary.axis(metric) } %>
+<section class="budget-chart" data-budget-chart data-metric="budget" aria-labelledby="budget-chart-title">
+  <div class="budget-chart-head">
+    <div>
+      <h2 id="budget-chart-title">การใช้งบประมาณรายปี</h2>
+      <p>แยกตามผลการอนุมัติ · กดแท่งเพื่อดูรายการโครงการของปีนั้น</p>
+    </div>
+    <div class="budget-chart-toggle" role="group" aria-label="เลือกหน่วยที่แสดง">
+      <% metrics.each do |metric, label| %><button type="button" data-budget-metric="<%= metric %>" aria-pressed="<%= metric == :budget %>"><%= label %></button><% end %>
+    </div>
+  </div>
+  <% if summary.empty? %>
+    <div class="cctv-empty"><span class="material-symbols-outlined">bar_chart</span><b>ยังไม่มีข้อมูลงบประมาณ</b><small>เพิ่มโครงการพร้อมปีงบประมาณเพื่อดูแผนภูมิ</small></div>
+  <% else %>
+    <ul class="budget-chart-legend">
+      <li class="total"><span>ทั้งหมด</span><% metrics.each_key do |metric| %><b data-metric-only="<%= metric %>"><%= metric == :budget ? "#{number_with_precision(summary.total(:budget), precision: 2, delimiter: ",")} บาท" : "#{summary.total(:count)} โครงการ" %></b><% end %></li>
+      <% Project::APPROVAL_STATUSES.each do |key, label| %>
+        <li><i class="budget-swatch <%= key %>"></i><span><%= label %></span><% metrics.each_key do |metric| %><b data-metric-only="<%= metric %>"><%= project_metric_label(metric, summary.total(metric, key)) %></b><% end %></li>
+      <% end %>
+    </ul>
+    <div class="budget-chart-plot">
+      <% metrics.each_key do |metric| %>
+        <div class="budget-chart-grid" data-metric-only="<%= metric %>" aria-hidden="true">
+          <% axes[metric][:ticks].reverse_each do |tick| %><div style="bottom: <%= (tick / axes[metric][:max].to_f * 100).round(3) %>%"><span><%= metric == :budget ? compact_baht(tick) : tick.to_i %></span></div><% end %>
+        </div>
+      <% end %>
+      <div class="budget-chart-bars">
+        <% summary.years.each do |year| %>
+          <% selected = filters["fiscal_year"].to_i == year.fiscal_year %>
+          <%= link_to projects_path(filters.merge("fiscal_year" => year.fiscal_year)), class: "budget-chart-column#{' selected' if selected}",
+                data: { budget_year: { year: year.fiscal_year, segments: Project::APPROVAL_STATUSES.map { |key, label| { key:, label:, budget: year.segments[key][:budget], count: year.segments[key][:count] } }, budget: year.total(:budget), count: year.total(:count) }.to_json },
+                aria: { label: "ปีงบประมาณ #{year.fiscal_year}: งบประมาณรวม #{number_with_precision(year.total(:budget), precision: 2, delimiter: ",")} บาท #{year.total(:count)} โครงการ" } do %>
+            <span class="budget-chart-stack">
+              <% metrics.each_key do |metric| %><b class="budget-chart-total" data-metric-only="<%= metric %>" style="bottom: <%= (year.total(metric) / axes[metric][:max].to_f * 100).round(3) %>%"><%= project_metric_label(metric, year.total(metric)).delete_suffix(" โครงการ") %></b><% end %>
+              <% Project::APPROVAL_STATUSES.each_key do |key| %>
+                <% segment = year.segments[key] %>
+                <% next if segment[:count].zero? %>
+                <i class="budget-segment <%= key %><%= ' zero-budget' if segment[:budget].zero? %>" style="--budget: <%= (segment[:budget] / axes[:budget][:max].to_f * 100).round(3) %>%; --count: <%= (segment[:count] / axes[:count][:max].to_f * 100).round(3) %>%"></i>
+              <% end %>
+            </span>
+            <span class="budget-chart-year"><%= year.fiscal_year %></span>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="budget-chart-tooltip" data-budget-tooltip hidden></div>
+    </div>
+    <details class="budget-chart-table">
+      <summary>ดูข้อมูลแบบตาราง</summary>
+      <div class="users-table-wrap"><table class="users-table">
+        <thead><tr><th>ปีงบประมาณ</th><% Project::APPROVAL_STATUSES.each_value do |label| %><th class="numeric"><%= label %> (บาท)</th><% end %><th class="numeric">รวม (บาท)</th><th class="numeric">จำนวนโครงการ</th></tr></thead>
+        <tbody>
+          <% summary.years.reverse_each do |year| %>
+            <tr><td><%= year.fiscal_year %></td><% Project::APPROVAL_STATUSES.each_key do |key| %><td class="numeric"><%= number_with_precision(year.segments[key][:budget], precision: 2, delimiter: ",") %><small><%= year.segments[key][:count] %> โครงการ</small></td><% end %><td class="numeric"><b><%= number_with_precision(year.total(:budget), precision: 2, delimiter: ",") %></b></td><td class="numeric"><%= year.total(:count) %></td></tr>
+          <% end %>
+        </tbody>
+      </table></div>
+    </details>
+  <% end %>
+</section>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const chart = document.querySelector("[data-budget-chart]");
+    if (!chart) return;
+    const tooltip = chart.querySelector("[data-budget-tooltip]");
+    const baht = value => `${Number(value).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท`;
+    chart.querySelectorAll("[data-budget-metric]").forEach(button => button.addEventListener("click", () => {
+      chart.dataset.metric = button.dataset.budgetMetric;
+      chart.querySelectorAll("[data-budget-metric]").forEach(other => other.setAttribute("aria-pressed", String(other === button)));
+    }));
+    if (!tooltip) return;
+    const plot = chart.querySelector(".budget-chart-plot");
+    const show = column => {
+      const data = JSON.parse(column.dataset.budgetYear);
+      const metric = chart.dataset.metric;
+      const value = segment => metric === "budget" ? `${baht(segment.budget)} <small>(${segment.count} โครงการ)</small>` : `${segment.count} โครงการ <small>(${baht(segment.budget)})</small>`;
+      tooltip.innerHTML = `<strong>ปีงบประมาณ ${data.year}</strong>${data.segments.slice().reverse().map(segment => `<div><i class="budget-swatch ${segment.key}"></i><span>${segment.label}</span><b>${value(segment)}</b></div>`).join("")}<div class="total"><span>รวม</span><b>${value(data)}</b></div>`;
+      tooltip.hidden = false;
+      const plotRect = plot.getBoundingClientRect(), columnRect = column.getBoundingClientRect();
+      // Sit beside the bar rather than over it; flip to the left near the right edge.
+      const right = columnRect.right - plotRect.left + 8;
+      tooltip.style.left = `${right + tooltip.offsetWidth <= plotRect.width ? right : columnRect.left - plotRect.left - tooltip.offsetWidth - 8}px`;
+    };
+    chart.querySelectorAll(".budget-chart-column").forEach(column => {
+      column.addEventListener("mouseenter", () => show(column));
+      column.addEventListener("focus", () => show(column));
+      column.addEventListener("mouseleave", () => { tooltip.hidden = true; });
+      column.addEventListener("blur", () => { tooltip.hidden = true; });
+    });
+  });
+</script>

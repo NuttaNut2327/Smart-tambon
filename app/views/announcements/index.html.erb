@@ -1,0 +1,43 @@
+<% area_label = "ทุกพื้นที่ทั่วประเทศ" %>
+<div class="shell dashboard-shell gis-dashboard users-shell cctv-shell announcement-shell">
+  <%= render "dashboard/sidebar", active_nav: :announcements, initial_area: area_label %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= area_label %></span><b>›</b><span>ประกาศถึงผู้ใช้</span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker">ผู้ดูแลระบบ</p><h1>ประกาศถึงผู้ใช้</h1><p>ข้อความที่แสดงเป็น popup หรือกล่องมุมจอเมื่อผู้ใช้เข้าสู่ระบบ</p></div><%= link_to new_announcement_path, class: "button-link primary" do %><span class="material-symbols-outlined">add</span>สร้างประกาศ<% end %></section>
+      <% if notice.present? %><p class="cctv-flash notice"><%= notice %></p><% end %>
+      <% if alert.present? %><p class="cctv-flash alert"><%= alert %></p><% end %>
+      <section class="users-card users-list-card">
+        <div class="users-toolbar"><div><h2>รายการประกาศ</h2><p>ผู้ใช้ที่เห็นแล้ว / กดรับทราบแล้ว นับจากบันทึกการแสดงผล</p></div><span><%= @announcements.size %> ประกาศ</span></div>
+        <% if @announcements.empty? %>
+          <div class="cctv-empty"><span class="material-symbols-outlined">campaign</span><b>ยังไม่มีประกาศ</b><small>สร้างประกาศเพื่อแจ้งข่าวสารให้ผู้ใช้ทุกคนหรือเฉพาะกลุ่ม</small></div>
+        <% else %>
+          <div class="users-table-wrap"><table class="users-table cctv-table announcement-table"><thead><tr><th>ประกาศ</th><th>รูปแบบ</th><th>กลุ่มเป้าหมาย</th><th>ช่วงเวลา / สถานะ</th><th class="numeric">เห็น / รับทราบ</th><th>จัดการ</th></tr></thead><tbody>
+            <% @announcements.each do |announcement| %>
+              <% counts = @receipt_counts[announcement.id] || {} %>
+              <tr>
+                <td><span class="announcement-level <%= announcement.level %>"><%= announcement.level_label %></span> <b><%= announcement.title %></b><small><%= truncate(announcement.body, length: 90) %></small></td>
+                <td><small><%= announcement.frequency_label %></small><small><%= announcement.display_mode_label %></small></td>
+                <td><small><%= announcement.audience_label %></small></td>
+                <td><small>เริ่ม <%= announcement.starts_at ? announcement.starts_at.in_time_zone.strftime("%d/%m/%Y %H:%M") : "ทันที" %></small><small>สิ้นสุด <%= announcement.ends_at ? announcement.ends_at.in_time_zone.strftime("%d/%m/%Y %H:%M") : "ไม่กำหนด" %></small><span class="announcement-status <%= announcement.status_label == "กำลังแสดง" ? "live" : "idle" %>"><%= announcement.status_label %></span></td>
+                <td class="numeric"><%= counts["seen"].to_i %> / <%= announcement.corner? ? "-" : counts["acknowledged"].to_i %></td>
+                <td class="cctv-actions">
+                  <%= link_to "แก้ไข", edit_announcement_path(announcement), class: "button-link" %>
+                  <%= button_to announcement.active? ? "ปิดใช้งาน" : "เปิดใช้งาน", toggle_announcement_path(announcement), method: :patch, class: "button-link" %>
+                  <%= button_to "ลบ", announcement_path(announcement), method: :delete, class: "button-link danger", form: { data: { announcement_delete: announcement.title } } %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody></table></div>
+        <% end %>
+      </section>
+    </div>
+  </main>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll("[data-announcement-delete]").forEach(form => form.addEventListener("submit", event => {
+      if (!window.confirm(`ต้องการลบประกาศ "${form.dataset.announcementDelete}" และประวัติการรับทราบทั้งหมดใช่หรือไม่?`)) event.preventDefault();
+    }));
+  });
+</script>

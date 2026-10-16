@@ -1,0 +1,18 @@
+<%= render layout: "settings/frame", locals: { title: "สถานะระบบ", kicker: "สำหรับผู้ดูแลระบบ (Super admin)", description: "ตรวจสอบการเชื่อมต่อฐานข้อมูล บริการภายนอก และ worker ที่ทำงานเบื้องหลัง ณ #{thai_short_datetime(Time.current)}", active: :status } do %>
+  <% counts = @checks.group_by(&:status).transform_values(&:size) %>
+  <section class="settings-status-summary">
+    <span class="ok"><b><%= counts["ok"].to_i %></b> ปกติ</span>
+    <span class="warning"><b><%= counts["warning"].to_i %></b> ควรตรวจสอบ</span>
+    <span class="error"><b><%= counts["error"].to_i %></b> ผิดพลาด</span>
+    <%= link_to status_system_settings_path, class: "button-link" do %><span class="material-symbols-outlined">refresh</span>ตรวจสอบอีกครั้ง<% end %>
+  </section>
+  <section class="settings-card settings-status">
+    <% @checks.each do |check| %>
+      <div class="settings-status-row <%= check.status %>">
+        <span class="material-symbols-outlined"><%= { "ok" => "check_circle", "warning" => "warning", "error" => "error" }.fetch(check.status) %></span>
+        <div><b><%= check.name %></b><small><%= check.detail %></small></div>
+        <em><%= check.duration_ms %> ms</em>
+      </div>
+    <% end %>
+  </section>
+<% end %>

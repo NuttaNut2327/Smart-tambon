@@ -1,0 +1,22 @@
+th:
+  mongoid:
+    models:
+      project: โครงการ
+    attributes:
+      project:
+        name: ชื่อโครงการ
+        code: รหัสโครงการ
+        group: กลุ่มโครงการ
+        project_type: ลักษณะ/ประเภทโครงการ
+        budget: งบประมาณ
+        budget_source: แหล่งงบประมาณ
+        agency: หน่วยงานรับผิดชอบ
+        fiscal_year: ปีงบประมาณ
+        status: สถานะการดำเนินการ
+        approval_status: ผลการอนุมัติงบประมาณ
+        progress_percent: ความคืบหน้า
+        location_name: ชื่อสถานที่
+        description: รายละเอียด
+        latitude: ละติจูด
+        longitude: ลองจิจูด
+        user_id: ผู้บันทึก
