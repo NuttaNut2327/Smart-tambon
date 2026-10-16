@@ -1,0 +1,5 @@
+* text=auto
+
+# Executable scripts run inside Linux containers and must keep Unix line endings.
+bin/* text eol=lf
+*.sh text eol=lf
