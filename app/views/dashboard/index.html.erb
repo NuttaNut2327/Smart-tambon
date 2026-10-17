@@ -19,6 +19,7 @@
         <article class="kpi-unresolved"><span class="kpi-icon red material-symbols-outlined">shield</span><div><strong><%= @overview_incident_summary[:unresolved] %></strong><p>ยังไม่ได้รับการแก้ไข</p><small>ต้องเร่งดำเนินการ</small></div></article>
         <article class="kpi-completed"><span class="kpi-icon green material-symbols-outlined">speed</span><div><strong><%= @overview_incident_summary[:completed] %></strong><p>แก้ไขเรียบร้อยแล้ว</p><small>ปิดงานสำเร็จ</small></div></article>
       </section>
+      <%= render "dashboard/weather_panel" %>
       <% end %>
       <% if page_mode != :none && !%i[general_incidents disasters].include?(page_mode) %>
       <section class="city-section-head"><div><h2><%= page_mode == :overview ? "แผนที่ภาพรวมพื้นที่" : page_mode == :analysis ? "เลือกพื้นที่เพื่อวิเคราะห์" : "แผนที่และชั้นข้อมูล" %></h2><p><%= page_mode == :overview ? "แผนที่โฟกัสขอบเขตพื้นที่ที่คุณดูแล" : page_mode == :analysis ? "เลือกจุด เส้น หรือ Polygon บนแผนที่" : "แสดงข้อมูลจริงของระบบ พร้อมสถานะสรุปสำหรับการติดตาม" %></p></div><div class="map-legend"><span><i class="critical"></i>วิกฤต</span><span><i class="watch"></i>เฝ้าระวัง</span><span><i class="normal"></i>ปกติ</span></div></section>

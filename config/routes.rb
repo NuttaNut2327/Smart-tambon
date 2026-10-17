@@ -97,6 +97,27 @@ Rails.application.routes.draw do
     post :regenerate_public_link
     get "logo/:key", action: :logo, as: :logo
   end
+  # News broadcasts (ข่าวประชาสัมพันธ์/เสียงตามสาย): programmes, generated episodes and public media links.
+  resources :broadcast_programs, except: :show do
+    post :run, on: :member
+  end
+  resources :broadcasts, only: %i[index show update destroy] do
+    member do
+      post :regenerate
+      post :synthesize
+      post :publish
+      post :image
+      get :audio
+      get :status
+    end
+  end
+  get "broadcast_media/:token", to: "broadcast_media#show", as: :broadcast_media
+  resources :tts_providers, except: :show do
+    member do
+      post :test
+      patch :make_default
+    end
+  end
   resources :announcements, except: :show do
     member do
       patch :toggle
@@ -127,6 +148,7 @@ Rails.application.routes.draw do
     resources :imported_datasets, only: %i[index show]
     resources :water_stations, only: :index
     resources :fire_hotspots, only: :index
+    get "weather", to: "weather#show"
     resources :cctv_cameras, only: :index
     resources :activities, only: :index
     resources :projects, only: :index

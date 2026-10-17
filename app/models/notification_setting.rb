@@ -45,7 +45,8 @@ class NotificationSetting
   def line_ready? = line_enabled? && secret("line_channel_access_token").present?
   def signal_ready? = signal_enabled? && signal_api_url.present? && signal_number.present?
   def kind_available?(kind)
-    { "line" => line_enabled?, "telegram" => telegram_enabled?, "signal" => signal_enabled?, "webhook" => webhook_enabled? }.fetch(kind.to_s, false)
+    { "line" => line_enabled?, "telegram" => telegram_enabled?, "signal" => signal_enabled?, "webhook" => webhook_enabled?,
+      "facebook" => true, "instagram" => true, "pa_mqtt" => ENV["MQTT_URL"].present? }.fetch(kind.to_s, false)
   end
 
   def base_url = public_base_url.presence || ENV["APP_URL"].presence

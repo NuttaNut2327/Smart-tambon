@@ -1,0 +1,43 @@
+<%= stylesheet_link_tag "ai_assistant", "data-turbo-track": "reload" %>
+<%= render layout: "settings/frame", locals: { title: "ผู้ให้บริการเสียง (Text-to-Speech)", kicker: "สำหรับผู้ดูแลระบบ (Super admin)", description: "บริการสร้างเสียงอ่านข่าวภาษาไทยสำหรับข่าวประชาสัมพันธ์และเสียงตามสาย — รายการข่าวแต่ละรายการเลือกใช้ได้ หรือใช้ค่าเริ่มต้น", active: :tts } do %>
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined">record_voice_over</span><div><h2>รายการผู้ให้บริการเสียง</h2><p>API key ถูกเข้ารหัสในฐานข้อมูล · กด "ฟังตัวอย่าง" เพื่อทดสอบเสียงจริง</p></div></header>
+    <div class="settings-actions">
+      <% TtsProvider::KINDS.each do |kind, info| %>
+        <%= link_to new_tts_provider_path(kind:), class: "button-link #{'primary' if kind == 'google'}" do %><span class="material-symbols-outlined">add</span><%= info[:label] %><% end %>
+      <% end %>
+    </div>
+    <% if @providers.empty? %>
+      <div class="cctv-empty"><span class="material-symbols-outlined">record_voice_over</span><b>ยังไม่มีผู้ให้บริการเสียง</b><small>เพิ่มอย่างน้อย 1 รายการเพื่อสร้างเสียงอ่านข่าวและส่งไปเสียงตามสาย</small></div>
+    <% else %>
+      <ul class="ai-provider-list">
+        <% @providers.each do |provider| %>
+          <li class="<%= 'is-default' if provider.is_default? %> <%= 'is-disabled' unless provider.enabled? %>">
+            <div class="ai-provider-info">
+              <div class="ai-provider-name">
+                <%= link_to provider.name, edit_tts_provider_path(provider) %>
+                <% if provider.is_default? %><span class="project-approval approved">ค่าเริ่มต้น</span><% end %>
+                <span class="project-status <%= provider.enabled? ? 'in_progress' : 'suspended' %>"><%= provider.enabled? ? "เปิดใช้" : "ปิดใช้" %></span>
+              </div>
+              <dl>
+                <div><dt>บริการ</dt><dd><%= provider.kind_label %></dd></div>
+                <div><dt>เสียง</dt><dd><%= provider.voice_label %><% if provider.model.present? %> · <code><%= provider.model %></code><% end %> · ความเร็ว <%= provider.speaking_rate %>x</dd></div>
+                <div><dt>API key</dt><dd><%= provider.masked_api_key || "ไม่ได้กำหนด" %></dd></div>
+              </dl>
+            </div>
+            <div class="ai-provider-actions">
+              <% unless provider.is_default? %>
+                <%= button_to make_default_tts_provider_path(provider), method: :patch, class: "button-link", disabled: !provider.enabled? do %><span class="material-symbols-outlined">star</span>ตั้งเป็นค่าเริ่มต้น<% end %>
+              <% end %>
+              <button type="button" class="button-link" data-tts-test="<%= test_tts_provider_path(provider) %>"><span class="material-symbols-outlined">play_circle</span>ฟังตัวอย่าง</button>
+              <%= link_to edit_tts_provider_path(provider), class: "button-link" do %><span class="material-symbols-outlined">edit</span>แก้ไข<% end %>
+              <%= button_to tts_provider_path(provider), method: :delete, class: "button-link danger", form: { onsubmit: "return confirm('ลบผู้ให้บริการเสียง #{j provider.name}?')" } do %><span class="material-symbols-outlined">delete</span>ลบ<% end %>
+            </div>
+            <p class="tts-test-status" data-tts-status hidden></p>
+          </li>
+        <% end %>
+      </ul>
+    <% end %>
+  </section>
+<% end %>
+<%= render "tts_providers/test_script" %>

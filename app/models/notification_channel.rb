@@ -9,13 +9,18 @@ class NotificationChannel
     "line" => { label: "LINE OA (กลุ่ม)", icon: "chat", target: "LINE Group ID", hint: "ขึ้นต้นด้วย C… — เชิญบัญชี LINE OA ของระบบเข้ากลุ่ม แล้วบอทจะตอบ Group ID ให้ในกลุ่ม (หรือพิมพ์ “groupid” ในกลุ่ม)" },
     "telegram" => { label: "Telegram", icon: "send", target: "Chat ID", hint: "Chat ID ของกลุ่มมักเป็นตัวเลขติดลบ เช่น -1001234567890 — เพิ่มบอทเข้ากลุ่ม ส่งข้อความในกลุ่ม แล้วกด “ค้นหา Chat ID”" },
     "signal" => { label: "Signal", icon: "forum", target: "Group ID หรือเบอร์ผู้รับ", hint: "Group ID จาก signal-cli (ขึ้นต้นด้วย group.) หรือเบอร์โทรรูปแบบ +66…" },
-    "webhook" => { label: "Webhook (ระบบอื่น)", icon: "webhook", target: "Webhook URL", hint: "ระบบจะ POST JSON {event, text, data} ไปยัง URL นี้ และลงลายมือชื่อด้วย Secret ในหัว X-SmartTambon-Signature" }
+    "webhook" => { label: "Webhook (ระบบอื่น)", icon: "webhook", target: "Webhook URL", hint: "ระบบจะ POST JSON {event, text, data} ไปยัง URL นี้ และลงลายมือชื่อด้วย Secret ในหัว X-SmartTambon-Signature" },
+    # News broadcasts (ข่าวประชาสัมพันธ์) also go to the อบต.'s public pages and the village PA system.
+    "facebook" => { label: "Facebook Page", icon: "thumb_up", target: "Page ID", hint: "Page ID ของเพจ อบต. (ตัวเลข) และ Page Access Token ที่มีสิทธิ์ pages_manage_posts — โพสต์ข้อความพร้อมภาพข่าว" },
+    "instagram" => { label: "Instagram (Business)", icon: "photo_camera", target: "Instagram User ID", hint: "IG Business/Creator Account ID ที่เชื่อมกับเพจ และ Access Token ที่มีสิทธิ์ instagram_content_publish — Instagram ต้องมีภาพทุกโพสต์ และ Meta ต้องดาวน์โหลดภาพจาก URL สาธารณะของระบบได้" },
+    "pa_mqtt" => { label: "เสียงตามสาย (MQTT)", icon: "campaign", target: "MQTT Topic", hint: "ระบบจะ publish JSON {type, audio_url, text, …} ไปยัง topic นี้บน MQTT broker ของระบบ ให้อุปกรณ์เสียงตามสายดาวน์โหลดไฟล์และเล่นออกลำโพง" }
   }.freeze
   TAGS = {
     "incident.created" => "เหตุการณ์ทั่วไปใหม่",
     "disaster.created" => "ภัยพิบัติใหม่",
     "activity.created" => "กิจกรรมใหม่",
-    "announcement" => "ประกาศ/ข้อความทั่วไป"
+    "announcement" => "ประกาศ/ข้อความทั่วไป",
+    "broadcast" => "ข่าวประชาสัมพันธ์/เสียงตามสาย"
   }.freeze
 
   field :organization_key, type: String
@@ -71,6 +76,10 @@ class NotificationChannel
       errors.add(:target, "Chat ID ต้องเป็นตัวเลข (กลุ่มมักติดลบ) หรือ @ชื่อช่อง") unless target.match?(/\A(-?\d+|@[A-Za-z0-9_]{5,})\z/)
     when "signal"
       errors.add(:target, "ต้องเป็น Group ID (group.…) หรือเบอร์รูปแบบ +66…") unless target.match?(/\A(group\.[A-Za-z0-9+\/=_-]+|\+\d{8,15})\z/)
+    when "facebook", "instagram"
+      errors.add(:target, "ต้องเป็นตัวเลข ID จาก Meta") unless target.match?(/\A\d{5,30}\z/)
+    when "pa_mqtt"
+      errors.add(:target, "topic ใช้ได้เฉพาะตัวอักษรอังกฤษ ตัวเลข - _ / เช่น smart-tambon/pa/550513") unless target.match?(%r{\A[A-Za-z0-9_\-/]{3,120}\z}) && !target.include?("//")
     when "webhook"
       begin
         uri = URI.parse(target)

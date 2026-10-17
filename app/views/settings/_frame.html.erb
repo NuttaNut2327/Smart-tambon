@@ -11,6 +11,7 @@
           <%= link_to system_settings_path, class: ("active" if active == :system) do %><span class="material-symbols-outlined">tune</span>ตั้งค่าทั้งระบบ<% end %>
           <%= link_to status_system_settings_path, class: ("active" if active == :status) do %><span class="material-symbols-outlined">monitor_heart</span>สถานะระบบ<% end %>
           <%= link_to ai_providers_path, class: ("active" if active == :ai) do %><span class="material-symbols-outlined">smart_toy</span>ผู้ให้บริการ AI<% end %>
+          <%= link_to tts_providers_path, class: ("active" if active == :tts) do %><span class="material-symbols-outlined">record_voice_over</span>ผู้ให้บริการเสียง<% end %>
           <%= link_to notification_settings_path, class: ("active" if active == :notifications) do %><span class="material-symbols-outlined">campaign</span>การแจ้งเตือนส่วนกลาง<% end %>
         </nav>
       <% elsif current_user.subdistrict_admin? %>

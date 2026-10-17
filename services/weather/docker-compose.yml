@@ -1,0 +1,61 @@
+name: smart-tambon-weather
+
+x-weather-env: &weather-env
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-weather}:${POSTGRES_PASSWORD:-weather}@postgres:5432/${POSTGRES_DB:-weather}
+  TEST_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-weather}:${POSTGRES_PASSWORD:-weather}@postgres:5432/weather_test
+  WEATHER_ADMIN_API_KEY: ${WEATHER_ADMIN_API_KEY:-}
+  WEATHER_PRIMARY_PROVIDER: ${WEATHER_PRIMARY_PROVIDER:-open_meteo_ecmwf}
+  WEATHER_SECONDARY_PROVIDER: ${WEATHER_SECONDARY_PROVIDER:-open_meteo_gfs}
+  WEATHER_FORECAST_DAYS: ${WEATHER_FORECAST_DAYS:-8}
+  WEATHER_DEFAULT_TIMEZONE: ${WEATHER_DEFAULT_TIMEZONE:-Asia/Bangkok}
+  WEATHER_INITIAL_SYNC: ${WEATHER_INITIAL_SYNC:-true}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  TZ: UTC
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    platform: linux/amd64  # upstream image is amd64-only; runs under emulation on Apple Silicon
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-weather}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-weather}
+      POSTGRES_DB: ${POSTGRES_DB:-weather}
+    ports:
+      - "127.0.0.1:${WEATHER_DB_HOST_PORT:-5442}:5432"
+    volumes:
+      - weather_pgdata:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-weather} -d ${POSTGRES_DB:-weather}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  weather-api:
+    build: .
+    command: ["api"]
+    environment: *weather-env
+    ports:
+      - "${WEATHER_API_HOST_PORT:-8010}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  weather-scheduler:
+    build: .
+    command: ["scheduler"]
+    environment: *weather-env
+    depends_on:
+      weather-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  weather_pgdata:

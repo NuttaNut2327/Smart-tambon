@@ -1,0 +1,29 @@
+<script>
+  // "ฟังตัวอย่าง": POST to the provider's test endpoint and play the returned MP3 (or show the provider's error).
+  document.addEventListener("DOMContentLoaded", () => {
+    let player;
+    document.querySelectorAll("[data-tts-test]").forEach(button => button.addEventListener("click", async () => {
+      const status = button.closest("li, form, section")?.querySelector("[data-tts-status]");
+      const form = button.closest("form");
+      const body = new FormData();
+      body.append("authenticity_token", document.querySelector('meta[name="csrf-token"]').content);
+      const voice = form?.querySelector('[name="tts_provider[voice]"]')?.value;
+      if (voice) body.append("voice", voice);
+      button.disabled = true;
+      if (status) { status.hidden = false; status.className = "tts-test-status"; status.textContent = "กำลังสร้างเสียงตัวอย่าง…"; }
+      try {
+        const response = await fetch(button.dataset.ttsTest, { method: "POST", body, headers: { Accept: "audio/mpeg, application/json" } });
+        if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `HTTP ${response.status}`);
+        const url = URL.createObjectURL(await response.blob());
+        player?.pause();
+        player = new Audio(url);
+        await player.play();
+        if (status) status.textContent = "กำลังเล่นเสียงตัวอย่าง";
+      } catch (error) {
+        if (status) { status.className = "tts-test-status error"; status.textContent = `ทดสอบไม่สำเร็จ: ${error.message}`; }
+      } finally {
+        button.disabled = false;
+      }
+    }));
+  });
+</script>

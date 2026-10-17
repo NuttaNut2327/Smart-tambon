@@ -8,7 +8,8 @@ module Notifications
     def self.for(channel, setting = NotificationSetting.current)
       raise DeliveryError, "ผู้ดูแลระบบปิดช่องทาง #{channel.kind_label} ไว้" unless setting.kind_available?(channel.kind)
 
-      { "line" => Line, "telegram" => Telegram, "signal" => Signal, "webhook" => Webhook }.fetch(channel.kind).new(channel, setting)
+      { "line" => Line, "telegram" => Telegram, "signal" => Signal, "webhook" => Webhook,
+        "facebook" => Facebook, "instagram" => Instagram, "pa_mqtt" => PaMqtt }.fetch(channel.kind).new(channel, setting)
     end
 
     class Base
@@ -178,6 +179,62 @@ module Notifications
         raise DeliveryError, "ไม่อนุญาตให้ส่ง Webhook ไปยังที่อยู่ภายในเครือข่าย (#{blocked})" if blocked
       rescue URI::InvalidURIError, IPAddr::InvalidAddressError
         raise DeliveryError, "Webhook URL ไม่ถูกต้อง"
+      end
+    end
+
+    # Facebook Page post through the Graph API: a photo post when the broadcast has a public image, otherwise text.
+    class Facebook < Base
+      GRAPH = "https://graph.facebook.com/v21.0".freeze
+
+      def deliver(text, data: {}, **)
+        raise DeliveryError, "ยังไม่ได้ใส่ Page Access Token" if @channel.token.blank?
+
+        image_url = data[:image_url] || data["image_url"]
+        path, body = image_url ? ["photos", { url: image_url, caption: text }] : ["feed", { message: text }]
+        response, json = post_json("#{GRAPH}/#{@channel.target}/#{path}", body.merge(access_token: @channel.token))
+        raise DeliveryError, "Facebook: #{json&.dig('error', 'message') || "HTTP #{response.code}"}" unless response.is_a?(Net::HTTPSuccess)
+
+        json&.dig("post_id") || json&.dig("id")
+      end
+    end
+
+    # Instagram Content Publishing: create a media container from a public image URL, then publish it.
+    class Instagram < Base
+      GRAPH = "https://graph.facebook.com/v21.0".freeze
+
+      def deliver(text, data: {}, **)
+        raise DeliveryError, "ยังไม่ได้ใส่ Access Token ของ Instagram" if @channel.token.blank?
+
+        image_url = data[:image_url] || data["image_url"]
+        raise DeliveryError, "Instagram ต้องมีภาพข่าว — สร้างหรือแนบภาพก่อนเผยแพร่" if image_url.blank?
+        raise DeliveryError, "Meta ต้องดาวน์โหลดภาพจาก URL สาธารณะ — ตั้งค่า URL สาธารณะของระบบ (ไม่ใช่ localhost) ก่อน" if image_url.match?(%r{\Ahttps?://(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.)})
+
+        response, json = post_json("#{GRAPH}/#{@channel.target}/media", { image_url:, caption: text.truncate(2200), access_token: @channel.token })
+        raise DeliveryError, "Instagram (สร้างโพสต์): #{json&.dig('error', 'message') || "HTTP #{response.code}"}" unless response.is_a?(Net::HTTPSuccess) && json&.dig("id")
+
+        response, published = post_json("#{GRAPH}/#{@channel.target}/media_publish", { creation_id: json["id"], access_token: @channel.token })
+        raise DeliveryError, "Instagram (เผยแพร่): #{published&.dig('error', 'message') || "HTTP #{response.code}"}" unless response.is_a?(Net::HTTPSuccess)
+
+        published&.dig("id")
+      end
+    end
+
+    # Village PA system: publish the broadcast to an MQTT topic; the speaker controller downloads audio_url and plays it.
+    class PaMqtt < Base
+      def deliver(text, tag: nil, data: {})
+        url = ENV["MQTT_URL"].presence
+        raise DeliveryError, "ยังไม่ได้ตั้งค่า MQTT_URL ของระบบ" unless url
+
+        payload = { type: data[:audio_url] || data["audio_url"] ? "broadcast.audio" : "broadcast.text", event: tag, text:, sent_at: Time.current.iso8601 }.merge(data.to_h.symbolize_keys)
+        client = MQTT::Client.new(url)
+        client.client_id = "smart-tambon-pa-#{SecureRandom.hex(4)}"
+        client.connect do |connection|
+          # QoS 1 + retained so a speaker that reconnects still receives the latest broadcast.
+          connection.publish(@channel.target, payload.to_json, true, 1)
+        end
+        @channel.target
+      rescue MQTT::Exception, SystemCallError, SocketError, Timeout::Error => error
+        raise DeliveryError, "ส่งไปยัง MQTT ไม่สำเร็จ: #{error.message.truncate(120)}"
       end
     end
   end
