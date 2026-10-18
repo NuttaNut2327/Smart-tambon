@@ -9,3 +9,7 @@
 /storage/*
 /.bundle
 /vendor/bundle
+
+# Database dumps (contain user accounts and encrypted secrets; regenerate with databases/seed/dump.sh)
+/databases/seed/*.dump
+/databases/seed/*.archive.gz
