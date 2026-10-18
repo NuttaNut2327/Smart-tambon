@@ -1,0 +1,56 @@
+<% status_steps = [["pending", "รับแจ้งแล้ว"], ["assessing", "กำลังประเมิน"], ["in_progress", "กำลังดำเนินการ"], ["completed", "เสร็จสิ้น"]] %>
+<% current_index = status_steps.index { |key, _| key == @incident.status } || 0 %>
+<% org_name = @organization&.organization_name.presence || "องค์การบริหารส่วนตำบล" %>
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <title>ติดตามสถานะ <%= @incident.reference_code %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet">
+    <%= stylesheet_link_tag "sms" %>
+  </head>
+  <body class="track-page">
+    <main class="track-shell">
+      <header class="track-header">
+        <%= image_tag system_logo_src, alt: "", class: "track-logo" %>
+        <div><small><%= system_name %></small><b><%= org_name %></b></div>
+      </header>
+
+      <section class="track-card">
+        <p class="track-kicker">ติดตามสถานะเรื่องที่แจ้ง</p>
+        <h1><%= @incident.reference_code %></h1>
+        <p class="track-title"><%= @incident.category == "disaster" ? "แจ้งเหตุภัยพิบัติ" : "แจ้งเหตุการณ์" %><% type = @incident.incident_type_other.presence || @incident.incident_type %><%= " · #{type}" if type.present? %></p>
+        <p class="track-meta">แจ้งเมื่อ <%= thai_short_datetime(@incident.created_at) %> · อัปเดตล่าสุด <%= thai_short_datetime(@incident.updated_at) %></p>
+
+        <ol class="track-steps">
+          <% status_steps.each_with_index do |(key, label), index| %>
+            <li class="<%= index < current_index ? 'done' : (index == current_index ? 'current' : '') %>">
+              <span class="material-symbols-outlined"><%= index < current_index || (index == current_index && key == "completed") ? "check_circle" : (index == current_index ? "radio_button_checked" : "radio_button_unchecked") %></span><%= label %>
+            </li>
+          <% end %>
+        </ol>
+      </section>
+
+      <% if @steps.any? %>
+        <section class="track-card">
+          <h2>ความคืบหน้า</h2>
+          <ul class="track-timeline">
+            <% @steps.reverse_each do |step| %>
+              <li><b><%= step["title"] %></b><small><%= step["occurred_at"].present? ? thai_short_datetime(Time.zone.parse(step["occurred_at"].to_s)) : "" %></small></li>
+            <% end %>
+          </ul>
+        </section>
+      <% end %>
+
+      <section class="track-card track-contact">
+        <h2>ติดต่อหน่วยงาน</h2>
+        <p><b><%= org_name %></b></p>
+        <% if @organization&.phone.present? %><p><span class="material-symbols-outlined">call</span><a href="tel:<%= @organization.phone.gsub(/[^\d+]/, '') %>"><%= @organization.phone %></a></p><% end %>
+        <% if @organization&.address.present? %><p><span class="material-symbols-outlined">location_on</span><%= @organization.address %></p><% end %>
+        <p class="track-note">หน้านี้แสดงเฉพาะสถานะของเรื่อง ไม่แสดงข้อมูลส่วนตัวของผู้แจ้ง โปรดอย่าส่งต่อลิงก์ให้ผู้อื่น</p>
+      </section>
+    </main>
+  </body>
+</html>

@@ -68,6 +68,13 @@ Rails.application.routes.draw do
       end
     end
   end
+  match "send_sms", to: "sms#create", via: %i[get post], as: :send_sms
+  get "t/:token", to: "incident_trackings#show", as: :incident_tracking
+  resource :sms_settings, only: %i[show update] do
+    post :test_message
+    post :otp_send
+    post :otp_validate
+  end
   resource :notification_settings, only: %i[show update] do
     post :test_line
   end

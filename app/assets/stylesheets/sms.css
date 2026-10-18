@@ -1,0 +1,67 @@
+/* SMS: incident modal, settings page, and the public tracking page. */
+.sms-action{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.sms-action .incident-secondary-action{display:inline-flex;align-items:center;gap:6px}
+.sms-action .incident-secondary-action[disabled]{opacity:.5;cursor:not-allowed}
+.sms-state{font-size:12px}
+.sms-ok{color:#2d6a45;font-weight:600}
+.sms-fail{color:#b42318}
+.sms-small{margin:8px 0 0;font-size:12px}
+.sms-muted{margin:0;color:#7a847d;font-size:13px}
+.sms-banner{display:flex;gap:8px;align-items:flex-start;margin:0 0 14px;padding:10px 14px;border-radius:10px;background:#fff8e6;color:#7a5a00;font-size:13px}
+
+.sms-dialog{width:min(560px,calc(100vw - 32px));padding:0;border:0;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.sms-dialog::backdrop{background:rgba(20,28,22,.45)}
+.sms-dialog-body{display:grid;gap:14px;padding:18px 20px}
+.sms-dialog-body>header{display:flex;justify-content:space-between;align-items:center;height:auto;padding:0;border:0;background:none;box-shadow:none}
+.sms-dialog-body h2{margin:0;font-size:18px}
+.sms-close{border:0;background:none;cursor:pointer;color:#4b5a50}
+.sms-to{margin:0;font-size:14px;color:#4b5a50}
+.sms-modes{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0;padding:10px 12px;border:1px solid #e3e7e2;border-radius:10px;font-size:14px}
+.sms-modes legend{padding:0 6px;font-size:13px;color:#4b5a50}
+.sms-modes label{display:inline-flex;gap:6px;align-items:center}
+.sms-preview{display:grid;gap:6px;font-size:13px;color:#4b5a50}
+.sms-preview pre{margin:0;padding:10px 12px;border-radius:10px;background:#f6f8f5;font:inherit;font-size:14px;white-space:pre-wrap;word-break:break-word;color:#1f2a22}
+.sms-preview code{word-break:break-all}
+.sms-result{display:grid;gap:8px;padding:12px 14px;border-radius:10px;font-size:13px}
+.sms-result.ok{background:#e9f6ee;border:1px solid #bfe0cb}
+.sms-result.fail{background:#fdecea;border:1px solid #f5c2bd}
+.sms-result p{margin:0}
+.sms-result dl{display:grid;gap:6px;margin:0}
+.sms-result dl>div{display:grid;grid-template-columns:140px 1fr;gap:8px}
+.sms-result dt{color:#6b756f}
+.sms-result dd{margin:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;word-break:break-all}
+.sms-result pre{margin:6px 0 0;max-height:180px;overflow:auto;font-size:11px;background:rgba(255,255,255,.6);padding:8px;border-radius:8px}
+.sms-copy{padding:4px 10px!important;font-size:12px!important}
+.sms-dialog-body footer{display:flex;justify-content:flex-end;gap:8px}
+.sms-dialog-body footer .incident-primary-action{display:inline-flex;align-items:center;gap:6px}
+.sms-dialog-body footer [disabled]{opacity:.5;cursor:not-allowed}
+
+.sms-inline-form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+.sms-inline-form label{display:grid;gap:5px;font-size:13px;color:#4b5a50}
+.sms-inline-form input{padding:8px 10px;border:1px solid #d9dfd8;border-radius:8px;font:inherit}
+.sms-log small{display:block;color:#7a847d;font-size:11px}
+
+/* Public tracking page (/t/:token) */
+body.track-page{margin:0;min-height:100vh;background:#f3f5f1;color:#1f2a22;font-family:"Google Sans",system-ui,sans-serif}
+.track-shell{display:grid;gap:14px;max-width:560px;margin:0 auto;padding:20px 16px 40px}
+.track-header{display:flex;gap:12px;align-items:center;height:auto;padding:0;background:none;box-shadow:none;border:0}
+.track-logo{width:44px;height:44px;object-fit:contain}
+.track-header div{display:grid}
+.track-header small{color:#6b756f;font-size:12px}
+.track-card{display:grid;gap:10px;padding:18px;border-radius:16px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.track-card h1{margin:0;font-size:24px;letter-spacing:.5px}
+.track-card h2{margin:0;font-size:16px}
+.track-kicker{margin:0;color:#3f6b52;font-size:13px;font-weight:600}
+.track-title{margin:0;font-size:15px}
+.track-meta{margin:0;color:#6b756f;font-size:12px}
+.track-steps{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px}
+.track-steps li{display:flex;gap:8px;align-items:center;color:#9aa39d;font-size:15px}
+.track-steps li.done{color:#2d6a45}
+.track-steps li.current{color:#1f2a22;font-weight:600}
+.track-steps li.current .material-symbols-outlined{color:#3f6b52}
+.track-timeline{list-style:none;margin:0;padding:0 0 0 14px;display:grid;gap:10px;border-left:2px solid #e3e7e2}
+.track-timeline li{display:grid;gap:2px;font-size:14px}
+.track-timeline small{color:#7a847d;font-size:12px}
+.track-contact p{display:flex;gap:6px;align-items:center;margin:0;font-size:14px}
+.track-contact a{color:#2f6fb0}
+.track-note{margin-top:6px!important;color:#7a847d;font-size:12px!important}

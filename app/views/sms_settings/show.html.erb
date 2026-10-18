@@ -1,0 +1,73 @@
+<%= stylesheet_link_tag "sms", "data-turbo-track": "reload" %>
+<% source = ->(name) { { "settings" => "ใช้ค่าจากหน้าตั้งค่า", "env" => "ใช้ค่าจาก .env" }.fetch(@setting.secret_source(name), "ยังไม่ได้กำหนด") } %>
+<% otp_pending = session[:sms_otp_test] %>
+<%= render layout: "settings/frame", locals: { title: "SMS (smsmkt)", kicker: "สำหรับผู้ดูแลระบบ (Super admin)", description: "ส่ง SMS แจ้งลิงก์ติดตามสถานะเรื่องให้ผู้แจ้งเหตุ และ OTP ผ่าน smsmkt — ใช้ credential ชุดเดียวกับระบบ SmartEMS ได้", active: :sms } do %>
+  <% unless @setting.ready? %><p class="sms-banner"><span class="material-symbols-outlined">info</span>ยังส่ง SMS ไม่ได้ — ต้องมี api_key, secret_key และชื่อผู้ส่งที่จดทะเบียนกับ smsmkt แล้ว (ดูขั้นตอนใน docs/sms-smsmkt.md)</p><% end %>
+  <%= form_with model: @setting, url: sms_settings_path, method: :patch, class: "settings-form" do |form| %>
+    <% if @setting.errors.any? %><div class="form-errors"><% @setting.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
+    <section class="settings-card">
+      <header><span class="material-symbols-outlined">key</span><div><h2>บัญชี smsmkt</h2><p>ค่าลับถูกเข้ารหัสและไม่แสดงกลับในหน้าเว็บ — เว้นว่างเพื่อคงค่าเดิม</p></div></header>
+      <div class="settings-grid">
+        <label class="settings-switch span-2"><%= form.check_box :enabled %><span><b>เปิดใช้การส่ง SMS</b><small>ปิดเพื่อหยุดการส่งทั้งระบบชั่วคราว</small></span></label>
+        <% { "sms_api_key" => ["sms_api_key", "ส่งในหัว api_key"], "sms_secret_key" => ["sms_secret_key", "ส่งในหัว secret_key"], "otp_project_key" => ["OTP project_key", "ใช้กับ /api/otp-send (เดิม SmartEMS hardcode ไว้ในซอร์ส)"] }.each do |name, (label, help)| %>
+          <label><%= label %>
+            <%= password_field_tag "sms_setting[#{name}]", nil, autocomplete: "new-password", placeholder: @setting.public_send(:"masked_#{name}") || "ยังไม่ได้กำหนด" %>
+            <small><%= help %> · <span class="settings-source <%= @setting.secret_source(name) || 'none' %>"><%= source.call(name) %></span></small>
+            <% if @setting.public_send(:"#{name}?") %><span class="settings-check"><%= check_box_tag "sms_setting[clear_#{name}]", "1" %> ลบค่าที่บันทึก</span><% end %>
+          </label>
+        <% end %>
+        <label>sms_sender (ชื่อผู้ส่ง)<%= form.text_field :sms_sender, maxlength: 11, placeholder: "เช่น Demo-SMS" %><small>ต้องเป็นชื่อที่ smsmkt อนุมัติแล้ว ไม่เกิน 11 ตัวอักษร</small></label>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <header><span class="material-symbols-outlined">sms</span><div><h2>ข้อความและลิงก์</h2><p>ใส่ <code>&lt;TRACKING-URL&gt;</code> ตรงจุดที่ต้องการให้ลิงก์ปรากฏ smsmkt จะแทนด้วยลิงก์ย่อ · ตัวแปรที่ใช้ได้: <% SmsSetting::VARIABLES.each do |name, label| %><code title="<%= label %>">{{<%= name %>}}</code> <% end %></p></div></header>
+      <div class="settings-grid">
+        <label class="span-2">sms_msg (โหมดติดตามสถานะ)<%= form.text_area :sms_msg, rows: 3 %></label>
+        <label class="span-2">host_url (ที่อยู่เว็บสำหรับประกอบลิงก์)<%= form.url_field :host_url, placeholder: NotificationSetting.current.base_url || "https://tambon.example.go.th" %><small>ลิงก์ที่ส่ง: <code><%= (@setting.effective_host_url || "https://…") %>/t/&lt;token&gt;</code> — หน้าติดตามสถานะแบบสาธารณะ ไม่ต้องล็อกอิน</small></label>
+        <label>กันกดส่งซ้ำ (วินาที ต่อเรื่อง)<%= form.number_field :cooldown_seconds, min: 0, max: 3600 %></label>
+        <div></div>
+        <label class="settings-switch span-2"><%= form.check_box :video_enabled %><span><b>เปิดโหมดวิดีโอคอล (ยังไม่แนะนำ)</b><small>ระบบยังไม่มีห้องประชุมของตัวเอง — เปิดเมื่อมีเซิร์ฟเวอร์ห้องประชุม เช่น Jitsi แล้วเท่านั้น ระบบจะสร้างชื่อห้องต่อเรื่องและใช้ซ้ำ</small></span></label>
+        <label>URL ฐานของห้องประชุม<%= form.url_field :video_base_url, placeholder: "https://meet.example.go.th" %></label>
+        <label>sms_video_msg (โหมดวิดีโอคอล)<%= form.text_area :sms_video_msg, rows: 3 %></label>
+      </div>
+    </section>
+    <div class="settings-actions"><%= form.submit "บันทึกการตั้งค่า SMS", class: "button-link primary" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %></small><% end %></div>
+  <% end %>
+
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined">science</span><div><h2>ทดสอบส่ง SMS</h2><p>ส่งข้อความตาม sms_msg (ตัดตัวแปรออก) พร้อมลิงก์ host_url ไปยังเบอร์ที่ระบุ — ใช้เครดิตจริง</p></div></header>
+    <%= form_with url: test_message_sms_settings_path, method: :post, class: "sms-inline-form" do %>
+      <label>เบอร์มือถือ<%= telephone_field_tag :phone, nil, placeholder: "08xxxxxxxx", required: true %></label>
+      <button type="submit" class="button-link primary" onclick="return confirm('ส่ง SMS ทดสอบ (ใช้เครดิตจริง)?')"><span class="material-symbols-outlined">send</span>ส่งทดสอบ</button>
+    <% end %>
+  </section>
+
+  <section class="settings-card" id="otp">
+    <header><span class="material-symbols-outlined">password</span><div><h2>ทดสอบ OTP</h2><p>เรียก <code>/api/otp-send</code> ด้วย project_key จากหน้าตั้งค่า แล้วตรวจรหัสด้วย <code>/api/otp-validate</code></p></div></header>
+    <%= form_with url: otp_send_sms_settings_path, method: :post, class: "sms-inline-form" do %>
+      <label>เบอร์มือถือ<%= telephone_field_tag :phone, otp_pending&.dig("phone"), placeholder: "08xxxxxxxx", required: true %></label>
+      <button type="submit" class="button-link"><span class="material-symbols-outlined">send</span>ส่ง OTP</button>
+    <% end %>
+    <% if otp_pending %>
+      <%= form_with url: otp_validate_sms_settings_path, method: :post, class: "sms-inline-form" do %>
+        <label>รหัส OTP (ref <%= otp_pending["ref_code"] %>)<%= text_field_tag :otp_code, nil, inputmode: "numeric", autocomplete: "one-time-code", required: true %></label>
+        <button type="submit" class="button-link primary"><span class="material-symbols-outlined">verified</span>ตรวจสอบรหัส</button>
+      <% end %>
+    <% end %>
+  </section>
+
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined">history</span><div><h2>ประวัติการส่งล่าสุด</h2><p>บันทึกข้อความ ลิงก์ และผลตอบกลับของผู้ให้บริการทุกครั้ง</p></div></header>
+    <% if @recent.empty? %><p class="sms-muted">ยังไม่มีการส่ง</p><% else %>
+      <div class="users-table-wrap"><table class="users-table sms-log"><thead><tr><th>เวลา</th><th>ประเภท</th><th>เบอร์</th><th>ผล</th><th>โดย</th></tr></thead><tbody>
+        <% @recent.each do |sms| %>
+          <tr><td><%= sms.created_at.strftime("%d/%m %H:%M:%S") %></td><td><%= { "link" => "ลิงก์ (#{sms.mode})", "test" => "ทดสอบ", "otp" => "OTP" }.fetch(sms.kind, sms.kind) %></td>
+            <td><%= sms.masked_phone %></td>
+            <td><span class="<%= sms.sent? ? 'sms-ok' : 'sms-fail' %>"><%= sms.status %></span> <small>HTTP <%= sms.http_status || "-" %> · code <%= sms.provider_code || "-" %></small><% if sms.error %><small class="sms-fail"><%= sms.error %></small><% end %></td>
+            <td><%= sms.sent_by %></td></tr>
+        <% end %>
+      </tbody></table></div>
+    <% end %>
+  </section>
+<% end %>
