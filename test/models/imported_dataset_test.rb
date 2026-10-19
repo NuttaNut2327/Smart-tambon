@@ -23,6 +23,13 @@ class ImportedDatasetTest < ActiveSupport::TestCase
                  ImportedDataset.schema_for("consumables").map { |field| field.fetch("key") }
   end
 
+  test "agency coordinates are optional" do
+    schema = ImportedDataset.schema_for("agencies")
+
+    assert_not schema.find { |field| field["key"] == "latitude" }.fetch("required")
+    assert_not schema.find { |field| field["key"] == "longitude" }.fetch("required")
+  end
+
   test "resource schema uses the defined asset register columns" do
     assert_equal %w[name code registration resource_type status responsible_person agency_code storage_location],
                  ImportedDataset.schema_for("resources").map { |field| field.fetch("key") }

@@ -1,4 +1,5 @@
 require "test_helper"
+require "minitest/mock"
 
 class DatasetVersionImportServiceTest < ActiveSupport::TestCase
   setup do
@@ -150,6 +151,124 @@ class DatasetVersionImportServiceTest < ActiveSupport::TestCase
   test "rejects invalid coordinates" do
     error = assert_raises(ArgumentError) { import([{ "name" => "ผิด", "latitude" => "999", "longitude" => "100" }]) }
     assert_match "พิกัดไม่ถูกต้อง", error.message
+  end
+
+  test "imports an agency without coordinates and builds its approximate address" do
+    dataset = ImportedDataset.create!(user: @user, name: "หน่วยงาน", data_type: "agencies",
+      geometry_type: "point", map_enabled: true, schema_definition: ImportedDataset.schema_for("agencies"))
+
+    version = DatasetVersionImportService.new(dataset: dataset, user: @user, source_kind: "file",
+      manual_records: [{ "agency_name" => "โรงพยาบาลส่งเสริมสุขภาพตำบล", "agency_type" => "สาธารณสุข",
+        "road" => "ถนนทดสอบ", "subdistrict" => "ป่ากลาง", "district" => "ปัว", "province" => "น่าน",
+        "postcode" => "55120" }]).import!
+
+    record = version.records.first
+    assert_nil record["latitude"]
+    assert_nil record["longitude"]
+    assert_equal "ถนนทดสอบ ต.ป่ากลาง อ.ปัว จ.น่าน 55120", record["address"]
+    assert_nil version.record_documents.first.location
+  end
+
+  test "imports an agency when address and coordinates are all blank" do
+    dataset = ImportedDataset.create!(user: @user, name: "หน่วยงาน", data_type: "agencies",
+      geometry_type: "point", map_enabled: true, schema_definition: ImportedDataset.schema_for("agencies"))
+
+    version = DatasetVersionImportService.new(dataset: dataset, user: @user, source_kind: "file",
+      manual_records: [{ "agency_name" => "หน่วยงานไม่มีที่อยู่", "agency_type" => "อื่น ๆ" }]).import!
+
+    assert_nil version.records.first["address"]
+    assert_nil version.record_documents.first.location
+  end
+
+  test "fills agency address fields from coordinates" do
+    dataset = ImportedDataset.create!(user: @user, name: "หน่วยงาน", data_type: "agencies",
+      geometry_type: "point", map_enabled: true, schema_definition: ImportedDataset.schema_for("agencies"))
+    geocoded = { address: "12 ถนนทดสอบ ต.ป่ากลาง อ.ปัว จ.น่าน 55120", road: "ถนนทดสอบ",
+      subdistrict: "ป่ากลาง", district: "ปัว", province: "น่าน", postcode: "55120" }
+
+    ReverseGeocoder.stub(:call, geocoded) do
+      version = DatasetVersionImportService.new(dataset: dataset, user: @user, source_kind: "file",
+        manual_records: [{ "agency_name" => "หน่วยงานมีพิกัด", "agency_type" => "ราชการ",
+          "latitude" => "19.15", "longitude" => "100.80" }]).import!
+      record = version.records.first
+
+      assert_equal "12 ถนนทดสอบ ต.ป่ากลาง อ.ปัว จ.น่าน 55120", record["address"]
+      assert_equal "ถนนทดสอบ", record["road"]
+      assert_equal "ป่ากลาง", record["subdistrict"]
+      assert_equal "ปัว", record["district"]
+      assert_equal "น่าน", record["province"]
+      assert_equal "55120", record["postcode"]
+      assert_equal [100.8, 19.15], version.record_documents.first.location
+    end
+  end
+
+  test "rejects an agency with only one coordinate" do
+    dataset = ImportedDataset.create!(user: @user, name: "หน่วยงาน", data_type: "agencies",
+      geometry_type: "point", map_enabled: true, schema_definition: ImportedDataset.schema_for("agencies"))
+
+    error = assert_raises(ArgumentError) do
+      DatasetVersionImportService.new(dataset: dataset, user: @user, source_kind: "file",
+        manual_records: [{ "agency_name" => "พิกัดไม่ครบ", "agency_type" => "อื่น ๆ", "latitude" => "19.15" }]).import!
+    end
+
+    assert_match "ระบุละติจูดและลองจิจูดให้ครบ", error.message
+  end
+
+  test "preserves an existing agency code when an imported name matches" do
+    dataset = ImportedDataset.create!(user: @user, name: "หน่วยงาน", data_type: "agencies",
+      geometry_type: "none", schema_definition: ImportedDataset.schema_for("agencies"))
+    existing = [{ "agency_code" => "AG-001", "agency_name" => "องค์การบริหารส่วนตำบลป่ากลาง",
+      "agency_type" => "ท้องถิ่น" }]
+
+    version = DatasetVersionImportService.new(dataset: dataset, user: @user, source_kind: "file",
+      registry_records: existing,
+      manual_records: [{ "agency_name" => "อบต. ป่ากลาง", "agency_type" => "ท้องถิ่น" }]).import!
+
+    assert_equal "AG-001", version.records.first["agency_code"]
+  end
+
+  test "generates a new agency code only when the imported name is new" do
+    dataset = ImportedDataset.create!(user: @user, name: "หน่วยงาน", data_type: "agencies",
+      geometry_type: "none", schema_definition: ImportedDataset.schema_for("agencies"))
+
+    version = DatasetVersionImportService.new(dataset: dataset, user: @user, source_kind: "file",
+      registry_records: [{ "agency_code" => "AG-001", "agency_name" => "อบต.ป่ากลาง" }],
+      manual_records: [{ "agency_name" => "สถานีตำรวจภูธรปัว", "agency_type" => "ราชการ" }]).import!
+
+    assert_match(/\AAG-[0-9A-F]{6}\z/, version.records.first["agency_code"])
+    assert_not_equal "AG-001", version.records.first["agency_code"]
+  end
+
+  test "requires an agency code when a name matches multiple existing agencies" do
+    dataset = ImportedDataset.create!(user: @user, name: "หน่วยงาน", data_type: "agencies",
+      geometry_type: "none", schema_definition: ImportedDataset.schema_for("agencies"))
+    existing = [
+      { "agency_code" => "AG-001", "agency_name" => "อบต.ป่ากลาง" },
+      { "agency_code" => "AG-002", "agency_name" => "องค์การบริหารส่วนตำบลป่ากลาง" }
+    ]
+
+    error = assert_raises(ArgumentError) do
+      DatasetVersionImportService.new(dataset: dataset, user: @user, source_kind: "file",
+        registry_records: existing,
+        manual_records: [{ "agency_name" => "อบต. ป่ากลาง", "agency_type" => "ท้องถิ่น" }]).import!
+    end
+
+    assert_match "ตรงกับข้อมูลเดิมหลายรายการ", error.message
+    assert_match "AG-001, AG-002", error.message
+  end
+
+  test "rejects duplicate agency codes in one import" do
+    dataset = ImportedDataset.create!(user: @user, name: "หน่วยงาน", data_type: "agencies",
+      geometry_type: "none", schema_definition: ImportedDataset.schema_for("agencies"))
+
+    error = assert_raises(ArgumentError) do
+      DatasetVersionImportService.new(dataset: dataset, user: @user, source_kind: "file", manual_records: [
+        { "agency_code" => "AG-001", "agency_name" => "หน่วยงานหนึ่ง", "agency_type" => "ราชการ" },
+        { "agency_code" => "AG-001", "agency_name" => "หน่วยงานสอง", "agency_type" => "ราชการ" }
+      ]).import!
+    end
+
+    assert_match "รหัสหน่วยงาน AG-001 ซ้ำในไฟล์", error.message
   end
 
   test "accepts comma thousands separators in numeric columns" do

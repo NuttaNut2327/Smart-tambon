@@ -84,8 +84,8 @@ class ImportedDataset
       { "key" => "district", "label" => "อำเภอ", "type" => "text", "required" => false, "hidden" => true },
       { "key" => "province", "label" => "จังหวัด", "type" => "text", "required" => false, "hidden" => true },
       { "key" => "postcode", "label" => "รหัสไปรษณีย์", "type" => "text", "required" => false, "hidden" => true },
-      { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => true, "hidden" => true },
-      { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true, "hidden" => true }
+      { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => false, "hidden" => true },
+      { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => false, "hidden" => true }
     ],
     "cctv_devices" => [
       { "key" => "sensor_id", "label" => "Sensor ID", "type" => "text", "required" => true },
