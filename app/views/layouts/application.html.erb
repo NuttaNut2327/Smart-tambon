@@ -64,5 +64,5 @@
     <%= javascript_include_tag "incident_assessment", defer: true, "data-turbo-track": "reload" %>
     <%= javascript_include_tag "public_incident_report", defer: true, "data-turbo-track": "reload" %>
   </head>
-  <body class="<%= 'auth-page' if devise_controller? %>"><%= yield %><%= render "announcements/popup", feed: announcement_feed if announcement_feed %></body>
+  <body class="<%= 'auth-page' if devise_controller? %>"><%= render "shared/impersonation_banner" if user_signed_in? && session[:impersonator_id] %><%= yield %><%= render "announcements/popup", feed: announcement_feed if announcement_feed %></body>
 </html>

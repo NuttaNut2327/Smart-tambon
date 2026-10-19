@@ -1,0 +1,3 @@
+<% if @registration.status == "approved" %>คำขอลงทะเบียน <%= @registration.organization_name %> ได้รับการอนุมัติแล้ว เข้าสู่ระบบด้วยชื่อผู้ใช้ <%= @registration.username %> ที่ <%= @login_url %>
+<% else %>คำขอลงทะเบียน <%= @registration.organization_name %> ยังไม่ได้รับการอนุมัติ<%= " — เหตุผล: #{@registration.reject_reason}" if @registration.reject_reason.present? %>
+<% end %>

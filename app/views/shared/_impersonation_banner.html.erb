@@ -1,0 +1,6 @@
+<%# Shown while a system admin is using an อบต. account through "switch account". %>
+<div class="impersonation-banner" role="status">
+  <span class="material-symbols-outlined">switch_account</span>
+  <span>กำลังใช้งานในฐานะ <b><%= current_user.username %></b> · <%= OrganizationSetting.where(organization_key: current_user.organization_key).pick(:organization_name).presence || current_user.subdistrict&.name_th %> — การกระทำทั้งหมดจะบันทึกในนามบัญชีนี้</span>
+  <%= button_to impersonation_path, method: :delete, class: "impersonation-back" do %><span class="material-symbols-outlined">undo</span>กลับเป็นผู้ดูแลระบบ<% end %>
+</div>

@@ -1,0 +1,48 @@
+<% r = @registration %>
+<% area_state = OrganizationRegistration.area_status(r.subdistrict_id, except: r.id) %>
+<%= render layout: "admin/frame", locals: { title: r.organization_name, description: "คำขอลงทะเบียน · #{r.status_label}", active: :registrations } do %>
+  <% if r.status == "pending_review" && area_state == "taken" %><p class="activity-flash alert">ตำบลนี้มีผู้ดูแลในระบบแล้วหลังจากส่งคำขอ — อนุมัติไม่ได้</p><% end %>
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined">account_balance</span><div><h2>หน่วยงานและพื้นที่</h2><p>ตรวจว่าเป็นหน่วยงานจริงในพื้นที่นี้ เช่น โทรกลับเบอร์สำนักงาน</p></div></header>
+    <dl class="admin-detail">
+      <div><dt>ชื่อหน่วยงาน</dt><dd><%= r.organization_name %></dd></div>
+      <div><dt>ประเภท</dt><dd><%= r.organization_type_label %></dd></div>
+      <div><dt>พื้นที่</dt><dd><%= r.area_label %></dd></div>
+      <div><dt>เบอร์สำนักงาน</dt><dd><%= r.office_phone.presence || "-" %></dd></div>
+      <div><dt>ที่อยู่</dt><dd><%= r.address.presence || "-" %></dd></div>
+    </dl>
+  </section>
+  <section class="settings-card" style="margin-top:16px">
+    <header><span class="material-symbols-outlined">person</span><div><h2>ผู้ดูแลที่ขอเปิดบัญชี</h2><p>ยืนยันตัวตนด้วย OTP ทาง<%= OrganizationRegistration::OTP_CHANNELS[r.otp_channel] %> แล้วเมื่อ <%= thai_short_datetime(r.verified_at) %></p></div></header>
+    <dl class="admin-detail">
+      <div><dt>ชื่อ-นามสกุล</dt><dd><%= r.admin_full_name %></dd></div>
+      <div><dt>ตำแหน่ง</dt><dd><%= r.admin_position.presence || "-" %></dd></div>
+      <div><dt>ชื่อผู้ใช้</dt><dd><%= r.username %></dd></div>
+      <div><dt>อีเมล / เบอร์มือถือ</dt><dd><%= r.email %> · <%= r.phone %></dd></div>
+    </dl>
+  </section>
+  <section class="settings-card" style="margin-top:16px">
+    <header><span class="material-symbols-outlined">policy</span><div><h2>บันทึกการยอมรับข้อตกลง (PDPA)</h2><p>หลักฐานความยินยอม เก็บพร้อมคำขอ</p></div></header>
+    <dl class="admin-detail">
+      <div><dt>ข้อตกลงการใช้บริการ</dt><dd>ฉบับ <code><%= r.terms_version %></code><%= " (ฉบับปัจจุบัน)" if r.terms_version == RegistrationPolicy.terms_version %></dd></div>
+      <div><dt>ประกาศความเป็นส่วนตัว</dt><dd>ฉบับ <code><%= r.pdpa_version %></code><%= " (ฉบับปัจจุบัน)" if r.pdpa_version == RegistrationPolicy.pdpa_version %></dd></div>
+      <div><dt>ยอมรับเมื่อ</dt><dd><%= thai_short_datetime(r.consented_at) %> · IP <%= r.ip %></dd></div>
+      <div><dt>รับข่าวสาร</dt><dd><%= r.marketing_consent? ? "ยินยอม" : "ไม่ยินยอม" %></dd></div>
+      <div class="span-2"><dt>อุปกรณ์</dt><dd><small><%= r.user_agent %></small></dd></div>
+    </dl>
+  </section>
+  <% if r.status == "pending_review" %>
+    <section class="settings-card" style="margin-top:16px">
+      <header><span class="material-symbols-outlined">gavel</span><div><h2>พิจารณาคำขอ</h2><p>อนุมัติแล้วระบบจะสร้างบัญชีผู้ดูแล <b><%= r.username %></b> พร้อมรหัสผ่านที่ผู้สมัครตั้งไว้ และแจ้งผลทางอีเมล</p></div></header>
+      <div class="admin-review-actions">
+        <%= button_to approve_admin_registration_path(r), method: :post, class: "button-link primary", disabled: area_state == "taken", form: { onsubmit: "return confirm('อนุมัติและสร้างบัญชีให้ #{j r.organization_name}?')" } do %><span class="material-symbols-outlined">how_to_reg</span>อนุมัติ<% end %>
+        <%= form_with url: reject_admin_registration_path(r), method: :post do %>
+          <input type="text" name="reason" placeholder="เหตุผลที่ไม่อนุมัติ (แจ้งผู้สมัคร)" maxlength="300">
+          <button type="submit" class="button-link danger" onclick="return confirm('ไม่อนุมัติคำขอนี้?')"><span class="material-symbols-outlined">block</span>ไม่อนุมัติ</button>
+        <% end %>
+      </div>
+    </section>
+  <% elsif r.reviewed_by %>
+    <p class="activity-flash <%= r.status == 'approved' ? 'notice' : 'alert' %>" style="margin-top:16px"><%= r.status_label %> โดย <%= r.reviewed_by %> เมื่อ <%= thai_short_datetime(r.reviewed_at) %><%= " — เหตุผล: #{r.reject_reason}" if r.reject_reason.present? %></p>
+  <% end %>
+<% end %>

@@ -10,7 +10,12 @@ class User < ApplicationRecord
   validates :subdistrict, presence: true, if: -> { (subdistrict_admin? || subdistrict_user?) && !access_area_file_pending? && access_area.blank? }
   validates :username, presence: true, uniqueness: { case_sensitive: false }, format: { with: /\A[a-z0-9._-]+\z/, message: "ใช้ตัวอักษรอังกฤษ ตัวเลข จุด ขีดกลาง หรือขีดล่างเท่านั้น" }
 
+  # Mobile number in 08xxxxxxxx form (used for SMS OTP and notifications); optional but unique.
+  validates :phone, uniqueness: { message: "นี้ถูกใช้กับบัญชีอื่นแล้ว" }, allow_nil: true
+  validate :phone_must_be_thai_mobile
+
   before_validation :normalize_username
+  before_validation :normalize_phone
   before_validation :assign_organization_key
 
   def role_label
@@ -49,6 +54,15 @@ class User < ApplicationRecord
   end
 
   private
+
+  def normalize_phone
+    raw = phone.to_s.strip
+    self.phone = raw.empty? ? nil : (Sms::PhoneNumber.normalize(raw) || raw)
+  end
+
+  def phone_must_be_thai_mobile
+    errors.add(:phone, "ต้องเป็นเบอร์มือถือ 10 หลัก เช่น 0812345678") if phone.present? && !Sms::PhoneNumber.valid?(phone)
+  end
 
   def normalize_username
     self.username = username.to_s.strip.downcase

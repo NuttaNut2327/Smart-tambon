@@ -1,0 +1,19 @@
+<%= form_with url: organization_registration_path, method: :patch, scope: :registration, class: "registration-form", data: { account_form: true } do |form| %>
+  <%= hidden_field_tag :step, "account" %>
+  <h2>3. บัญชีผู้ดูแลของหน่วยงาน</h2>
+  <p class="registration-help">ผู้ดูแลจะเพิ่มบัญชีเจ้าหน้าที่คนอื่นของหน่วยงานได้ภายหลัง ระบบตรวจไม่ให้ชื่อผู้ใช้ อีเมล และเบอร์โทรซ้ำกับบัญชีอื่น</p>
+  <div class="registration-grid">
+    <label>ชื่อ-นามสกุล<%= form.text_field :admin_full_name, value: registration.admin_full_name, required: true, maxlength: 120, autocomplete: "name" %></label>
+    <label>ตำแหน่ง<%= form.text_field :admin_position, value: registration.admin_position, maxlength: 120, placeholder: "เช่น นักวิเคราะห์นโยบายและแผน" %></label>
+    <label>ชื่อผู้ใช้ (ใช้เข้าสู่ระบบ)<%= form.text_field :username, value: registration.username, required: true, autocomplete: "username", pattern: "[a-z0-9._\\-]{4,32}", data: { check: "username" }, placeholder: "เช่น admin.paklang" %><small data-check-result="username">อักษรอังกฤษพิมพ์เล็ก ตัวเลข . _ - ยาว 4–32 ตัว</small></label>
+    <label>อีเมล<%= form.email_field :email, value: registration.email, required: true, autocomplete: "email", data: { check: "email" } %><small data-check-result="email"></small></label>
+    <label>เบอร์มือถือ<%= form.telephone_field :phone, value: registration.phone, required: true, autocomplete: "tel", data: { check: "phone" }, placeholder: "08xxxxxxxx" %><small data-check-result="phone"></small></label>
+    <span></span>
+    <label>รหัสผ่าน<%= form.password_field :password, required: registration.password_digest.blank?, autocomplete: "new-password", minlength: 8, placeholder: registration.password_digest.present? ? "เว้นว่างเพื่อใช้รหัสผ่านที่ตั้งไว้" : "อย่างน้อย 8 ตัว มีตัวอักษรและตัวเลข", data: { password: true } %><small data-password-hint>อย่างน้อย 8 ตัว และมีทั้งตัวอักษรและตัวเลข</small></label>
+    <label>ยืนยันรหัสผ่าน<%= form.password_field :password_confirmation, required: registration.password_digest.blank?, autocomplete: "new-password", data: { password_confirmation: true } %></label>
+  </div>
+  <div class="registration-actions">
+    <%= link_to organization_registration_path(step: "organization"), class: "registration-back" do %><span class="material-symbols-outlined">arrow_back</span>ย้อนกลับ<% end %>
+    <button type="submit" class="registration-next">ถัดไป<span class="material-symbols-outlined">arrow_forward</span></button>
+  </div>
+<% end %>

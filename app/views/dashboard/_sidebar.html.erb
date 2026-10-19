@@ -28,6 +28,7 @@
     <%= link_to data_layers_path, class: "primary-nav-item #{'active' if active_nav == :data_layers}", data: { turbo: false } do %><span class="material-symbols-outlined">upload</span>นำเข้าข้อมูล<% end %>
     <%= link_to ai_assistant_path, class: "primary-nav-item #{'active' if active_nav == :ai_assistant}", data: { turbo: false } do %><span class="material-symbols-outlined">smart_toy</span>ผู้ช่วย AI<% end %>
     <% if user_manager? %><%= link_to users_path, class: "primary-nav-item #{'active' if active_nav == :users}" do %><span class="material-symbols-outlined">manage_accounts</span>จัดการผู้ใช้<% end %><% end %>
+    <% if system_admin? %><%= link_to admin_organizations_path, class: "primary-nav-item #{'active' if active_nav == :admin_organizations}", data: { turbo: false } do %><span class="material-symbols-outlined">account_balance</span>หน่วยงาน (อบต.)<% if (pending_registrations = OrganizationRegistration.pending.count).positive? %><em class="nav-alert-count"><%= pending_registrations %></em><% end %><% end %><% end %>
     <% if system_admin? %><%= link_to announcements_path, class: "primary-nav-item #{'active' if active_nav == :announcements}", data: { turbo: false } do %><span class="material-symbols-outlined">notifications</span>ประกาศถึงผู้ใช้<% end %><% end %>
     <% if user_manager? %><%= link_to settings_path, class: "primary-nav-item #{'active' if active_nav == :settings}", data: { turbo: false } do %><span class="material-symbols-outlined">settings</span>ตั้งค่าระบบ<% end %><% end %>
   </nav>

@@ -1,0 +1,6 @@
+<section class="registration-card registration-done">
+  <span class="material-symbols-outlined registration-done-icon">pause_circle</span>
+  <h1>ปิดรับลงทะเบียนชั่วคราว</h1>
+  <p>ขณะนี้ยังไม่เปิดให้หน่วยงานลงทะเบียนด้วยตนเอง กรุณาติดต่อผู้ดูแลระบบ<%= " · #{system_setting.contact_email}" if system_setting.contact_email.present? %><%= " · โทร #{system_setting.contact_phone}" if system_setting.contact_phone.present? %></p>
+  <div class="registration-actions"><span></span><%= link_to "ไปหน้าเข้าสู่ระบบ", new_user_session_path, class: "registration-next" %></div>
+</section>

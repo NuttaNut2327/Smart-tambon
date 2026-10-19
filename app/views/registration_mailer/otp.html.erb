@@ -1,0 +1,4 @@
+<p>รหัสยืนยันการลงทะเบียนหน่วยงาน <b><%= @registration.organization_name %></b> ของคุณคือ</p>
+<p style="margin:18px 0;font-size:32px;font-weight:700;letter-spacing:8px"><%= @code %></p>
+<p>รหัสนี้ใช้ได้ 10 นาที และใช้ได้ครั้งเดียว · อ้างอิง <%= @registration.otp_ref %></p>
+<p style="color:#6b756f;font-size:13px">หากคุณไม่ได้ลงทะเบียน โปรดเพิกเฉยต่ออีเมลนี้ อย่าแจ้งรหัสนี้แก่ผู้อื่น</p>

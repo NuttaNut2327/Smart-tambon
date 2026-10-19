@@ -28,6 +28,10 @@ class SystemSetting
   field :map_center_lon, type: Float, default: 100.5018
   field :map_zoom, type: Integer, default: 6
   field :map_layers, type: Array, default: MAP_LAYERS.keys
+  # อบต. self-registration (/register): on/off and optional overrides of RegistrationPolicy's default texts.
+  field :registration_enabled, type: Boolean, default: true
+  field :registration_terms, type: String
+  field :registration_pdpa, type: String
   field :updated_by, type: String
 
   index({ singleton_key: 1 }, unique: true)

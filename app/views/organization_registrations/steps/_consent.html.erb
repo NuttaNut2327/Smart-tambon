@@ -1,0 +1,16 @@
+<%= form_with url: organization_registration_path, method: :patch, class: "registration-form", data: { consent_form: true } do %>
+  <%= hidden_field_tag :step, "consent" %>
+  <%= hidden_field_tag :terms_version, RegistrationPolicy.terms_version %>
+  <%= hidden_field_tag :pdpa_version, RegistrationPolicy.pdpa_version %>
+  <h2>4. ข้อตกลงการใช้บริการและความเป็นส่วนตัว</h2>
+  <p class="registration-help">กรุณาอ่านให้ครบ (เลื่อนลงจนสุด) ก่อนยอมรับ</p>
+  <div class="registration-document" tabindex="0" data-must-read="terms"><%= simple_format(RegistrationPolicy.terms) %></div>
+  <label class="registration-check" data-accept="terms"><%= check_box_tag :accept_terms, "1", false, required: true, disabled: true %> ข้าพเจ้าได้อ่านและยอมรับข้อตกลงการใช้บริการ <small>(ฉบับ <%= RegistrationPolicy.terms_version %>)</small></label>
+  <div class="registration-document" tabindex="0" data-must-read="pdpa"><%= simple_format(RegistrationPolicy.pdpa) %></div>
+  <label class="registration-check" data-accept="pdpa"><%= check_box_tag :accept_pdpa, "1", false, required: true, disabled: true %> ข้าพเจ้ายินยอมให้เก็บ ใช้ และเปิดเผยข้อมูลส่วนบุคคลตามประกาศความเป็นส่วนตัว <small>(ฉบับ <%= RegistrationPolicy.pdpa_version %>)</small></label>
+  <label class="registration-check optional"><%= check_box_tag :marketing_consent, "1", registration.marketing_consent %> ยินยอมรับข่าวสารการอัปเดตระบบและการอบรมทางอีเมล/SMS (ไม่บังคับ ถอนความยินยอมได้ตลอดเวลา)</label>
+  <div class="registration-actions">
+    <%= link_to organization_registration_path(step: "account"), class: "registration-back" do %><span class="material-symbols-outlined">arrow_back</span>ย้อนกลับ<% end %>
+    <button type="submit" class="registration-next">ยอมรับและถัดไป<span class="material-symbols-outlined">arrow_forward</span></button>
+  </div>
+<% end %>

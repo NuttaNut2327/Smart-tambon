@@ -1,0 +1,28 @@
+<%= render layout: "admin/frame", locals: { title: "หน่วยงานในระบบ", description: "อบต./เทศบาลที่มีบัญชีในระบบ — ดูรายละเอียด และเข้าใช้งานในฐานะหน่วยงานเพื่อช่วยดูแลหรือตรวจสอบปัญหา", active: :organizations } do %>
+  <%= form_with url: admin_organizations_path, method: :get, class: "admin-search" do %>
+    <input type="search" name="q" value="<%= @query %>" placeholder="ค้นหาชื่อหน่วยงาน ตำบล หรือชื่อผู้ใช้">
+    <button type="submit" class="button-link"><span class="material-symbols-outlined">search</span>ค้นหา</button>
+  <% end %>
+  <section class="users-card users-list-card">
+    <div class="users-toolbar"><div><h2>รายการหน่วยงาน</h2><p><%= @pending_count.positive? ? link_to("มีคำขอลงทะเบียนรออนุมัติ #{@pending_count} รายการ", admin_registrations_path) : "ไม่มีคำขอที่รออนุมัติ" %></p></div><span><%= @organizations.size %> หน่วยงาน</span></div>
+    <% if @organizations.empty? %>
+      <div class="cctv-empty"><span class="material-symbols-outlined">account_balance</span><b><%= @query.present? ? "ไม่พบหน่วยงานที่ค้นหา" : "ยังไม่มีหน่วยงานในระบบ" %></b></div>
+    <% else %>
+      <div class="users-table-wrap"><table class="users-table admin-org-table"><thead><tr><th>หน่วยงาน</th><th>พื้นที่</th><th>ผู้ดูแล</th><th>ผู้ใช้</th><th>เข้าร่วม</th><th>จัดการ</th></tr></thead><tbody>
+        <% @organizations.each do |org| %>
+          <tr>
+            <td><b><%= link_to org.name, admin_organization_path(org.key) %></b><small><%= org.type_label %></small></td>
+            <td><%= org.area %></td>
+            <td><%= org.admins.map(&:username).join(", ").presence || "-" %><% if (lead = org.admins.first) && (lead.full_name.present? || lead.phone.present?) %><small><%= [lead.full_name, lead.phone].compact_blank.join(" · ") %></small><% end %></td>
+            <td><%= org.users_count %></td>
+            <td><%= thai_short_date(org.joined_at) %><small><%= org.registration ? "ลงทะเบียนเอง" : "ผู้ดูแลสร้าง" %></small></td>
+            <td class="admin-actions">
+              <%= link_to "รายละเอียด", admin_organization_path(org.key), class: "button-link" %>
+              <%= button_to switch_admin_organization_path(org.key), method: :post, class: "button-link primary", form: { onsubmit: "return confirm('เข้าใช้งานในฐานะ #{j org.name}? การกระทำทั้งหมดจะเกิดขึ้นในบัญชีของหน่วยงานนี้')" } do %><span class="material-symbols-outlined">switch_account</span>เข้าใช้งานแทน<% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody></table></div>
+    <% end %>
+  </section>
+<% end %>

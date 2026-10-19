@@ -1,0 +1,15 @@
+<%= form_with url: organization_registration_path, method: :patch, scope: :registration, class: "registration-form" do |form| %>
+  <%= hidden_field_tag :step, "organization" %>
+  <h2>2. ข้อมูลหน่วยงาน</h2>
+  <p class="registration-help">พื้นที่: <b><%= registration.area_label %></b></p>
+  <div class="registration-grid">
+    <label>ประเภทหน่วยงาน<%= form.select :organization_type, UserAccessArea::ORGANIZATION_TYPES.map { |value, label| [label, value] }, { selected: registration.organization_type }, required: true %></label>
+    <label>ชื่อหน่วยงาน<%= form.text_field :organization_name, value: registration.organization_name, required: true, maxlength: 150 %></label>
+    <label>เบอร์โทรสำนักงาน<%= form.telephone_field :office_phone, value: registration.office_phone, placeholder: "เช่น 054-123456" %></label>
+    <label class="span-2">ที่อยู่สำนักงาน<%= form.text_area :address, value: registration.address, rows: 2, maxlength: 400 %></label>
+  </div>
+  <div class="registration-actions">
+    <%= link_to organization_registration_path(step: "area"), class: "registration-back" do %><span class="material-symbols-outlined">arrow_back</span>ย้อนกลับ<% end %>
+    <button type="submit" class="registration-next">ถัดไป<span class="material-symbols-outlined">arrow_forward</span></button>
+  </div>
+<% end %>

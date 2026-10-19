@@ -51,6 +51,15 @@
       </div>
     </section>
 
+    <section class="settings-card" id="settings-registration">
+      <header><span class="material-symbols-outlined">how_to_reg</span><div><h2>การลงทะเบียนหน่วยงาน</h2><p>หน้า <%= link_to organization_registration_url, organization_registration_url, target: "_blank" %> ให้ อบต./เทศบาลสมัครเอง ยืนยัน OTP แล้วรอผู้ดูแลระบบอนุมัติ</p></div></header>
+      <div class="settings-toggles"><label class="settings-switch"><%= form.check_box :registration_enabled %><span><b>เปิดรับลงทะเบียน</b><small>ปิดเพื่อหยุดรับคำขอใหม่ชั่วคราว (คำขอที่ส่งแล้วยังพิจารณาได้)</small></span></label></div>
+      <div class="settings-grid">
+        <label class="span-2">ข้อตกลงการใช้บริการ (เว้นว่างเพื่อใช้ฉบับเริ่มต้น)<%= form.text_area :registration_terms, rows: 6, placeholder: RegistrationPolicy::DEFAULT_TERMS.truncate(300) %><small>ฉบับปัจจุบัน <code><%= RegistrationPolicy.terms_version %></code> — เมื่อแก้ข้อความ เลขฉบับจะเปลี่ยน และผู้สมัครใหม่ต้องยอมรับฉบับใหม่ · ฉบับเริ่มต้นเป็นร่าง ควรให้ฝ่ายกฎหมายตรวจก่อนใช้งานจริง</small></label>
+        <label class="span-2">ประกาศความเป็นส่วนตัว (PDPA) (เว้นว่างเพื่อใช้ฉบับเริ่มต้น)<%= form.text_area :registration_pdpa, rows: 6, placeholder: RegistrationPolicy::DEFAULT_PDPA.truncate(300) %><small>ฉบับปัจจุบัน <code><%= RegistrationPolicy.pdpa_version %></code></small></label>
+      </div>
+    </section>
+
     <div class="settings-actions"><%= form.submit "บันทึกการตั้งค่าระบบ", class: "button-link primary" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %></div>
   <% end %>
 <% end %>

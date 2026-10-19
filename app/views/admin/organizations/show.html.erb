@@ -1,0 +1,38 @@
+<% org = @organization %>
+<%= render layout: "admin/frame", locals: { title: org.name, description: "#{org.type_label} · #{org.area}", active: :organizations } do %>
+  <section class="settings-card">
+    <header><span class="material-symbols-outlined">account_balance</span><div><h2>ข้อมูลหน่วยงาน</h2><p>รหัสหน่วยงานในระบบ <code><%= org.key %></code></p></div></header>
+    <dl class="admin-detail">
+      <div><dt>ชื่อหน่วยงาน</dt><dd><%= org.name %></dd></div>
+      <div><dt>ประเภท</dt><dd><%= org.type_label %></dd></div>
+      <div><dt>พื้นที่</dt><dd><%= org.area %></dd></div>
+      <div><dt>เข้าร่วมเมื่อ</dt><dd><%= thai_short_datetime(org.joined_at) %> · <%= org.registration ? "ลงทะเบียนเอง" : "ผู้ดูแลระบบสร้าง" %></dd></div>
+      <% if (reg = org.registration) %>
+        <div><dt>คำขอลงทะเบียน</dt><dd><%= link_to "ดูคำขอและบันทึกการยอมรับข้อตกลง", admin_registration_path(reg) %></dd></div>
+        <div><dt>อนุมัติโดย</dt><dd><%= reg.reviewed_by %> · <%= thai_short_datetime(reg.reviewed_at) %></dd></div>
+      <% end %>
+    </dl>
+    <div class="settings-actions">
+      <%= button_to switch_admin_organization_path(org.key), method: :post, class: "button-link primary", form: { onsubmit: "return confirm('เข้าใช้งานในฐานะ #{j org.name}?')" } do %><span class="material-symbols-outlined">switch_account</span>เข้าใช้งานในฐานะหน่วยงานนี้<% end %>
+    </div>
+  </section>
+
+  <section class="users-card users-list-card" style="margin-top:16px">
+    <div class="users-toolbar"><div><h2>ผู้ใช้ของหน่วยงาน</h2><p>บัญชีที่ใช้ข้อมูลร่วมกันในหน่วยงานนี้</p></div><span><%= @users.size %> บัญชี</span></div>
+    <div class="users-table-wrap"><table class="users-table admin-org-table"><thead><tr><th>ชื่อผู้ใช้</th><th>ชื่อ-ตำแหน่ง</th><th>สิทธิ์</th><th>ติดต่อ</th><th>สร้างเมื่อ</th></tr></thead><tbody>
+      <% @users.each do |user| %>
+        <tr><td><b><%= user.username %></b></td><td><%= user.full_name.presence || "-" %><% if user.position.present? %><small><%= user.position %></small><% end %></td><td><%= user.role_label %></td><td><%= user.email %><% if user.phone.present? %><small><%= user.phone %></small><% end %></td><td><%= thai_short_date(user.created_at) %></td></tr>
+      <% end %>
+    </tbody></table></div>
+  </section>
+
+  <section class="settings-card" style="margin-top:16px">
+    <header><span class="material-symbols-outlined">history</span><div><h2>ประวัติการดำเนินการของผู้ดูแลระบบ</h2><p>การอนุมัติและการเข้าใช้งานแทนหน่วยงานนี้</p></div></header>
+    <% if @logs.empty? %><small>ยังไม่มีประวัติ</small><% end %>
+    <ul class="broadcast-deliveries">
+      <% @logs.each do |log| %>
+        <li class="sent"><span class="material-symbols-outlined"><%= { "switch_account" => "switch_account", "switch_back" => "undo", "approve_registration" => "how_to_reg" }.fetch(log.action, "history") %></span><div><b><%= { "switch_account" => "เข้าใช้งานแทน", "switch_back" => "กลับเป็นผู้ดูแลระบบ", "approve_registration" => "อนุมัติการลงทะเบียน" }.fetch(log.action, log.action) %></b><small><%= log.actor_username %> · <%= thai_short_datetime(log.created_at) %> · IP <%= log.ip %></small></div></li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>

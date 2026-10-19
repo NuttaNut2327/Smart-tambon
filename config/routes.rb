@@ -1,5 +1,26 @@
 Rails.application.routes.draw do
   devise_for :users
+  # Self-registration wizard for local governments (public).
+  get "register", to: "organization_registrations#show", as: :organization_registration
+  post "register", to: "organization_registrations#start"
+  patch "register", to: "organization_registrations#update"
+  post "register/otp", to: "organization_registrations#send_otp", as: :organization_registration_otp
+  post "register/verify", to: "organization_registrations#verify_otp", as: :verify_organization_registration
+  post "register/reset", to: "organization_registrations#reset", as: :reset_organization_registration
+  get "register/lookup", to: "organization_registrations#lookup", as: :organization_registration_lookup
+  get "register/check", to: "organization_registrations#check", as: :organization_registration_check
+  namespace :admin do
+    resources :organizations, only: %i[index show], constraints: { id: %r{[^/]+} } do
+      post :switch, on: :member
+    end
+    resources :registrations, only: %i[index show] do
+      member do
+        post :approve
+        post :reject
+      end
+    end
+  end
+  resource :impersonation, only: :destroy
   resources :users, except: :show
   resource :my_access_area, only: :update
   resource :data_layers, only: :show

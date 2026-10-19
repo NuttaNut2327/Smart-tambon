@@ -88,3 +88,27 @@
 .settings-card input[type=file]{font-size:13px}
 .settings-grid{align-items:start}
 .settings-link-row input{min-height:34px!important;padding:6px 10px!important;font-size:12px!important}
+
+/* Switch-account banner (system admin using an อบต. account) */
+.impersonation-banner{position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:10px;padding:8px 16px;background:#7a3e00;color:#fff;font-size:13px}
+.impersonation-banner>span:nth-child(2){flex:1}
+.impersonation-banner form{margin:0}
+.impersonation-back{display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border:1px solid rgba(255,255,255,.6);border-radius:999px;background:transparent;color:#fff;font:inherit;font-size:12px;cursor:pointer}
+.impersonation-back:hover{background:rgba(255,255,255,.15)}
+
+/* Admin: organisations and registration requests */
+.admin-org-table td small{display:block;color:#6b756f;font-size:12px}
+.admin-shell .users-table.admin-org-table{min-width:0}
+.admin-org-table .admin-actions{width:1%;padding-right:16px!important;text-align:right}
+.admin-org-table .admin-actions form{display:inline-block;width:auto;margin:4px 0 0}
+.admin-org-table .admin-actions .button-link{display:inline-flex;align-items:center;gap:4px;margin:4px 0 0 6px;white-space:nowrap}
+.admin-search{display:flex;gap:8px;margin:0 0 14px}
+.admin-search input{flex:1;min-height:38px;padding:8px 12px;border:1px solid var(--theme-border,#e2dac8);border-radius:8px}
+.admin-detail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 24px;margin:0}
+.admin-detail div{display:grid;gap:2px}
+.admin-detail dt{color:#6b756f;font-size:12px}
+.admin-detail dd{margin:0}
+.admin-review-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+.admin-review-actions form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0}
+.admin-review-actions input[type=text]{min-width:260px}
+@media (max-width:760px){.admin-detail{grid-template-columns:1fr}}

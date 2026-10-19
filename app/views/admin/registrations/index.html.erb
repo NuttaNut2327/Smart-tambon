@@ -1,0 +1,25 @@
+<%= render layout: "admin/frame", locals: { title: "คำขอลงทะเบียน", description: "หน่วยงานที่สมัครผ่านหน้าลงทะเบียนและยืนยัน OTP แล้ว — ตรวจสอบก่อนอนุมัติเพื่อป้องกันการแอบอ้าง", active: :registrations } do %>
+  <nav class="activity-filters">
+    <% OrganizationRegistration::STATUSES.except("draft").each do |key, label| %>
+      <%= link_to admin_registrations_path(status: key), class: ("active" if @status == key) do %><%= label %><span><%= @counts[key].to_i %></span><% end %>
+    <% end %>
+  </nav>
+  <section class="users-card users-list-card">
+    <% if @registrations.empty? %>
+      <div class="cctv-empty"><span class="material-symbols-outlined">how_to_reg</span><b>ไม่มีคำขอในสถานะนี้</b><small>ลิงก์สำหรับสมัคร: <%= link_to organization_registration_url, organization_registration_url %></small></div>
+    <% else %>
+      <div class="users-table-wrap"><table class="users-table admin-org-table"><thead><tr><th>หน่วยงาน</th><th>พื้นที่</th><th>ผู้สมัคร</th><th>ยืนยันทาง</th><th>ส่งคำขอ</th><th></th></tr></thead><tbody>
+        <% @registrations.each do |registration| %>
+          <tr>
+            <td><b><%= registration.organization_name %></b><small><%= registration.organization_type_label %></small></td>
+            <td><%= registration.area_label %></td>
+            <td><%= registration.admin_full_name %><small><%= registration.username %> · <%= registration.email %> · <%= registration.phone %></small></td>
+            <td><%= OrganizationRegistration::OTP_CHANNELS[registration.otp_channel] || "-" %></td>
+            <td><%= thai_short_datetime(registration.submitted_at) %><% if registration.reviewed_by %><small><%= registration.status_label %> โดย <%= registration.reviewed_by %></small><% end %></td>
+            <td class="admin-actions"><%= link_to registration.status == "pending_review" ? "ตรวจสอบ" : "ดู", admin_registration_path(registration), class: "button-link #{'primary' if registration.status == 'pending_review'}" %></td>
+          </tr>
+        <% end %>
+      </tbody></table></div>
+    <% end %>
+  </section>
+<% end %>
