@@ -1,3 +1,4 @@
+require "aws-sdk-s3"
 require "net/http"
 require "mqtt"
 

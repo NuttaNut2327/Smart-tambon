@@ -1,0 +1,25 @@
+<% steps = OrganizationRegistration::STEPS %>
+<% current_index = steps.index(@step) %>
+<section class="registration-card">
+  <div class="registration-intro">
+    <h1>ลงทะเบียนหน่วยงานเข้าใช้ระบบ</h1>
+    <p>สำหรับองค์การบริหารส่วนตำบลและเทศบาล · ใช้เวลาประมาณ 5 นาที · ผู้ดูแลระบบจะตรวจสอบก่อนเปิดใช้งาน</p>
+  </div>
+  <ol class="registration-steps" aria-label="ขั้นตอนการลงทะเบียน">
+    <% steps.each_with_index do |name, index| %>
+      <% reachable = @registration.persisted? && @registration.reached?(name) %>
+      <li class="<%= 'done' if index < current_index %> <%= 'current' if index == current_index %>" <%= 'aria-current="step"'.html_safe if index == current_index %>>
+        <% if reachable && index != current_index %><%= link_to organization_registration_path(step: name) do %><b><%= index + 1 %></b><span><%= OrganizationRegistration::STEP_LABELS[name] %></span><% end %>
+        <% else %><span class="step-label"><b><%= index < current_index ? "✓" : index + 1 %></b><span><%= OrganizationRegistration::STEP_LABELS[name] %></span></span><% end %>
+      </li>
+    <% end %>
+  </ol>
+  <% if notice.present? %><p class="registration-flash notice"><span class="material-symbols-outlined">check_circle</span><%= notice %></p><% end %>
+  <% message = @error || alert %>
+  <% if message.present? %><p class="registration-flash alert" role="alert"><span class="material-symbols-outlined">error</span><%= message %></p><% end %>
+  <%= render "organization_registrations/steps/#{@step}", registration: @registration %>
+  <% if @registration.persisted? %>
+    <%= button_to "เริ่มลงทะเบียนใหม่", reset_organization_registration_path, method: :post, class: "registration-reset", form: { onsubmit: "return confirm('ล้างข้อมูลที่กรอกไว้และเริ่มใหม่?')" } %>
+  <% end %>
+</section>
+<%= javascript_include_tag "registration", defer: true %>

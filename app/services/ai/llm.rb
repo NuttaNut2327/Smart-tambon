@@ -107,7 +107,14 @@ module Ai
           body[:tools] = tools.map { |tool| { type: "function", function: { name: tool[:name], description: tool[:description], parameters: tool[:schema] } } }
           body[:tool_choice] = "auto"
         end
-        data = post("chat/completions", body)
+        data = begin
+          stream_chat(body)
+        rescue Error => error
+          # Newer models (Claude 5, OpenAI reasoning models) reject sampling parameters; retry once without them.
+          raise unless error.message.include?("temperature")
+
+          stream_chat(body.except(:temperature))
+        end
         choice = Array(data["choices"]).first or raise Error, "บริการ AI ไม่ได้ส่งคำตอบกลับมา"
         message = choice["message"].to_h.slice("role", "content", "tool_calls")
         message["role"] = "assistant"
@@ -138,6 +145,63 @@ module Ai
 
       def strip_thinking(text) = text.gsub(%r{<think>.*?</think>}m, "").strip
 
+      # Streams the completion so bytes keep flowing: proxies such as Cloudflare cut a request that sends
+      # nothing for 100 seconds (HTTP 524), which slow self-hosted models easily exceed. The deltas are folded
+      # back into a normal completion; servers that ignore `stream` reply with plain JSON, handled by `request`.
+      def stream_chat(body)
+        req = Net::HTTP::Post.new(uri("chat/completions"))
+        req.body = body.merge(stream: true, stream_options: { include_usage: true }).to_json
+        req["Content-Type"] = "application/json"
+        req["Accept"] = "text/event-stream, application/json"
+        req["Authorization"] = "Bearer #{@provider.api_key}" if @provider.api_key.present?
+        Net::HTTP.start(req.uri.host, req.uri.port, use_ssl: req.uri.scheme == "https", open_timeout: 10, read_timeout: TIMEOUT) do |http|
+          http.request(req) do |response|
+            return read_stream(response) if response.is_a?(Net::HTTPSuccess) && response["content-type"].to_s.include?("event-stream")
+
+            return parse_response(response, response.read_body)
+          end
+        end
+      rescue SocketError, SystemCallError, Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError => error
+        raise Error, "เชื่อมต่อบริการ AI ไม่ได้: #{error.message.truncate(120)}"
+      end
+
+      def read_stream(response)
+        content = +""
+        calls = {}
+        finish_reason = model = nil
+        usage = {}
+        buffer = +""
+        response.read_body do |chunk|
+          buffer << chunk
+          while (line_end = buffer.index("\n"))
+            line = buffer.slice!(0..line_end).strip
+            next unless line.start_with?("data:")
+
+            payload = line.delete_prefix("data:").strip
+            next if payload.empty? || payload == "[DONE]"
+
+            event = JSON.parse(payload) rescue next
+            raise Error, "บริการ AI ตอบกลับผิดพลาด: #{(event.dig('error', 'message') || event['error']).to_s.truncate(200)}" if event["error"]
+
+            model ||= event["model"]
+            usage = event["usage"] if event["usage"].is_a?(Hash)
+            choice = Array(event["choices"]).first or next
+            finish_reason = choice["finish_reason"] if choice["finish_reason"]
+            delta = choice["delta"].to_h
+            content << delta["content"].to_s
+            Array(delta["tool_calls"]).each do |part|
+              call = calls[part["index"] || calls.size] ||= { "id" => nil, "type" => "function", "function" => { "name" => +"", "arguments" => +"" } }
+              call["id"] ||= part["id"]
+              call["function"]["name"] << part.dig("function", "name").to_s
+              call["function"]["arguments"] << part.dig("function", "arguments").to_s
+            end
+          end
+        end
+        message = { "role" => "assistant", "content" => content }
+        message["tool_calls"] = calls.sort.map(&:last) if calls.any?
+        { "choices" => [{ "message" => message, "finish_reason" => finish_reason }], "usage" => usage, "model" => model }
+      end
+
       def post(path, body) = request(Net::HTTP::Post.new(uri(path)).tap { |req| req.body = body.to_json })
       def get(path) = request(Net::HTTP::Get.new(uri(path)))
 
@@ -149,14 +213,22 @@ module Ai
         response = Net::HTTP.start(req.uri.host, req.uri.port, use_ssl: req.uri.scheme == "https", open_timeout: 10, read_timeout: TIMEOUT) do |http|
           http.request(req)
         end
-        data = JSON.parse(response.body.presence || "{}")
-        return data if response.is_a?(Net::HTTPSuccess)
-
-        raise Error, "บริการ AI ตอบกลับผิดพลาด (#{response.code}): #{(data.dig('error', 'message') || data['error'] || response.body).to_s.truncate(200)}"
-      rescue JSON::ParserError
-        raise Error, "บริการ AI ตอบกลับในรูปแบบที่อ่านไม่ได้ — ตรวจสอบ Base URL (มักลงท้ายด้วย /v1)"
+        parse_response(response, response.body)
       rescue SocketError, SystemCallError, Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError => error
         raise Error, "เชื่อมต่อบริการ AI ไม่ได้: #{error.message.truncate(120)}"
+      end
+
+      def parse_response(response, body)
+        data = JSON.parse(body.presence || "{}")
+        return data if response.is_a?(Net::HTTPSuccess)
+
+        raise Error, "บริการ AI ตอบกลับผิดพลาด (#{response.code}): #{(data.dig('error', 'message') || data['error'] || body).to_s.truncate(200)}"
+      rescue JSON::ParserError
+        # Gateways (e.g. Cloudflare 502/504/524) answer with HTML when the model server is down or too slow.
+        unless response.is_a?(Net::HTTPSuccess)
+          raise Error, "เซิร์ฟเวอร์ AI ไม่ตอบสนอง (HTTP #{response.code}) — เซิร์ฟเวอร์อาจล่มหรือทำงานช้าเกินไป กรุณาลองใหม่ภายหลัง"
+        end
+        raise Error, "บริการ AI ตอบกลับในรูปแบบที่อ่านไม่ได้ — ตรวจสอบ Base URL (มักลงท้ายด้วย /v1)"
       end
     end
   end

@@ -1,0 +1,34 @@
+<% info = TtsProvider::KINDS.fetch(@provider.kind) %>
+<%= stylesheet_link_tag "ai_assistant", "data-turbo-track": "reload" %>
+<%= render layout: "settings/frame", locals: { title: @provider.new_record? ? "เพิ่มผู้ให้บริการเสียง" : "แก้ไข #{@provider.name}", kicker: "ผู้ให้บริการเสียง (Text-to-Speech)", description: info[:label], active: :tts } do %>
+  <%= form_with model: @provider, url: @provider.new_record? ? tts_providers_path : tts_provider_path(@provider), html: { class: "settings-form" } do |form| %>
+    <% if @provider.errors.any? %><div class="form-errors"><% @provider.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
+    <%= form.hidden_field :kind %>
+    <section class="settings-card">
+      <header><span class="material-symbols-outlined">record_voice_over</span><div><h2><%= info[:label] %></h2><p><%= info[:key_hint] %></p></div></header>
+      <div class="settings-grid">
+        <label>ชื่อที่แสดง<%= form.text_field :name, required: true %></label>
+        <label>API key / Token
+          <%= password_field_tag "tts_provider[api_key]", nil, autocomplete: "new-password", placeholder: @provider.masked_api_key || "ยังไม่ได้กำหนด" %>
+          <small>เว้นว่างเพื่อคงค่าเดิม</small>
+          <% if @provider.api_key? %><span class="settings-check"><%= check_box_tag "tts_provider[clear_api_key]", "1" %> ลบค่าที่บันทึก</span><% end %>
+        </label>
+        <label>เสียงผู้อ่าน
+          <%= form.text_field :voice, list: "tts-voices", required: true %>
+          <datalist id="tts-voices"><% @provider.voices.each do |value, label| %><option value="<%= value %>"><%= label %></option><% end %></datalist>
+          <small>เลือกจากรายการหรือพิมพ์ชื่อเสียงอื่นของผู้ให้บริการ<%= " · " + @provider.voices.map { |value, label| "#{value} = #{label}" }.first(3).join(", ") if @provider.voices.any? %></small>
+        </label>
+        <label>ความเร็วในการอ่าน (0.5–2.0)<%= form.number_field :speaking_rate, step: 0.05, min: 0.5, max: 2.0 %><small>1.0 = ปกติ · เสียงตามสายแนะนำ 0.9–1.0</small></label>
+        <% if @provider.kind == "openai" %><label>โมเดล<%= form.text_field :model, placeholder: "gpt-4o-mini-tts" %></label><% end %>
+        <label>Endpoint (ไม่บังคับ)<%= form.url_field :base_url, placeholder: info[:base_url] %><small>ใช้เมื่อเชื่อมผ่าน proxy หรือบริการที่เข้ากันได้ เช่น Open WebUI: https://โดเมน/api/v1 (ใส่หรือไม่ใส่ /v1 ท้าย URL ก็ได้)</small></label>
+        <label class="settings-check"><%= form.check_box :enabled %> เปิดใช้งาน</label>
+        <label class="settings-check"><%= form.check_box :is_default %> ตั้งเป็นค่าเริ่มต้น</label>
+      </div>
+      <% if @provider.persisted? %>
+        <div class="settings-actions"><button type="button" class="button-link" data-tts-test="<%= test_tts_provider_path(@provider) %>"><span class="material-symbols-outlined">play_circle</span>ฟังตัวอย่างด้วยเสียงที่เลือก</button><p class="tts-test-status" data-tts-status hidden></p></div>
+      <% end %>
+    </section>
+    <div class="settings-actions"><%= form.submit "บันทึก", class: "button-link primary" %><%= link_to "ยกเลิก", tts_providers_path, class: "button-link" %></div>
+  <% end %>
+<% end %>
+<%= render "tts_providers/test_script" %>

@@ -1,0 +1,14 @@
+<% current = registration.subdistrict %>
+<%= form_with url: organization_registration_path, method: registration.persisted? ? :patch : :post, class: "registration-form", data: { area_form: true } do %>
+  <%= hidden_field_tag :step, "area" %>
+  <div class="registration-honeypot" aria-hidden="true"><label>เว็บไซต์<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+  <h2>1. เลือกพื้นที่ของหน่วยงาน</h2>
+  <p class="registration-help">เลือกตำบลที่หน่วยงานรับผิดชอบ ระบบจะตรวจว่าตำบลนี้ยังไม่มีผู้ดูแลในระบบ</p>
+  <div class="registration-grid three">
+    <label>จังหวัด<select data-area-province required data-selected="<%= current&.province_id %>"><option value="">กำลังโหลด…</option></select></label>
+    <label>อำเภอ/เขต<select data-area-district required disabled data-selected="<%= current&.district_code %>"><option value="">เลือกจังหวัดก่อน</option></select></label>
+    <label>ตำบล/แขวง<select name="subdistrict_id" data-area-subdistrict required disabled data-selected="<%= current&.id %>"><option value="">เลือกอำเภอก่อน</option></select></label>
+  </div>
+  <p class="registration-area-status" data-area-status hidden></p>
+  <div class="registration-actions"><span></span><button type="submit" class="registration-next" data-area-submit>ถัดไป<span class="material-symbols-outlined">arrow_forward</span></button></div>
+<% end %>

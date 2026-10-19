@@ -1,6 +1,10 @@
 #!/bin/sh
 set -e
 rm -f /rails/tmp/pids/server.pid
-bundle exec rails db:migrate
-bundle exec rails db:mongoid:create_indexes
+# Only the web service prepares the databases; background workers set
+# SKIP_DB_PREPARE=1 so they don't race on the migration advisory lock.
+if [ -z "$SKIP_DB_PREPARE" ]; then
+  bundle exec rails db:migrate
+  bundle exec rails db:mongoid:create_indexes
+fi
 exec "$@"

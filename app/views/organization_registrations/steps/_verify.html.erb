@@ -1,0 +1,31 @@
+<% sms = Registrations::Otp.sms_available? %>
+<% email = Registrations::Otp.email_available? %>
+<% sent = registration.otp_expires_at.present? && registration.otp_expires_at.future? %>
+<div class="registration-form">
+  <h2>5. ยืนยันตัวตนด้วยรหัส OTP</h2>
+  <dl class="registration-summary">
+    <div><dt>หน่วยงาน</dt><dd><%= registration.organization_name %> · <%= registration.organization_type_label %></dd></div>
+    <div><dt>พื้นที่</dt><dd><%= registration.area_label %></dd></div>
+    <div><dt>ผู้ดูแล</dt><dd><%= registration.admin_full_name %> (<%= registration.username %>)</dd></div>
+    <div><dt>ติดต่อ</dt><dd><%= registration.email %> · <%= registration.phone %></dd></div>
+  </dl>
+  <p class="registration-help">เลือกช่องทางรับรหัส 6 หลัก เพื่อยืนยันว่าอีเมลหรือเบอร์โทรเป็นของคุณ</p>
+  <div class="registration-otp-channels">
+    <%= button_to organization_registration_otp_path(channel: "email"), method: :post, class: "registration-channel #{'active' if registration.otp_channel == 'email'}", disabled: !email do %><span class="material-symbols-outlined">mail</span><b>ส่งทางอีเมล</b><small><%= email ? registration.email : "ยังไม่เปิดใช้" %></small><% end %>
+    <%= button_to organization_registration_otp_path(channel: "sms"), method: :post, class: "registration-channel #{'active' if registration.otp_channel == 'sms'}", disabled: !sms do %><span class="material-symbols-outlined">sms</span><b>ส่งทาง SMS</b><small><%= sms ? registration.phone : "ยังไม่เปิดใช้" %></small><% end %>
+  </div>
+  <% if sent %>
+    <%= form_with url: verify_organization_registration_path, method: :post, class: "registration-otp-form" do %>
+      <label>รหัสที่ส่งไปที่ <b><%= registration.masked_otp_target %></b><% if registration.otp_ref.present? %> <small>(อ้างอิง <%= registration.otp_ref %>)</small><% end %>
+        <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{4,8}" maxlength="8" required autofocus class="registration-otp-input" placeholder="••••••">
+      </label>
+      <small class="registration-otp-meta" data-otp-expires="<%= registration.otp_expires_at.iso8601 %>" data-otp-resend="<%= (registration.otp_last_sent_at + Registrations::Otp::RESEND_AFTER).iso8601 %>">รหัสหมดอายุใน 10 นาที</small>
+      <div class="registration-actions">
+        <%= link_to organization_registration_path(step: "consent"), class: "registration-back" do %><span class="material-symbols-outlined">arrow_back</span>ย้อนกลับ<% end %>
+        <button type="submit" class="registration-next">ยืนยันและส่งคำขอ<span class="material-symbols-outlined">send</span></button>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="registration-actions"><%= link_to organization_registration_path(step: "consent"), class: "registration-back" do %><span class="material-symbols-outlined">arrow_back</span>ย้อนกลับ<% end %><span></span></div>
+  <% end %>
+</div>

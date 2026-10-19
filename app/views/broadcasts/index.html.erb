@@ -1,0 +1,55 @@
+<% area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<div class="shell dashboard-shell gis-dashboard users-shell broadcasts-shell">
+  <%= render "dashboard/sidebar", active_nav: :broadcasts, initial_area: area %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= area %></span><b>›</b><span>ข่าวประชาสัมพันธ์</span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker">ข่าวประชาสัมพันธ์ · เสียงตามสาย</p><h1>ข่าวประชาสัมพันธ์</h1><p>AI สรุปข่าวจากข้อมูลจริงในระบบตาม prompt ที่ตั้งไว้ ตรวจแก้ สร้างเสียงอ่าน แล้วเผยแพร่ไปเสียงตามสาย Facebook Instagram และกลุ่มแชต</p></div>
+        <% if current_user.subdistrict_admin? %><%= link_to new_broadcast_program_path, class: "button-link primary" do %><span class="material-symbols-outlined">add</span>เพิ่มรายการข่าว<% end %><% end %></section>
+      <% if notice.present? %><p class="activity-flash notice"><%= notice %></p><% end %>
+      <% if alert.present? %><p class="activity-flash alert"><%= alert %></p><% end %>
+
+      <section class="broadcast-programs">
+        <% if @programs.empty? %>
+          <div class="users-card activity-empty"><span class="material-symbols-outlined">podcasts</span><b>ยังไม่มีรายการข่าว</b><small><%= current_user.subdistrict_admin? ? "เพิ่มรายการข่าว เช่น \"ข่าวเช้า 07:00\" พร้อม prompt และแหล่งข้อมูลที่ต้องการให้สรุป" : "ผู้ดูแลประจำ อบต. เป็นผู้สร้างรายการข่าว" %></small></div>
+        <% end %>
+        <% @programs.each do |program| %>
+          <article class="broadcast-program <%= 'is-disabled' unless program.enabled? %>">
+            <header>
+              <span class="material-symbols-outlined">podcasts</span>
+              <div><h2><%= program.name %></h2><p><%= program.schedule_label %> · <%= program.auto_publish? ? "เผยแพร่อัตโนมัติ" : "รอตรวจก่อนเผยแพร่" %></p></div>
+            </header>
+            <p class="broadcast-program-sources"><%= program.data_source_labels.join(" · ").presence || "ไม่ได้เลือกแหล่งข้อมูล" %></p>
+            <p class="broadcast-program-channels"><span class="material-symbols-outlined">share</span><%= program.channels.map(&:name).join(", ").presence || "ยังไม่ได้เลือกช่องทาง" %></p>
+            <div class="activity-actions">
+              <% unless system_admin? %><%= button_to run_broadcast_program_path(program), method: :post, class: "button-link primary", disabled: !program.enabled? do %><span class="material-symbols-outlined">auto_awesome</span>สร้างข่าวตอนนี้<% end %><% end %>
+              <% if current_user.subdistrict_admin? %>
+                <%= link_to "ตั้งค่า", edit_broadcast_program_path(program), class: "button-link" %>
+                <%= button_to "ลบ", broadcast_program_path(program), method: :delete, class: "button-link danger", form: { onsubmit: "return confirm('ลบรายการข่าว #{j program.name}?')" } %>
+              <% end %>
+            </div>
+          </article>
+        <% end %>
+      </section>
+
+      <section class="users-card users-list-card">
+        <div class="users-toolbar"><div><h2>ข่าวล่าสุด</h2><p>กดที่ข่าวเพื่อตรวจแก้ ฟังเสียง และเผยแพร่</p></div><span><%= @broadcasts.size %> ข่าว</span></div>
+        <% if @broadcasts.empty? %>
+          <div class="cctv-empty"><span class="material-symbols-outlined">article</span><b>ยังไม่มีข่าว</b><small>กด "สร้างข่าวตอนนี้" ที่รายการข่าว หรือรอให้ถึงเวลาที่ตั้งไว้</small></div>
+        <% else %>
+          <div class="users-table-wrap"><table class="users-table broadcast-table"><thead><tr><th>ข่าว</th><th>รายการ</th><th>สถานะ</th><th>เสียง</th><th>สร้างเมื่อ</th></tr></thead><tbody>
+            <% @broadcasts.each do |broadcast| %>
+              <tr>
+                <td><%= link_to broadcast.title.presence || "(กำลังสรุปข่าว)", broadcast_path(broadcast) %><small><%= broadcast.trigger == "schedule" ? "ตามเวลา #{broadcast.slot_key}" : "สร้างโดย #{broadcast.created_by}" %></small></td>
+                <td><%= broadcast.program_name %></td>
+                <td><span class="broadcast-status <%= broadcast.status %>"><%= broadcast.status_label %></span><% if broadcast.error_message.present? %><small class="broadcast-error"><%= broadcast.error_message.truncate(80) %></small><% end %></td>
+                <td><%= broadcast.audio_current? ? "พร้อม" : (broadcast.audio ? "ต้องสร้างใหม่" : "-") %></td>
+                <td><%= thai_short_datetime(broadcast.created_at) %></td>
+              </tr>
+            <% end %>
+          </tbody></table></div>
+        <% end %>
+      </section>
+    </div>
+  </main>
+</div>

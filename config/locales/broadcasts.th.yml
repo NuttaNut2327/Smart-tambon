@@ -1,0 +1,17 @@
+th:
+  mongoid:
+    attributes:
+      broadcast_program:
+        name: ชื่อรายการ
+        prompt: Prompt
+        schedule_times: เวลาสรุปข่าว
+        lookahead_days: กิจกรรมล่วงหน้า
+        max_words: ความยาวบทอ่าน
+      broadcast:
+        title: หัวข้อข่าว
+        script: บทอ่าน
+      tts_provider:
+        name: ชื่อที่แสดง
+        voice: เสียงผู้อ่าน
+        speaking_rate: ความเร็วในการอ่าน
+        base_url: Endpoint

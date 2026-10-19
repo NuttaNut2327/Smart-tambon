@@ -1,0 +1,89 @@
+<% area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<% editable = !system_admin? && current_user.organization_key == @broadcast.organization_key %>
+<% org_setting = OrganizationSetting.where(organization_key: @broadcast.organization_key).first %>
+<div class="shell dashboard-shell gis-dashboard users-shell broadcasts-shell">
+  <%= render "dashboard/sidebar", active_nav: :broadcasts, initial_area: area %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= area %></span><b>›</b><%= link_to "ข่าวประชาสัมพันธ์", broadcasts_path %><b>›</b><span><%= @broadcast.program_name %></span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace" data-broadcast data-status-url="<%= status_broadcast_path(@broadcast) %>" data-busy="<%= @broadcast.busy? %>">
+      <section class="city-heading users-title-row"><div><p class="page-kicker"><%= @broadcast.program_name %> · <%= @broadcast.trigger == "schedule" ? "ตามเวลา #{@broadcast.slot_key}" : "สร้างโดย #{@broadcast.created_by}" %></p><h1><%= @broadcast.title.presence || "กำลังสรุปข่าว…" %></h1><p><span class="broadcast-status <%= @broadcast.status %>" data-broadcast-status><%= @broadcast.status_label %></span><% if @broadcast.ai_model %> · สรุปโดย <code><%= @broadcast.ai_model %></code> เมื่อ <%= thai_short_datetime(@broadcast.generated_at) %><% end %></p></div>
+        <%= link_to broadcasts_path, class: "button-link" do %><span class="material-symbols-outlined">arrow_back</span>กลับ<% end %></section>
+      <% if notice.present? %><p class="activity-flash notice"><%= notice %></p><% end %>
+      <% if alert.present? %><p class="activity-flash alert"><%= alert %></p><% end %>
+      <% if @broadcast.error_message.present? %><p class="activity-flash alert"><span class="material-symbols-outlined">error</span> <%= @broadcast.error_message %></p><% end %>
+      <div class="broadcast-working" data-broadcast-working <%= "hidden" unless @broadcast.busy? %>><span class="cctv-spinner"></span><b data-broadcast-working-text><%= { "generate" => "AI กำลังสรุปข่าวจากข้อมูลล่าสุด…", "synthesize" => "กำลังสร้างเสียงอ่านข่าว…", "publish" => "กำลังส่งข่าวไปยังช่องทางที่เลือก…" }[@broadcast.pending_tasks.first] || "กำลังประมวลผล…" %></b><small>หน้านี้จะอัปเดตเองเมื่อเสร็จ</small></div>
+
+      <div class="broadcast-layout">
+        <section class="settings-card broadcast-editor">
+          <header><span class="material-symbols-outlined">edit_note</span><div><h2>เนื้อหาข่าว</h2><p>ตรวจข้อเท็จจริงกับ "ข้อมูลที่ใช้สรุป" ด้านล่างก่อนเผยแพร่ — แก้ข้อความได้ตามต้องการ</p></div></header>
+          <%= form_with model: @broadcast, url: broadcast_path(@broadcast), method: :patch, html: { class: "settings-form", id: "broadcast-form" } do |form| %>
+            <fieldset <%= "disabled" unless editable && !@broadcast.busy? %> class="broadcast-fields">
+              <label>หัวข้อข่าว<%= form.text_field :title, required: true %></label>
+              <label>ประเด็นสำคัญ (บรรทัดละ 1 ข้อ — ใช้ในโพสต์ Facebook/LINE)<%= text_area_tag "broadcast[bullets_text]", @broadcast.bullets_text, rows: 6, data: { broadcast_bullets: true } %></label>
+              <label>บทอ่านออกเสียง (เสียงตามสาย)<%= form.text_area :script, rows: 12, data: { broadcast_script: true } %><small data-script-stats></small></label>
+              <fieldset class="settings-layers"><legend>ช่องทางเผยแพร่</legend>
+                <% if @channels.empty? %><small>ยังไม่มีช่องทาง — ผู้ดูแลประจำ อบต. เพิ่มได้ที่ ตั้งค่า › ช่องทางแจ้งเตือน (Facebook, Instagram, เสียงตามสาย MQTT, LINE, Telegram)</small><% end %>
+                <% @channels.each do |channel| %>
+                  <label class="settings-check"><%= check_box_tag "broadcast[channel_ids][]", channel.id, @broadcast.channel_ids.include?(channel.id), id: "channel_#{channel.id}", disabled: !channel.enabled? %> <span class="material-symbols-outlined"><%= channel.kind_icon %></span><%= channel.name %> <small>(<%= channel.kind_label %><%= ", ปิดอยู่" unless channel.enabled? %>)</small></label>
+                <% end %>
+                <%= hidden_field_tag "broadcast[channel_ids][]", "" %>
+              </fieldset>
+            </fieldset>
+            <% if editable %>
+              <div class="settings-actions">
+                <%= form.button type: "submit", class: "button-link primary", disabled: @broadcast.busy? do %><span class="material-symbols-outlined">save</span>บันทึกข้อความ<% end %>
+                <small>บันทึกก่อนสร้างเสียงหรือเผยแพร่</small>
+              </div>
+            <% end %>
+          <% end %>
+          <% if editable %>
+            <div class="broadcast-actions">
+              <%= button_to regenerate_broadcast_path(@broadcast), method: :post, class: "button-link", disabled: @broadcast.busy? || @broadcast.broadcast_program.nil?, form: { onsubmit: "return confirm('สรุปข่าวใหม่จากข้อมูลล่าสุด? ข้อความที่แก้ไว้จะถูกแทนที่')" } do %><span class="material-symbols-outlined">autorenew</span>สรุปข่าวใหม่<% end %>
+              <%= button_to synthesize_broadcast_path(@broadcast), method: :post, class: "button-link", disabled: @broadcast.busy? || @broadcast.spoken_text.blank? do %><span class="material-symbols-outlined">record_voice_over</span><%= @broadcast.audio ? "สร้างเสียงใหม่" : "สร้างเสียงอ่าน" %><% end %>
+              <% if current_user.subdistrict_admin? %>
+                <%= button_to publish_broadcast_path(@broadcast), method: :post, class: "button-link primary", disabled: @broadcast.busy? || @broadcast.spoken_text.blank?, form: { onsubmit: "return confirm('เผยแพร่ข่าวนี้ไปยังช่องทางที่เลือก? ข่าวจะถูกส่งออกสู่สาธารณะทันที')" } do %><span class="material-symbols-outlined">campaign</span><%= @broadcast.status == "published" ? "เผยแพร่อีกครั้ง" : "เผยแพร่" %><% end %>
+              <% end %>
+              <%= button_to "ลบข่าว", broadcast_path(@broadcast), method: :delete, class: "button-link danger", form: { onsubmit: "return confirm('ลบข่าวนี้และไฟล์เสียง/ภาพ?')" } %>
+            </div>
+          <% end %>
+        </section>
+
+        <aside class="broadcast-side">
+          <section class="settings-card">
+            <header><span class="material-symbols-outlined">graphic_eq</span><div><h2>เสียงอ่านข่าว</h2><p><%= @broadcast.audio ? (@broadcast.audio_current? ? "ตรงกับข้อความล่าสุด" : "ข้อความถูกแก้หลังสร้างเสียง — ควรสร้างเสียงใหม่") : "ยังไม่ได้สร้างเสียง" %></p></div></header>
+            <% if @broadcast.audio %>
+              <audio controls preload="none" src="<%= audio_broadcast_path(@broadcast, v: @broadcast.audio['id']) %>" class="broadcast-audio"></audio>
+              <div class="settings-actions"><%= link_to audio_broadcast_path(@broadcast, download: 1), class: "button-link" do %><span class="material-symbols-outlined">download</span>ดาวน์โหลด MP3<% end %><small><%= number_to_human_size(@broadcast.audio["byte_size"]) %></small></div>
+            <% end %>
+          </section>
+
+          <section class="settings-card">
+            <header><span class="material-symbols-outlined">image</span><div><h2>ภาพข่าว</h2><p>ใช้กับ Instagram (จำเป็น) และ Facebook</p></div></header>
+            <canvas class="broadcast-card-canvas" width="1080" height="1080" data-news-card
+              data-org="<%= org_setting&.organization_name.presence || area %>" data-date="<%= thai_short_date(@broadcast.generated_at || @broadcast.created_at) %>" data-system="<%= system_name %>"></canvas>
+            <% if @broadcast.image %><p class="broadcast-image-note"><span class="material-symbols-outlined">check_circle</span>มีภาพข่าวแล้ว — สร้างใหม่ได้หลังแก้ข้อความ</p><% end %>
+            <% if editable %><div class="settings-actions"><button type="button" class="button-link" data-news-card-save data-url="<%= image_broadcast_path(@broadcast) %>" <%= "disabled" if @broadcast.busy? %>><span class="material-symbols-outlined">add_photo_alternate</span><%= @broadcast.image ? "สร้างภาพข่าวใหม่" : "สร้างภาพข่าว" %></button><small data-news-card-status></small></div><% end %>
+          </section>
+
+          <section class="settings-card">
+            <header><span class="material-symbols-outlined">history</span><div><h2>ประวัติการส่ง</h2><p><%= @broadcast.published_at ? "เผยแพร่ล่าสุด #{thai_short_datetime(@broadcast.published_at)}" : "ยังไม่ได้เผยแพร่" %></p></div></header>
+            <% if @broadcast.deliveries.empty? %><small>ยังไม่มีการส่ง</small><% end %>
+            <ul class="broadcast-deliveries">
+              <% @broadcast.deliveries.reverse.first(20).each do |delivery| %>
+                <li class="<%= delivery['status'] %>"><span class="material-symbols-outlined"><%= delivery["status"] == "sent" ? "check_circle" : "error" %></span><div><b><%= delivery["channel_name"] %></b><small><%= NotificationChannel::KINDS.dig(delivery["kind"], :label) %> · <%= thai_short_datetime(Time.zone.parse(delivery["at"].to_s)) %></small><% if delivery["error"] %><small class="broadcast-error"><%= delivery["error"] %></small><% end %></div></li>
+              <% end %>
+            </ul>
+          </section>
+        </aside>
+      </div>
+
+      <details class="settings-card broadcast-context">
+        <summary><span class="material-symbols-outlined">dataset</span> ข้อมูลที่ใช้สรุป (ตรวจข้อเท็จจริง)</summary>
+        <% if @broadcast.prompt_used.present? %><h3>Prompt</h3><pre><%= @broadcast.prompt_used %></pre><% end %>
+        <h3>ข้อมูลจากระบบ ณ เวลาที่สรุป</h3>
+        <pre><%= @broadcast.context_snapshot.present? ? JSON.pretty_generate(@broadcast.context_snapshot) : "ยังไม่มีข้อมูล" %></pre>
+      </details>
+    </div>
+  </main>
+</div>
+<%= javascript_include_tag "broadcasts", defer: true %>

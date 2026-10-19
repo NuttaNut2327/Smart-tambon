@@ -1,0 +1,60 @@
+/* News broadcasts (ข่าวประชาสัมพันธ์/เสียงตามสาย) */
+.broadcasts-shell .users-title-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.broadcasts-shell .users-title-row .button-link{display:inline-flex;align-items:center;gap:6px}
+.broadcasts-shell .users-title-row h1+p{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+.broadcast-programs{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin:0 0 18px}
+.broadcast-program{display:grid;gap:10px;padding:16px 18px;border:1px solid #e3e7e2;border-radius:14px;background:#fff}
+.broadcast-program.is-disabled{opacity:.6}
+.broadcast-program header{display:flex;gap:12px;align-items:flex-start;height:auto;padding:0;background:none;box-shadow:none;justify-content:flex-start}
+.broadcast-program header>.material-symbols-outlined{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:#efe9fb;color:#6a4fb3}
+.broadcast-program h2{margin:0;font-size:16px}
+.broadcast-program header p{margin:2px 0 0;color:#6b756f;font-size:12px}
+.broadcast-program-sources,.broadcast-program-channels{display:flex;gap:6px;align-items:center;margin:0;color:#4b5a50;font-size:12px}
+.broadcast-program-channels .material-symbols-outlined{font-size:16px;color:#7e8b82}
+
+.broadcast-status{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:#eef1ee;color:#4b5a50}
+.broadcast-status.queued,.broadcast-status.generating,.broadcast-status.publishing{background:#e8f0f9;color:#2f6fb0}
+.broadcast-status.draft{background:#fbf1de;color:#8a5d0e}
+.broadcast-status.published{background:#e8f3ec;color:#2d6a45}
+.broadcast-status.failed{background:#fbeaea;color:#9b2c2c}
+.broadcast-error{display:block;color:#b42318!important;font-size:12px}
+.broadcast-table td small{display:block;color:#6b756f;font-size:12px}
+
+.broadcast-working{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:12px 16px;border-radius:12px;background:#e8f0f9;color:#1f4f80}
+.broadcast-working[hidden]{display:none}
+.broadcast-working small{color:#4a6f95}
+.broadcast-working .cctv-spinner{border-color:rgba(47,111,176,.25);border-top-color:#2f6fb0}
+
+.broadcast-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:16px;align-items:start}
+.broadcast-side{display:grid;gap:16px}
+.broadcast-fields{display:grid;gap:14px;margin:0;padding:0;border:0;min-width:0}
+.broadcast-fields>label{display:grid;gap:5px;font-size:13px;color:#4b5a50}
+.broadcast-fields>label small{color:#7a847d;font-size:12px}
+.broadcast-fields .settings-check .material-symbols-outlined{font-size:17px;color:#7e8b82}
+.broadcast-fields .settings-check small{color:#7a847d}
+.broadcast-fields .settings-layers{display:flex;flex-wrap:wrap;gap:6px 0}
+.broadcast-fields .settings-layers legend{width:100%}
+.broadcast-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid #eef1ee}
+.broadcast-actions form{margin:0}
+.broadcast-actions .button-link{display:inline-flex;align-items:center;gap:6px}
+.broadcast-actions .button-link.danger{color:#b42318;border-color:#f1c7c2}
+.broadcast-audio{width:100%}
+.broadcast-card-canvas{width:100%;height:auto;aspect-ratio:1;border-radius:12px;background:#2c3930}
+.broadcast-image-note{display:flex;gap:6px;align-items:center;margin:0;color:#2d6a45;font-size:13px}
+.broadcast-image-note .material-symbols-outlined{font-size:18px}
+.broadcast-deliveries{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.broadcast-deliveries li{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:flex-start;font-size:13px}
+.broadcast-deliveries li div{display:grid;gap:1px}
+.broadcast-deliveries small{color:#6b756f;font-size:12px}
+.broadcast-deliveries li.sent>.material-symbols-outlined{color:#2e8b57}
+.broadcast-deliveries li.failed>.material-symbols-outlined{color:#c2463a}
+.broadcast-context{margin-top:16px}
+.broadcast-context summary{display:flex;gap:8px;align-items:center;cursor:pointer;font-weight:600}
+.broadcast-context h3{margin:14px 0 6px;font-size:14px}
+.broadcast-context pre{max-height:420px;overflow:auto;margin:0;padding:12px;border-radius:10px;background:#f6f7f5;font-size:12px;white-space:pre-wrap;word-break:break-word}
+.tts-test-status{margin:6px 0 0;font-size:12px;color:#2f6fb0}
+.tts-test-status[hidden]{display:none}
+.tts-test-status.error{color:#b42318}
+
+@media (max-width:1000px){.broadcast-layout{grid-template-columns:1fr}}

@@ -1,5 +1,26 @@
 Rails.application.routes.draw do
   devise_for :users
+  # Self-registration wizard for local governments (public).
+  get "register", to: "organization_registrations#show", as: :organization_registration
+  post "register", to: "organization_registrations#start"
+  patch "register", to: "organization_registrations#update"
+  post "register/otp", to: "organization_registrations#send_otp", as: :organization_registration_otp
+  post "register/verify", to: "organization_registrations#verify_otp", as: :verify_organization_registration
+  post "register/reset", to: "organization_registrations#reset", as: :reset_organization_registration
+  get "register/lookup", to: "organization_registrations#lookup", as: :organization_registration_lookup
+  get "register/check", to: "organization_registrations#check", as: :organization_registration_check
+  namespace :admin do
+    resources :organizations, only: %i[index show], constraints: { id: %r{[^/]+} } do
+      post :switch, on: :member
+    end
+    resources :registrations, only: %i[index show] do
+      member do
+        post :approve
+        post :reject
+      end
+    end
+  end
+  resource :impersonation, only: :destroy
   resources :users, except: :show
   resource :my_access_area, only: :update
   resource :data_layers, only: :show
@@ -68,6 +89,13 @@ Rails.application.routes.draw do
       end
     end
   end
+  match "send_sms", to: "sms#create", via: %i[get post], as: :send_sms
+  get "t/:token", to: "incident_trackings#show", as: :incident_tracking
+  resource :sms_settings, only: %i[show update] do
+    post :test_message
+    post :otp_send
+    post :otp_validate
+  end
   resource :notification_settings, only: %i[show update] do
     post :test_line
   end
@@ -96,6 +124,27 @@ Rails.application.routes.draw do
   resource :organization_settings, only: %i[show update] do
     post :regenerate_public_link
     get "logo/:key", action: :logo, as: :logo
+  end
+  # News broadcasts (ข่าวประชาสัมพันธ์/เสียงตามสาย): programmes, generated episodes and public media links.
+  resources :broadcast_programs, except: :show do
+    post :run, on: :member
+  end
+  resources :broadcasts, only: %i[index show update destroy] do
+    member do
+      post :regenerate
+      post :synthesize
+      post :publish
+      post :image
+      get :audio
+      get :status
+    end
+  end
+  get "broadcast_media/:token", to: "broadcast_media#show", as: :broadcast_media
+  resources :tts_providers, except: :show do
+    member do
+      post :test
+      patch :make_default
+    end
   end
   resources :announcements, except: :show do
     member do
@@ -127,6 +176,7 @@ Rails.application.routes.draw do
     resources :imported_datasets, only: %i[index show]
     resources :water_stations, only: :index
     resources :fire_hotspots, only: :index
+    get "weather", to: "weather#show"
     resources :cctv_cameras, only: :index
     resources :activities, only: :index
     resources :projects, only: :index

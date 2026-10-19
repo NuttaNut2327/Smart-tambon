@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>TambonX</title>
+<script>
+/* ตั้งค่าเว็บไซต์ · Site settings — แก้ค่าที่นี่ที่เดียว ทุกปุ่มและลิงก์ในหน้าจะเปลี่ยนตาม
+   appUrl  = ลิงก์ปุ่ม "เข้าสู่ระบบ" (Sign in)
+   email   = อีเมลติดต่อ
+   phone   = เบอร์โทรติดต่อ */
+window.SITE_CONFIG = {
+  appUrl: "https://app.smarttambon.com",
+  email: "sales@esms-solution.com",
+  phone: "061-961-5949"
+};
+</script>
+<meta name="description" content="TambonX ระบบบริหารจัดการความปลอดภัยและข้อมูลตำบลบนแผนที่ สำหรับ อบต. · Safety and data platform for Thai sub-district administrations.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a tambon operations board — a forest-green command header, a real screen as the hero, then
+   sections that read like the system's own menus. Accent = the brass line the app uses on its active menu.
+   Bilingual: every text has a .th and an .en span; the root's data-lang picks one. */
+:root {
+  --paper: #f5f6f2;
+  --sheet: #ffffff;
+  --ink: #18231f;
+  --ink-soft: #4a5751;
+  --rule: #d9ded7;
+  --forest: #26352f;
+  --forest-ink: #eef2ec;
+  --forest-soft: #b9c7bf;
+  --brass: #b9852a;
+  --brass-ink: #8a5f15;
+  --alert: #c2412d;
+  --ok: #2f7d4f;
+  --display: "Bai Jamjuree", "IBM Plex Sans Thai", Tahoma, sans-serif;
+  --body: "IBM Plex Sans Thai", Tahoma, "Noto Sans Thai", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --wrap: 1180px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121815; --sheet: #1a221e; --ink: #e8ede9; --ink-soft: #a8b5ae; --rule: #2c3732;
+    --forest: #0d1311; --forest-ink: #eef2ec; --forest-soft: #9fb0a7;
+    --brass: #d6a24a; --brass-ink: #e0b263; --alert: #e2654f; --ok: #5bb27e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121815; --sheet: #1a221e; --ink: #e8ede9; --ink-soft: #a8b5ae; --rule: #2c3732;
+  --forest: #0d1311; --forest-ink: #eef2ec; --forest-soft: #9fb0a7;
+  --brass: #d6a24a; --brass-ink: #e0b263; --alert: #e2654f; --ok: #5bb27e; color-scheme: dark;
+}
+
+.en { display: none; }
+:root[data-lang="en"] .en { display: revert; }
+:root[data-lang="en"] .th { display: none; }
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.7; }
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--brass); outline-offset: 3px; border-radius: 4px; }
+
+.wrap { max-width: var(--wrap); margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.band { padding-block: clamp(56px, 8vw, 104px); }
+h1, h2, h3 { font-family: var(--display); line-height: 1.25; text-wrap: balance; margin: 0; }
+h2 { font-size: clamp(28px, 3.6vw, 42px); font-weight: 700; }
+h3 { font-size: 21px; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--brass-ink); }
+.lede { color: var(--ink-soft); max-width: 62ch; font-size: 18px; }
+.head { display: grid; gap: 12px; margin-bottom: clamp(28px, 4vw, 48px); }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: var(--forest); color: var(--forest-ink); border-bottom: 2px solid var(--brass); }
+.top .wrap { display: flex; align-items: center; gap: 20px; min-height: 64px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--display); font-weight: 700; letter-spacing: 0.02em; }
+.brand svg { width: 34px; height: 22px; }
+.brand small { font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--forest-soft); letter-spacing: 0.1em; display: block; line-height: 1.2; }
+.nav { display: flex; gap: 20px; margin-left: auto; font-size: 15px; flex-wrap: wrap; }
+.nav a { text-decoration: none; color: var(--forest-soft); }
+.nav a:hover { color: var(--forest-ink); }
+.lang { display: inline-flex; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 8px; overflow: hidden; }
+.lang button { font: inherit; font-size: 13px; font-family: var(--mono); padding: 6px 10px; background: transparent; color: var(--forest-soft); border: 0; cursor: pointer; }
+.lang button[aria-pressed="true"] { background: var(--forest-ink); color: var(--forest); font-weight: 500; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; font-family: var(--body); border: 1px solid transparent; cursor: pointer; font-size: 16px; }
+.btn-brass { background: var(--brass); color: #1a1205; }
+.btn-brass:hover { filter: brightness(1.06); }
+.btn-ghost { border-color: var(--rule); color: var(--ink); background: transparent; }
+.btn-ghost:hover { border-color: var(--ink-soft); }
+.top .btn { padding: 8px 14px; font-size: 14px; }
+.btn-login { border-color: rgba(255, 255, 255, 0.35); color: var(--forest-ink); background: transparent; }
+.btn-login:hover { border-color: var(--forest-ink); }
+@media (max-width: 860px) { .nav { display: none; } .lang { margin-left: auto; } }
+@media (max-width: 480px) { .top .btn-brass { display: none; } }
+
+.hero { padding-block: clamp(40px, 6vw, 80px) clamp(32px, 5vw, 64px); }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 4vw, 56px); align-items: center; }
+.hero h1 { font-size: clamp(34px, 5vw, 58px); font-weight: 700; letter-spacing: -0.01em; }
+.hero h1 em { font-style: normal; color: var(--brass-ink); }
+.hero .copy { display: grid; gap: 22px; min-width: 0; }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.screen { min-width: 0; background: var(--forest); border-radius: 14px; padding: 10px; box-shadow: 0 30px 60px -30px rgba(10, 20, 15, 0.45); }
+.screen .bar { display: flex; gap: 6px; padding: 4px 6px 10px; align-items: center; }
+.screen .bar i { width: 9px; height: 9px; border-radius: 50%; background: var(--forest-soft); opacity: 0.5; }
+.screen .bar span { margin-left: 8px; font-family: var(--mono); font-size: 12px; color: var(--forest-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.screen img { border-radius: 6px; width: 100%; height: auto; }
+@media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+
+.strip { background: var(--sheet); border-block: 1px solid var(--rule); }
+.strip .wrap { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.stat { padding: 22px 20px; border-left: 1px solid var(--rule); display: grid; gap: 2px; align-content: start; }
+.stat:first-child { border-left: none; padding-left: 0; }
+.stat b { font-family: var(--display); font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--ink-soft); font-size: 15px; line-height: 1.5; }
+@media (max-width: 760px) { .strip .wrap { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat:nth-child(3) { border-left: none; padding-left: 0; } .stat { border-top: 1px solid var(--rule); } .stat:nth-child(-n+2) { border-top: none; } }
+
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(28px, 4vw, 64px); align-items: center; }
+.split .photo { border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 10; max-width: 100%; }
+.split .photo img { width: 100%; height: 100%; object-fit: cover; }
+.ticks { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.ticks li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; color: var(--ink-soft); }
+.ticks li::before { content: ""; width: 10px; height: 10px; margin-top: 10px; border-radius: 2px; background: var(--alert); }
+.ticks.good li::before { background: var(--ok); }
+@media (max-width: 860px) { .split { grid-template-columns: 1fr; } }
+
+.depts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 2px solid var(--ink); }
+.dept { padding: 26px 24px 30px 0; border-bottom: 1px solid var(--rule); display: grid; gap: 10px; align-content: start; min-width: 0; }
+.dept:not(:nth-child(3n+1)) { padding-left: 24px; border-left: 1px solid var(--rule); }
+.dept .menu { font-family: var(--mono); font-size: 13px; color: var(--brass-ink); }
+.dept p { color: var(--ink-soft); }
+@media (max-width: 900px) { .depts { grid-template-columns: 1fr; } .dept:not(:nth-child(3n+1)) { padding-left: 0; border-left: none; } }
+
+.dark { background: var(--forest); color: var(--forest-ink); }
+.dark .eyebrow { color: var(--brass); }
+.dark .lede, .dark p { color: var(--forest-soft); }
+.bc-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 4vw, 56px); align-items: center; }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; counter-reset: s; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; align-items: start; }
+.steps li::before { content: counter(s); font-family: var(--display); font-weight: 700; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--brass); color: var(--brass); display: grid; place-items: center; }
+.steps b { display: block; color: var(--forest-ink); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.chip { font-size: 14px; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.18); color: var(--forest-ink); }
+.chip.main { background: var(--brass); color: #1a1205; border-color: var(--brass); font-weight: 600; }
+.bc-shot { border-radius: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.12); min-width: 0; }
+.bc-shot img { width: 100%; height: auto; }
+@media (max-width: 900px) { .bc-grid { grid-template-columns: 1fr; } }
+
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.tab { font-family: var(--body); font-size: 15px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink-soft); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--forest); color: var(--forest-ink); border-color: var(--forest); }
+.viewer { background: var(--sheet); border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; }
+.viewer figure { margin: 0; }
+.viewer img { width: 100%; height: auto; border-bottom: 1px solid var(--rule); }
+.viewer figcaption { padding: 16px 20px; display: grid; gap: 4px; }
+.viewer figcaption b { font-family: var(--display); font-size: 19px; }
+.viewer figcaption span { color: var(--ink-soft); }
+.note { font-size: 14px; color: var(--ink-soft); margin-top: 12px; }
+
+.code { font-family: var(--mono); font-size: 14px; background: var(--sheet); border: 1px solid var(--rule); padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+.pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { font-size: 14px; padding: 4px 12px; border-radius: 999px; font-weight: 600; }
+.pill.wait { background: color-mix(in srgb, var(--alert) 14%, transparent); color: var(--alert); }
+.pill.doing { background: color-mix(in srgb, var(--brass) 18%, transparent); color: var(--brass-ink); }
+.pill.done { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+
+.sources { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--rule); }
+.src { padding: 18px 20px 18px 0; border-bottom: 1px solid var(--rule); display: grid; gap: 2px; min-width: 0; align-content: start; }
+.src b { font-family: var(--display); font-size: 18px; }
+.src span { color: var(--ink-soft); font-size: 15px; }
+.src em { font-style: normal; font-family: var(--mono); font-size: 13px; color: var(--brass-ink); }
+@media (max-width: 760px) { .sources { grid-template-columns: 1fr; } }
+
+.plan { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
+.plan li { border-top: 3px solid var(--brass); padding-top: 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.plan .n { font-family: var(--mono); font-size: 13px; color: var(--brass-ink); }
+.plan p { color: var(--ink-soft); }
+@media (max-width: 900px) { .plan { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .plan { grid-template-columns: 1fr; } }
+
+.contact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(28px, 4vw, 56px); align-items: start; }
+.card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 14px; padding: clamp(20px, 3vw, 32px); display: grid; gap: 16px; }
+.field { display: grid; gap: 6px; }
+.field label { font-size: 15px; font-weight: 600; }
+.field input, .field select, .field textarea { font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); width: 100%; }
+.field textarea { min-height: 96px; resize: vertical; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.done-msg { padding: 14px 16px; border-radius: 8px; background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ink); }
+.copyline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.copyline .code { user-select: all; }
+.small-btn { font: inherit; font-size: 14px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--rule); background: transparent; color: var(--ink-soft); cursor: pointer; }
+@media (max-width: 860px) { .contact { grid-template-columns: 1fr; } .row2 { grid-template-columns: 1fr; } }
+
+footer { background: var(--forest); color: var(--forest-soft); font-size: 14px; }
+footer .wrap { display: flex; gap: 16px; justify-content: space-between; flex-wrap: wrap; padding-block: 28px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="TambonX">
+      <svg viewBox="0 0 34 22" aria-hidden="true"><path d="M1 13 L15 6 L33 10 L19 17 Z" fill="#4f6b5c"/><path d="M4 16 L17 10 L31 13 L18 20 Z" fill="#8fa89a"/><circle cx="17" cy="5" r="3.2" fill="#c2412d"/></svg>
+      <span>TambonX<small>SMART TAMBON SAFETY THAILAND</small></span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#features"><span class="th">ความสามารถ</span><span class="en">Features</span></a>
+      <a href="#broadcast"><span class="th">เสียงตามสาย</span><span class="en">Village PA</span></a>
+      <a href="#screens"><span class="th">หน้าจอระบบ</span><span class="en">Screens</span></a>
+      <a href="#report"><span class="th">แจ้งเหตุ</span><span class="en">Reporting</span></a>
+      <a href="#plan"><span class="th">เริ่มใช้งาน</span><span class="en">Get started</span></a>
+    </nav>
+    <div class="lang" role="group" aria-label="Language / ภาษา">
+      <button type="button" id="lang-th" data-set-lang="th" aria-pressed="true">ไทย</button>
+      <button type="button" id="lang-en" data-set-lang="en" aria-pressed="false">EN</button>
+    </div>
+    <a class="btn btn-login" href="https://app.smarttambon.com" data-config-href="appUrl" target="_blank" rel="noopener"><span class="th">เข้าสู่ระบบ</span><span class="en">Sign in</span></a>
+    <a class="btn btn-brass" href="#contact"><span class="th">ขอสาธิตระบบ</span><span class="en">Book a demo</span></a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="copy">
+        <p class="eyebrow"><span class="th">ระบบบริหารจัดการความปลอดภัย สำหรับ อบต.</span><span class="en">Safety management for sub-district administrations</span></p>
+        <h1><span class="th">ข้อมูลตำบล เก็บครั้งเดียว <em>ใช้ได้ทุกกอง</em></span><span class="en">Collect tambon data once. <em>Every department uses it.</em></span></h1>
+        <p class="lede"><span class="th">TambonX รวมประชากร ทีมงาน ทรัพยากร โครงการ เหตุการณ์ และข้อมูลอากาศ ฝุ่น น้ำ ไฟป่า ไว้บนแผนที่ตำบลจริง ผู้บริหารเห็นภาพรวมในหน้าเดียว เจ้าหน้าที่ทำงานต่อได้ทันที</span><span class="en">TambonX puts population, teams, equipment, projects, incidents, and live weather, air, water and wildfire data on a map of the real sub-district boundary. Executives see the whole picture on one screen, and staff act on it right away.</span></p>
+        <div class="cta">
+          <a class="btn btn-brass" href="#contact"><span class="th">ขอสาธิตระบบ</span><span class="en">Book a demo</span></a>
+          <a class="btn btn-ghost" href="#screens"><span class="th">ดูหน้าจอระบบ</span><span class="en">See the screens</span></a>
+        </div>
+      </div>
+      <div class="screen">
+        <div class="bar"><i></i><i></i><i></i><span><span class="th">ภาพรวมเมือง · อบต.ป่ากลาง จ.น่าน (ข้อมูลตัวอย่าง)</span><span class="en">City overview · Pa Klang SAO, Nan (sample data)</span></span></div>
+        <img src="img/01-overview.jpg" width="1600" height="1053" data-th-alt="หน้าภาพรวมเมือง: การ์ดสรุปเหตุการณ์ พยากรณ์อากาศ สถานะภัย 5 ประเภท งานที่ต้องดำเนินการ และแผนที่ตำบล" data-en-alt="City overview screen: incident summary cards, weather forecast, five hazard statuses, open tasks and the sub-district map" alt="">
+      </div>
+    </div>
+  </section>
+
+  <section class="strip" aria-label="Summary">
+    <div class="wrap">
+      <div class="stat"><b>13</b><span><span class="th">เมนูงาน ตั้งแต่รับแจ้งเหตุ ถึงโครงการ</span><span class="en">work menus, from incident intake to projects</span></span></div>
+      <div class="stat"><b><span class="th">15–30 นาที</span><span class="en">15–30 min</span></b><span><span class="th">ข้อมูลฝุ่น น้ำ ฝน ไฟป่า อัปเดตเอง</span><span class="en">air, water, rain and wildfire data refresh on their own</span></span></div>
+      <div class="stat"><b>7</b><span><span class="th">ช่องทางแจ้งเตือน LINE ถึงเสียงตามสาย</span><span class="en">notification channels, from LINE to village loudspeakers</span></span></div>
+      <div class="stat"><b>0</b><span><span class="th">แอปที่ประชาชนต้องติดตั้งเพื่อแจ้งเหตุ</span><span class="en">apps residents must install to report an incident</span></span></div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap split">
+      <div class="photo"><img src="img/01-cover.jpg" width="1376" height="768" data-th-alt="เจ้าหน้าที่ อบต. ใช้แท็บเล็ตแผนที่คู่กับแบบสำรวจกระดาษในหมู่บ้าน" data-en-alt="Sub-district officers using a map tablet alongside paper survey forms in a village" alt="" loading="lazy"></div>
+      <div class="head" style="margin:0">
+        <p class="eyebrow"><span class="th">ปัญหาที่ อบต. เจอทุกวัน</span><span class="en">The everyday problem</span></p>
+        <h2><span class="th">ข้อมูลมีอยู่แล้ว แต่กระจาย จนสรุปไม่ทัน</span><span class="en">The data exists, but it is too scattered to summarise in time</span></h2>
+        <ul class="ticks">
+          <li><span class="th">ประชากร ครัวเรือน ครุภัณฑ์ อยู่คนละไฟล์ คนละกอง ไม่รู้ว่าฉบับไหนล่าสุด</span><span class="en">Population, households and equipment sit in different files in different departments, and nobody knows which copy is current.</span></li>
+          <li><span class="th">เรื่องร้องเรียนมาทางโทรศัพท์ ไลน์ กระดาษ ต้องนับยอดใหม่ทุกเดือน</span><span class="en">Complaints arrive by phone, LINE and paper, so every monthly count starts from scratch.</span></li>
+          <li><span class="th">เกิดน้ำท่วม ตอบไม่ได้ทันทีว่ากระทบกี่ครัวเรือน และอุปกรณ์พอหรือไม่</span><span class="en">When a flood hits, no one can say at once how many households are affected or whether there is enough equipment.</span></li>
+        </ul>
+        <ul class="ticks good">
+          <li><span class="th">TambonX ผูกทุกข้อมูลกับขอบเขตตำบลและหมู่บ้านจริง ทุกการแก้ไขมีรุ่นและประวัติ ย้อนกลับได้</span><span class="en">TambonX ties every record to the real sub-district and village boundaries. Every change is versioned, logged and reversible.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="features" style="padding-top:0">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow"><span class="th">ความสามารถ</span><span class="en">Features</span></p>
+        <h2><span class="th">ข้อมูลชุดเดียว แต่ละกองได้สถิติของตัวเอง</span><span class="en">One dataset, and each department gets its own statistics</span></h2>
+      </div>
+      <div class="depts">
+        <div class="dept"><span class="menu"><span class="th">เหตุการณ์ · ภัยพิบัติ · แผนที่เมือง</span><span class="en">Incidents · Disasters · City map</span></span><h3><span class="th">งานป้องกันและบรรเทาภัย</span><span class="en">Disaster prevention</span></h3><p><span class="th">รับแจ้ง มอบทีม ติดตามถึงปิดงาน วาดพื้นที่บนแผนที่แล้วได้ประชากร ครัวเรือน และทรัพยากรที่ต้องใช้เทียบกับที่มี</span><span class="en">Take reports, assign a team and track each case to closure. Draw an area on the map to get the population, households and resources needed against what is on hand.</span></p></div>
+        <div class="dept"><span class="menu"><span class="th">ภาพรวมเมือง · จุดความร้อน · PM2.5</span><span class="en">Overview · Hotspots · PM2.5</span></span><h3><span class="th">สาธารณสุขและสิ่งแวดล้อม</span><span class="en">Public health and environment</span></h3><p><span class="th">ค่าฝุ่น PM2.5 รายตำบล จุดความร้อนจาก NASA ย้อนหลัง 24 ชั่วโมงถึง 7 วัน และพยากรณ์อากาศ 7 วัน</span><span class="en">PM2.5 per sub-district, NASA fire hotspots for the last 24 hours to 7 days, and a 7-day weather forecast.</span></p></div>
+        <div class="dept"><span class="menu"><span class="th">โครงการ</span><span class="en">Projects</span></span><h3><span class="th">กองช่าง กองคลัง งานแผน</span><span class="en">Engineering, finance and planning</span></h3><p><span class="th">งบประมาณต่อปีงบประมาณ แยกกลุ่ม แหล่งงบ ผลการอนุมัติ ความคืบหน้าเป็นร้อยละ และตำแหน่งโครงการบนแผนที่</span><span class="en">Budget per fiscal year by project group, funding source and approval status, progress in percent, and each project's location on the map.</span></p></div>
+        <div class="dept"><span class="menu"><span class="th">นำเข้าข้อมูล · กิจกรรม</span><span class="en">Data import · Activities</span></span><h3><span class="th">สำนักปลัด</span><span class="en">Office of the Chief Administrator</span></h3><p><span class="th">นำเข้าจาก Excel เดิมผ่านตัวช่วย 6 ขั้น ประชากรชาย หญิง ครัวเรือน รายหมู่บ้าน ปฏิทินกิจกรรมพร้อมจำนวนผู้ร่วมงาน</span><span class="en">Import existing Excel files through a 6-step wizard. Population by sex and households for each village, plus an events calendar with expected attendance.</span></p></div>
+        <div class="dept"><span class="menu"><span class="th">ทรัพยากร · วัสดุสิ้นเปลือง</span><span class="en">Equipment · Consumables</span></span><h3><span class="th">งานพัสดุ</span><span class="en">Supplies</span></h3><p><span class="th">สต็อกคงเหลือ รับเข้า เบิกออก แจ้งเตือนใกล้หมด ตัดสต็อกอัตโนมัติเมื่อทีมบันทึกการใช้ในเหตุการณ์</span><span class="en">Stock on hand, receipts and issues, and low-stock alerts. Stock is deducted automatically when a team logs what it used on an incident.</span></p></div>
+        <div class="dept"><span class="menu"><span class="th">ภาพรวมเมือง · ผู้ช่วย AI</span><span class="en">Overview · AI assistant</span></span><h3><span class="th">ผู้บริหาร</span><span class="en">Executives</span></h3><p><span class="th">ถามเป็นภาษาไทย ได้ตาราง กราฟ และไฟล์ CSV ทันที AI เห็นเฉพาะข้อมูลในเขตของ อบต. และไม่เห็นชื่อผู้แจ้งเหตุ</span><span class="en">Ask in plain Thai and get tables, charts and CSV files at once. The AI sees only data inside your sub-district and never sees who reported an incident.</span></p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band dark" id="broadcast">
+    <div class="wrap bc-grid">
+      <div class="head" style="margin:0">
+        <p class="eyebrow"><span class="th">ใหม่ · ข่าวประชาสัมพันธ์และเสียงตามสาย</span><span class="en">New · Public news and village PA</span></p>
+        <h2><span class="th">AI เขียนข่าว อ่านออกเสียง ส่งถึงลำโพงทุกหมู่บ้าน</span><span class="en">AI writes the news, reads it aloud and sends it to every village loudspeaker</span></h2>
+        <ol class="steps">
+          <li><div><b><span class="th">ตั้งรายการข่าวครั้งเดียว</span><span class="en">Set up a programme once</span></b><span class="th">เช่น ข่าวเช้า 07:00 ทุกวัน เลือกข้อมูลที่จะสรุป: อากาศ ฝุ่น น้ำ ไฟป่า กิจกรรม เหตุการณ์ โครงการ</span><span class="en">For example a 07:00 morning bulletin every day. Choose what to summarise: weather, air, water, wildfires, events, incidents, projects.</span></div></li>
+          <li><div><b><span class="th">AI สรุปจากข้อมูลจริง</span><span class="en">AI drafts from real data</span></b><span class="th">ข่าวเป็นร่างรอตรวจ พร้อมข้อมูลที่ใช้สรุปให้เจ้าหน้าที่เทียบข้อเท็จจริง</span><span class="en">Each bulletin starts as a draft for review, shown next to the data it was written from so staff can check the facts.</span></div></li>
+          <li><div><b><span class="th">สร้างเสียงอ่านและภาพข่าว</span><span class="en">Generate voice and image</span></b><span class="th">ได้ไฟล์ MP3 และภาพสำหรับโซเชียล</span><span class="en">Get an MP3 read-out and an image for social media.</span></div></li>
+          <li><div><b><span class="th">กดเผยแพร่ครั้งเดียว</span><span class="en">Publish with one click</span></b><span class="th">ส่งพร้อมกันทุกช่องทางที่เลือก</span><span class="en">It goes out to every selected channel at once.</span></div>
+            <div class="chips" style="grid-column:2">
+              <span class="chip main"><span class="th">เสียงตามสาย (MQTT)</span><span class="en">Village PA (MQTT)</span></span><span class="chip">Facebook</span><span class="chip">Instagram</span><span class="chip">LINE OA</span><span class="chip">Telegram</span><span class="chip">Signal</span><span class="chip">Webhook</span>
+            </div>
+          </li>
+        </ol>
+      </div>
+      <div class="bc-shot"><img src="img/09-broadcast-detail.jpg" width="1600" height="1051" data-th-alt="หน้าตรวจข่าว: บทอ่านออกเสียง เสียงอ่านข่าว MP3 ภาพข่าว และประวัติการส่งไปเสียงตามสายหมู่ 1" data-en-alt="News review screen: read-aloud script, MP3 audio, news image and delivery history to the Village 1 loudspeaker" alt="" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section class="band" id="screens">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow"><span class="th">หน้าจอระบบ</span><span class="en">Screens</span></p>
+        <h2><span class="th">ดูหน้าจอจริงทีละเมนู</span><span class="en">Browse the real screens, menu by menu</span></h2>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Screens" id="tabs"></div>
+      <div class="viewer" id="viewer" role="tabpanel">
+        <figure><img id="shot" src="img/02-city-map.jpg" width="1600" height="1051" alt=""><figcaption><b id="shot-title"></b><span id="shot-desc"></span></figcaption></figure>
+      </div>
+      <p class="note"><span class="th">ภาพหน้าจอจากระบบจริง ใช้ข้อมูลตัวอย่างของ อบต.ป่ากลาง อ.ปัว จ.น่าน (รหัสตำบล</span><span class="en">Screenshots from the live system with sample data for Pa Klang SAO, Pua District, Nan (sub-district code</span> <span class="code">550513</span>)</p>
+    </div>
+  </section>
+
+  <section class="band" id="report" style="padding-top:0">
+    <div class="wrap split">
+      <div class="head" style="margin:0">
+        <p class="eyebrow"><span class="th">ประชาชนแจ้งเหตุ</span><span class="en">Resident reporting</span></p>
+        <h2><span class="th">เปิดลิงก์ ถ่ายรูป ปักตำแหน่ง ส่ง</span><span class="en">Open the link, take a photo, drop a pin, send</span></h2>
+        <p class="lede"><span class="th">ไม่ต้องติดตั้งแอปหรือล็อกอิน แต่ละแหล่ง เช่น ผู้ใหญ่บ้าน อสม. รพ.สต. มีลิงก์ของตัวเอง ระบบรับเฉพาะตำแหน่งในเขต อบต. และเด้งแจ้งเตือนบนจอเจ้าหน้าที่ทันที</span><span class="en">No app and no login. Each source, such as village heads, health volunteers or the local health centre, gets its own link. Only locations inside the sub-district are accepted, and staff get an on-screen alert immediately.</span></p>
+        <div class="pills" aria-label="Status">
+          <span class="pill wait"><span class="th">รอรับเรื่อง</span><span class="en">Pending</span></span><span class="pill doing"><span class="th">กำลังดำเนินการ</span><span class="en">In progress</span></span><span class="pill done"><span class="th">เสร็จสิ้น</span><span class="en">Completed</span></span>
+        </div>
+        <p><span class="th">ทุกเรื่องได้เลขอ้างอิง เช่น</span><span class="en">Every case gets a reference number such as</span> <span class="code">INC-2569-C3FF16</span> <span class="th">และประวัติการดำเนินงานครบทุกขั้น</span><span class="en">and a complete action history.</span></p>
+      </div>
+      <div class="photo"><img src="img/05-citizen-report.jpg" width="1376" height="768" data-th-alt="ชาวบ้านถ่ายรูปต้นไม้ล้มขวางถนนด้วยมือถือเพื่อแจ้งเหตุ" data-en-alt="A villager photographs a fallen tree blocking the road with a phone to report it" alt="" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section class="band" style="padding-top:0">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow"><span class="th">ข้อมูลภาครัฐที่ดึงเข้ามาเอง</span><span class="en">Government data, pulled in automatically</span></p>
+        <h2><span class="th">ไม่ต้องเปิดหลายเว็บเพื่อดูฝุ่น น้ำ และไฟป่า</span><span class="en">No more checking several websites for air, water and wildfire data</span></h2>
+      </div>
+      <div class="sources">
+        <div class="src"><b>GISTDA</b><span><span class="th">ขอบเขตตำบลทั่วประเทศ และค่า PM2.5 รายตำบล</span><span class="en">Nationwide sub-district boundaries and PM2.5 per sub-district</span></span></div>
+        <div class="src"><b><span class="th">ThaiWater · กรมทรัพยากรน้ำ</span><span class="en">ThaiWater · Dept. of Water Resources</span></b><span><span class="th">ระดับน้ำ ฝน 24 ชั่วโมง อุณหภูมิ</span><span class="en">Water level, 24-hour rainfall, temperature</span></span><em><span class="th">ทุก 15 นาที</span><span class="en">every 15 min</span></em></div>
+        <div class="src"><b>NASA FIRMS</b><span><span class="th">จุดความร้อนจากดาวเทียม VIIRS และ MODIS</span><span class="en">Satellite fire hotspots from VIIRS and MODIS</span></span><em><span class="th">ทุก 30 นาที</span><span class="en">every 30 min</span></em></div>
+        <div class="src"><b>Open-Meteo</b><span><span class="th">พยากรณ์อากาศรายชั่วโมงและ 7 วัน</span><span class="en">Hourly and 7-day weather forecast</span></span></div>
+        <div class="src"><b>Longdo Map</b><span><span class="th">สถานที่สำคัญ 8 หมวด และที่อยู่จากพิกัด</span><span class="en">Key places in 8 categories and addresses from coordinates</span></span></div>
+        <div class="src"><b><span class="th">เซนเซอร์ของ อบต.</span><span class="en">Your own sensors</span></b><span><span class="th">วัดฝุ่นและระดับน้ำ ส่งผ่าน HTTP หรือ MQTT</span><span class="en">PM2.5 and water-level sensors over HTTP or MQTT</span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="plan" style="padding-top:0">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow"><span class="th">เริ่มใช้งาน</span><span class="en">Get started</span></p>
+        <h2><span class="th">นำร่องได้จากข้อมูลที่ อบต. มีอยู่แล้ว</span><span class="en">Pilot with the data your office already has</span></h2>
+      </div>
+      <ol class="plan">
+        <li><span class="n"><span class="th">ขั้นที่ 1</span><span class="en">Step 1</span></span><h3><span class="th">ตั้งค่าพื้นที่และบัญชี</span><span class="en">Set up area and accounts</span></h3><p><span class="th">ขอบเขต อบต. ผู้ดูแล และเจ้าหน้าที่ทุกกอง</span><span class="en">Sub-district boundary, administrators and staff in every department</span></p></li>
+        <li><span class="n"><span class="th">ขั้นที่ 2</span><span class="en">Step 2</span></span><h3><span class="th">นำเข้าข้อมูลพื้นฐาน</span><span class="en">Import base data</span></h3><p><span class="th">ประชากร หมู่บ้าน ทีม ทรัพยากร จาก Excel เดิม</span><span class="en">Population, villages, teams and equipment from existing Excel files</span></p></li>
+        <li><span class="n"><span class="th">ขั้นที่ 3</span><span class="en">Step 3</span></span><h3><span class="th">อบรมและเปิดรับแจ้งเหตุ</span><span class="en">Train and open reporting</span></h3><p><span class="th">แชร์ลิงก์ให้ผู้ใหญ่บ้าน อสม. และ รพ.สต.</span><span class="en">Share report links with village heads, health volunteers and the health centre</span></p></li>
+        <li><span class="n"><span class="th">ขั้นที่ 4</span><span class="en">Step 4</span></span><h3><span class="th">ใช้งานจริง</span><span class="en">Go live</span></h3><p><span class="th">โครงการปีงบปัจจุบัน ข่าวเสียงตามสาย และรายงาน AI รายเดือน</span><span class="en">This fiscal year's projects, village PA bulletins and monthly AI reports</span></p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="band" id="contact" style="padding-top:0">
+    <div class="wrap contact">
+      <div class="head" style="margin:0">
+        <p class="eyebrow"><span class="th">ติดต่อ</span><span class="en">Contact</span></p>
+        <h2><span class="th">นัดสาธิตระบบกับข้อมูลตำบลของคุณ</span><span class="en">Book a demo with your own sub-district data</span></h2>
+        <p class="lede"><span class="th">กรอกข้อมูล แล้วทีมงานจะติดต่อกลับเพื่อนัดวันสาธิต หรือติดต่อโดยตรงตามช่องทางด้านล่าง</span><span class="en">Fill in the form and our team will call you back to schedule a demo, or reach us directly below.</span></p>
+        <div class="copyline"><span><span class="th">อีเมล</span><span class="en">Email</span></span><span class="code" id="mail" data-config-text="email">sales@esms-solution.com</span><button class="small-btn" type="button" data-copy="mail"><span class="th">คัดลอก</span><span class="en">Copy</span></button></div>
+        <div class="copyline"><span><span class="th">โทร</span><span class="en">Phone</span></span><span class="code" id="tel" data-config-text="phone">061-961-5949</span><button class="small-btn" type="button" data-copy="tel"><span class="th">คัดลอก</span><span class="en">Copy</span></button></div>
+      </div>
+      <form class="card" id="demo-form" novalidate>
+        <div class="field"><label for="org"><span class="th">ชื่อหน่วยงาน</span><span class="en">Organisation</span></label><input id="org" name="org" data-th-ph="เช่น องค์การบริหารส่วนตำบลป่ากลาง" data-en-ph="e.g. Pa Klang Subdistrict Administrative Organization" required></div>
+        <div class="row2">
+          <div class="field"><label for="name"><span class="th">ชื่อผู้ติดต่อ</span><span class="en">Contact name</span></label><input id="name" name="name" required></div>
+          <div class="field"><label for="phone"><span class="th">เบอร์โทร</span><span class="en">Phone</span></label><input id="phone" name="phone" inputmode="tel" required></div>
+        </div>
+        <div class="field"><label for="topic"><span class="th">สนใจเรื่อง</span><span class="en">Interested in</span></label>
+          <select id="topic" name="topic">
+            <option value="all" data-th="ทั้งระบบ" data-en="The whole system">ทั้งระบบ</option>
+            <option value="incidents" data-th="รับแจ้งเหตุและภัยพิบัติ" data-en="Incidents and disasters">รับแจ้งเหตุและภัยพิบัติ</option>
+            <option value="broadcast" data-th="ข่าวประชาสัมพันธ์และเสียงตามสาย" data-en="Public news and village PA">ข่าวประชาสัมพันธ์และเสียงตามสาย</option>
+            <option value="projects" data-th="โครงการและงบประมาณ" data-en="Projects and budget">โครงการและงบประมาณ</option>
+            <option value="ai" data-th="ผู้ช่วย AI" data-en="AI assistant">ผู้ช่วย AI</option>
+          </select>
+        </div>
+        <div class="field"><label for="msg"><span class="th">รายละเอียดเพิ่มเติม</span><span class="en">Details</span></label><textarea id="msg" name="msg" data-th-ph="จำนวนหมู่บ้าน จำนวนผู้ใช้ หรือคำถาม" data-en-ph="Number of villages, number of users, or your questions"></textarea></div>
+        <button class="btn btn-brass" type="submit"><span class="th">ส่งคำขอสาธิต</span><span class="en">Request a demo</span></button>
+        <p class="done-msg" id="done" hidden><span class="th">บันทึกคำขอบนหน้านี้แล้ว ระบบส่งข้อมูลยังไม่ได้เชื่อมต่อ กรุณาติดต่อตามอีเมลหรือเบอร์โทรด้านซ้าย</span><span class="en">Your request is saved on this page only; the form is not connected to a mailbox yet. Please email or call us using the details on the left.</span></p>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>TambonX · SMART TAMBON SAFETY THAILAND</span>
+    <span><span data-config-text="email">sales@esms-solution.com</span> · <span data-config-text="phone">061-961-5949</span> · <a href="https://app.smarttambon.com" data-config-href="appUrl" target="_blank" rel="noopener"><span class="th">เข้าสู่ระบบ</span><span class="en">Sign in</span> <span data-config-host="appUrl">app.smarttambon.com</span></a></span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const root = document.documentElement;
+  const cfg = window.SITE_CONFIG || {};
+  document.querySelectorAll("[data-config-href]").forEach(el => { const v = cfg[el.dataset.configHref]; if (v) el.href = v; });
+  document.querySelectorAll("[data-config-text]").forEach(el => { const v = cfg[el.dataset.configText]; if (v) el.textContent = v; });
+  document.querySelectorAll("[data-config-host]").forEach(el => {
+    const v = cfg[el.dataset.configHost];
+    if (!v) return;
+    try { el.textContent = new URL(v).host; } catch (e) { el.textContent = v; }
+  });
+  const shots = [
+    { key: "map", src: "img/02-city-map.jpg", h: 1051,
+      th: ["แผนที่เมือง", "ขอบเขตตำบลและหมู่บ้าน สถานที่สำคัญ 8 หมวด วิเคราะห์พื้นที่ และจำลองน้ำท่วม 3 มิติ"],
+      en: ["City map", "Sub-district and village boundaries, key places in 8 categories, area analysis and 3D flood simulation"] },
+    { key: "incidents", src: "img/03-general-incidents.jpg", h: 1046,
+      th: ["เหตุการณ์ทั่วไป", "รับเรื่อง มอบทีม บันทึกความคืบหน้า และสรุปทรัพยากรที่ใช้ในแต่ละเหตุการณ์"],
+      en: ["Incidents", "Acknowledge, assign a team, log progress and total the resources used on each incident"] },
+    { key: "projects", src: "img/06-projects.jpg", h: 1043,
+      th: ["โครงการ", "กราฟงบประมาณรายปีแยกตามผลการอนุมัติ และรายการโครงการพร้อมสถานะและที่ตั้ง"],
+      en: ["Projects", "Yearly budget chart by approval status, and the project list with status and location"] },
+    { key: "import", src: "img/07-data-import-population.jpg", h: 1043,
+      th: ["นำเข้าข้อมูล", "ข้อมูลประชากรรายหมู่บ้าน มีรุ่นข้อมูล ประวัติการแก้ไข และการเชื่อมขอบเขตหมู่บ้าน"],
+      en: ["Data import", "Population by village with dataset versions, an edit history and links to village boundaries"] },
+    { key: "ai", src: "img/08-ai-assistant.jpg", h: 1046,
+      th: ["ผู้ช่วย AI", "ถามเป็นภาษาไทย ได้ตารางและกราฟ ใช้โมเดลภายในได้เพื่อเก็บข้อมูลไว้ในองค์กร"],
+      en: ["AI assistant", "Ask in Thai and get tables and charts; run it on a local model to keep data in-house"] },
+    { key: "news", src: "img/09-broadcast-list.jpg", h: 1040,
+      th: ["ข่าวประชาสัมพันธ์", "รายการข่าวตามตาราง ปุ่มสร้างข่าวตอนนี้ และสถานะข่าวแต่ละฉบับ"],
+      en: ["Public news", "Scheduled news programmes, a create-now button and the status of each bulletin"] },
+    { key: "activities", src: "img/04-activities.jpg", h: 1167,
+      th: ["กิจกรรมในพื้นที่", "ปฏิทินกิจกรรม วันเวลา สถานที่ จำนวนผู้ร่วมงาน และปิดงานอัตโนมัติเมื่อหมดเวลา"],
+      en: ["Local events", "Events calendar with dates, venue and expected attendance; events close automatically when they end"] },
+    { key: "cctv", src: "img/05-cctv.jpg", h: 707,
+      th: ["กล้องวงจรปิด", "ลงทะเบียนกล้องและลิงก์สตรีม ดูภาพสดได้จากหน้ารายการและบนแผนที่"],
+      en: ["CCTV", "Register cameras and stream links, and watch live from the list or the map"] },
+    { key: "settings", src: "img/10-settings-organization.jpg", h: 1053,
+      th: ["ตั้งค่า อบต.", "ข้อมูล อบต. การแจ้งเตือน ช่องทางแจ้งเตือน เทมเพลตข้อความ และค่าเริ่มต้นแผนที่"],
+      en: ["Office settings", "Office details, alerts, notification channels, message templates and map defaults"] }
+  ];
+  const tabs = document.getElementById("tabs");
+  const img = document.getElementById("shot");
+  const title = document.getElementById("shot-title");
+  const desc = document.getElementById("shot-desc");
+  let current = 0;
+  const lang = () => (root.dataset.lang === "en" ? "en" : "th");
+
+  function show(i) {
+    current = i;
+    const s = shots[i], [t, d] = s[lang()];
+    img.src = s.src; img.height = s.h; img.alt = t + ": " + d;
+    title.textContent = t; desc.textContent = d;
+    [...tabs.children].forEach((b, j) => { b.setAttribute("aria-selected", j === i ? "true" : "false"); b.tabIndex = j === i ? 0 : -1; });
+  }
+  shots.forEach((s, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "tab"; b.setAttribute("role", "tab"); b.id = "tab-" + s.key;
+    b.addEventListener("click", () => show(i));
+    b.addEventListener("keydown", e => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const n = (i + (e.key === "ArrowRight" ? 1 : shots.length - 1)) % shots.length;
+      show(n); tabs.children[n].focus();
+    });
+    tabs.appendChild(b);
+  });
+  shots.forEach(s => { const p = new Image(); p.src = s.src; });
+
+  function setLang(l) {
+    root.dataset.lang = l;
+    root.lang = l;
+    document.querySelectorAll("[data-set-lang]").forEach(b => b.setAttribute("aria-pressed", b.dataset.setLang === l ? "true" : "false"));
+    document.querySelectorAll("[data-th-alt]").forEach(el => { el.alt = el.dataset[l + "Alt"]; });
+    document.querySelectorAll("[data-th-ph]").forEach(el => { el.placeholder = el.dataset[l + "Ph"]; });
+    document.querySelectorAll("option[data-th]").forEach(o => { o.textContent = o.dataset[l]; });
+    [...tabs.children].forEach((b, j) => { b.textContent = shots[j][l][0]; });
+    show(current);
+    try { localStorage.setItem("tambonx-lang", l); } catch (e) {}
+  }
+  document.querySelectorAll("[data-set-lang]").forEach(b => b.addEventListener("click", () => setLang(b.dataset.setLang)));
+
+  let start = "th";
+  try { start = localStorage.getItem("tambonx-lang") || "th"; } catch (e) {}
+  if (location.hash === "#en") start = "en";
+  if (location.hash === "#th") start = "th";
+  setLang(start === "en" ? "en" : "th");
+
+  document.querySelectorAll("[data-copy]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const el = document.getElementById(btn.dataset.copy);
+      const label = btn.innerHTML;
+      const done = () => { btn.textContent = lang() === "en" ? "Copied" : "คัดลอกแล้ว"; setTimeout(() => (btn.innerHTML = label), 1600); };
+      const select = () => { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
+      try { navigator.clipboard.writeText(el.textContent).then(done, select); } catch (e) { select(); }
+    });
+  });
+
+  const form = document.getElementById("demo-form");
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    const missing = [...form.querySelectorAll("[required]")].find(f => !f.value.trim());
+    if (missing) { missing.focus(); missing.setAttribute("aria-invalid", "true"); return; }
+    document.getElementById("done").hidden = false;
+  });
+})();
+</script>
+</body>
+</html>

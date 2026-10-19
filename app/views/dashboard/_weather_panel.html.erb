@@ -1,0 +1,77 @@
+<section class="wx-panel" data-weather-panel data-weather-url="<%= api_weather_path %>" data-expanded="false" aria-label="สภาพอากาศ" aria-busy="true">
+  <div class="wx-topbar">
+    <label class="wx-location-picker">
+      <span class="material-symbols-outlined" aria-hidden="true">location_on</span>
+      <select data-wx-location aria-label="เลือกพื้นที่พยากรณ์อากาศ"><option>พื้นที่ของฉัน</option></select>
+    </label>
+    <button type="button" class="wx-toggle" data-wx-toggle aria-expanded="false" aria-controls="wx-full">
+      <span data-wx-toggle-label>ดูรายละเอียดเต็ม</span>
+      <span class="material-symbols-outlined" aria-hidden="true">expand_more</span>
+    </button>
+  </div>
+
+  <div class="wx-error" data-wx-error hidden></div>
+
+  <div class="wx-compact" data-wx-compact role="button" tabindex="0" aria-label="เปิดรายละเอียดสภาพอากาศแบบเต็ม" hidden>
+    <div class="wx-now">
+      <h2 data-wx-compact-name>กำลังโหลดสภาพอากาศ…</h2>
+      <p class="wx-distance" data-wx-distance hidden></p>
+      <div class="wx-now-main">
+        <span class="material-symbols-outlined" data-wx-compact-icon aria-hidden="true"></span>
+        <strong data-wx-compact-temp>—</strong>
+      </div>
+      <p class="wx-now-condition" data-wx-compact-condition></p>
+      <p class="wx-now-range" data-wx-compact-range></p>
+    </div>
+    <div class="wx-compact-forecast">
+      <div class="wx-compact-row">
+        <h3><span class="material-symbols-outlined">schedule</span>12 ชั่วโมงข้างหน้า</h3>
+        <div class="wx-next12" data-wx-next12 role="list"></div>
+      </div>
+      <div class="wx-compact-row">
+        <h3><span class="material-symbols-outlined">calendar_month</span>พยากรณ์ 7 วัน</h3>
+        <div class="wx-week" data-wx-week role="list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wx-full" id="wx-full" data-wx-full hidden>
+    <div class="wx-hero">
+      <h2 data-wx-name>กำลังโหลดสภาพอากาศ…</h2>
+      <div class="wx-hero-temp" data-wx-temp>—</div>
+      <p class="wx-hero-condition" data-wx-condition></p>
+      <p class="wx-hero-range" data-wx-range></p>
+    </div>
+
+    <div class="wx-grid" data-wx-grid>
+      <article class="wx-card wx-hourly">
+        <p class="wx-hourly-summary" data-wx-summary></p>
+        <div class="wx-hourly-strip" data-wx-hourly role="list"></div>
+      </article>
+
+      <article class="wx-card wx-radar">
+        <h3><span class="material-symbols-outlined">umbrella</span>เรดาร์ฝน</h3>
+        <div class="wx-radar-map" data-wx-radar></div>
+        <small class="wx-note" data-wx-radar-note>กำลังโหลดเรดาร์…</small>
+      </article>
+
+      <article class="wx-card wx-daily">
+        <h3><span class="material-symbols-outlined">calendar_month</span>พยากรณ์ 7 วัน</h3>
+        <ol data-wx-daily></ol>
+      </article>
+
+      <article class="wx-card wx-tile" data-wx-tile="uv"></article>
+      <article class="wx-card wx-tile" data-wx-tile="sun"></article>
+      <article class="wx-card wx-tile" data-wx-tile="wind"></article>
+      <article class="wx-card wx-tile" data-wx-tile="moon"></article>
+      <article class="wx-card wx-tile" data-wx-tile="precip"></article>
+      <article class="wx-card wx-tile" data-wx-tile="feels"></article>
+      <article class="wx-card wx-tile" data-wx-tile="humidity"></article>
+      <article class="wx-card wx-tile" data-wx-tile="visibility"></article>
+      <article class="wx-card wx-tile" data-wx-tile="pressure"></article>
+      <article class="wx-card wx-tile" data-wx-tile="average"></article>
+    </div>
+  </div>
+
+  <div class="wx-source" data-wx-source></div>
+</section>

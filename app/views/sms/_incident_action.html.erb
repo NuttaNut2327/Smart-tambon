@@ -1,0 +1,33 @@
+<%# "ส่ง SMS" button + modal on the incident detail. locals: incident %>
+<% sms_setting = SmsSetting.current %>
+<% if sms_setting.enabled? %>
+  <% phone = Sms::PhoneNumber.normalize(incident.reporter_contact) %>
+  <%= stylesheet_link_tag "sms", "data-turbo-track": "reload" %>
+  <div class="sms-action">
+    <button type="button" class="incident-secondary-action" data-sms-open="sms-dialog-<%= incident.id %>" <%= "disabled" unless phone %> title="<%= phone ? "ส่งลิงก์ติดตามสถานะให้ผู้แจ้ง" : "ไม่มีเบอร์มือถือของผู้แจ้งที่ใช้ส่ง SMS ได้" %>">
+      <span class="material-symbols-outlined">sms</span>ส่ง SMS
+    </button>
+    <% if incident.sms_status.present? %>
+      <small class="sms-state <%= incident.sms_status == 'SENT' ? 'sms-ok' : 'sms-fail' %>">SMS ล่าสุด: <%= incident.sms_status %><%= " · #{thai_short_datetime(incident.sms_sent_at)}" if incident.sms_sent_at && incident.sms_status == "SENT" %></small>
+    <% end %>
+  </div>
+  <dialog class="sms-dialog" id="sms-dialog-<%= incident.id %>" data-sms-dialog data-url="<%= send_sms_path(id: incident.id) %>" aria-labelledby="sms-dialog-title-<%= incident.id %>">
+    <form method="dialog" class="sms-dialog-body">
+      <header><h2 id="sms-dialog-title-<%= incident.id %>">ส่ง SMS ถึงผู้แจ้ง</h2><button value="cancel" class="sms-close" aria-label="ปิด"><span class="material-symbols-outlined">close</span></button></header>
+      <p class="sms-to">ถึง <b><%= incident.reporter_name.presence || "ผู้แจ้ง" %></b> · <span data-sms-phone><%= phone || "-" %></span></p>
+      <fieldset class="sms-modes"><legend>โหมดการส่ง</legend>
+        <% sms_setting.modes.each_with_index do |(mode, label), index| %>
+          <label><input type="radio" name="mode" value="<%= mode %>" <%= "checked" if index.zero? %> data-sms-mode> <%= label %></label>
+        <% end %>
+      </fieldset>
+      <div class="sms-preview"><b>ข้อความที่จะส่ง</b><pre data-sms-template>กำลังโหลดตัวอย่าง…</pre><small>smsmkt จะแทน &lt;TRACKING-URL&gt; ด้วยลิงก์ย่อของ: <code data-sms-preview-link>-</code></small></div>
+      <div class="sms-result" data-sms-result hidden></div>
+      <footer>
+        <button value="cancel" class="incident-secondary-action">ปิด</button>
+        <button type="button" class="incident-primary-action" data-sms-send <%= "disabled" unless sms_setting.ready? && phone %>><span class="material-symbols-outlined">send</span>ส่ง SMS</button>
+      </footer>
+      <% unless sms_setting.ready? %><p class="sms-fail sms-small">ผู้ดูแลระบบยังไม่ได้ตั้งค่า SMS (api_key / secret_key / ชื่อผู้ส่ง)</p><% end %>
+    </form>
+  </dialog>
+  <%= javascript_include_tag "sms", defer: true, "data-turbo-track": "reload" %>
+<% end %>

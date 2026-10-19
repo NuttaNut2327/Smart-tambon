@@ -1,0 +1,18 @@
+<%# Page frame for system-admin organisation pages. locals: title, description, active (:organizations, :registrations) %>
+<% pending = OrganizationRegistration.pending.count %>
+<div class="shell dashboard-shell gis-dashboard users-shell admin-shell">
+  <%= render "dashboard/sidebar", active_nav: :admin_organizations, initial_area: "ประเทศไทย" %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label">ผู้ดูแลระบบ</span><b>›</b><span><%= title %></span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page users-workspace">
+      <section class="city-heading users-title-row"><div><p class="page-kicker">สำหรับผู้ดูแลระบบ (Super admin)</p><h1><%= title %></h1><p><%= description %></p></div></section>
+      <nav class="settings-tabs" aria-label="หน่วยงาน">
+        <%= link_to admin_organizations_path, class: ("active" if active == :organizations) do %><span class="material-symbols-outlined">account_balance</span>หน่วยงานในระบบ<% end %>
+        <%= link_to admin_registrations_path, class: ("active" if active == :registrations) do %><span class="material-symbols-outlined">how_to_reg</span>คำขอลงทะเบียน<% if pending.positive? %> <b class="nav-alert-count"><%= pending %></b><% end %><% end %>
+      </nav>
+      <% if notice.present? %><p class="activity-flash notice"><%= notice %></p><% end %>
+      <% if alert.present? %><p class="activity-flash alert"><%= alert %></p><% end %>
+      <%= yield %>
+    </div>
+  </main>
+</div>

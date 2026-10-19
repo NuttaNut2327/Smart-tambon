@@ -51,7 +51,8 @@ class SystemSettingsController < ApplicationController
 
   def setting_params
     params.require(:system_setting).permit(:system_name, :system_short_name, :organization_name, :contact_email, :contact_phone,
-                                           :footer_text, :login_message, :geocoder_url, :map_basemap, :map_center_lat, :map_center_lon, :map_zoom)
+                                           :footer_text, :login_message, :geocoder_url, :map_basemap, :map_center_lat, :map_center_lon, :map_zoom,
+                                           :registration_enabled, :registration_terms, :registration_pdpa)
   end
 
   def replace_logo

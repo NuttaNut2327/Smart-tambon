@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <title>ลงทะเบียนหน่วยงาน · <%= system_name %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="robots" content="noindex">
+    <%= csrf_meta_tags %><%= csp_meta_tag %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet">
+    <%= stylesheet_link_tag "registration", "data-turbo-track": "reload" %>
+  </head>
+  <body class="registration-page">
+    <header class="registration-header">
+      <%= link_to new_user_session_path, class: "registration-brand" do %><%= image_tag system_logo_src, alt: "" %><span><b><%= system_name %></b><small>ลงทะเบียนหน่วยงาน</small></span><% end %>
+      <%= link_to "มีบัญชีแล้ว? เข้าสู่ระบบ", new_user_session_path, class: "registration-login" %>
+    </header>
+    <main class="registration-main"><%= yield %></main>
+    <footer class="registration-footer"><%= system_setting.footer_text.presence || "© #{Time.current.year} #{system_name}" %></footer>
+  </body>
+</html>

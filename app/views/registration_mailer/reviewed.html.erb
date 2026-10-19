@@ -1,0 +1,9 @@
+<% if @registration.status == "approved" %>
+  <p>คำขอลงทะเบียน <b><%= @registration.organization_name %></b> (<%= @registration.area_label %>) ได้รับการอนุมัติแล้ว</p>
+  <p>เข้าสู่ระบบด้วยชื่อผู้ใช้ <b><%= @registration.username %></b> และรหัสผ่านที่ตั้งไว้ตอนสมัคร</p>
+  <p><a href="<%= @login_url %>" style="display:inline-block;padding:10px 18px;border-radius:8px;background:#2c3930;color:#fff;text-decoration:none">เข้าสู่ระบบ</a></p>
+<% else %>
+  <p>คำขอลงทะเบียน <b><%= @registration.organization_name %></b> ยังไม่ได้รับการอนุมัติ</p>
+  <% if @registration.reject_reason.present? %><p>เหตุผล: <%= @registration.reject_reason %></p><% end %>
+  <p>หากมีข้อสงสัย โปรดติดต่อผู้ดูแลระบบ</p>
+<% end %>

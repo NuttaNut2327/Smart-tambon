@@ -1,0 +1,18 @@
+<% state = { "pending_review" => ["hourglass_top", "ส่งคำขอลงทะเบียนเรียบร้อยแล้ว", "ผู้ดูแลระบบจะตรวจสอบข้อมูลและแจ้งผลทางอีเมล เมื่ออนุมัติแล้วจะเข้าสู่ระบบด้วยชื่อผู้ใช้และรหัสผ่านที่ตั้งไว้ได้ทันที"],
+              "approved" => ["verified", "คำขอได้รับการอนุมัติแล้ว", "เข้าสู่ระบบด้วยชื่อผู้ใช้และรหัสผ่านที่ตั้งไว้ตอนสมัคร"],
+              "rejected" => ["block", "คำขอไม่ได้รับการอนุมัติ", @registration.reject_reason.presence || "หากมีข้อสงสัย โปรดติดต่อผู้ดูแลระบบ"] }.fetch(@registration.status) %>
+<section class="registration-card registration-done <%= @registration.status %>">
+  <span class="material-symbols-outlined registration-done-icon"><%= state[0] %></span>
+  <h1><%= state[1] %></h1>
+  <p><%= state[2] %></p>
+  <dl class="registration-summary">
+    <div><dt>หน่วยงาน</dt><dd><%= @registration.organization_name %></dd></div>
+    <div><dt>พื้นที่</dt><dd><%= @registration.area_label %></dd></div>
+    <div><dt>ชื่อผู้ใช้</dt><dd><%= @registration.username %></dd></div>
+    <div><dt>ส่งคำขอเมื่อ</dt><dd><%= thai_short_datetime(@registration.submitted_at) %></dd></div>
+  </dl>
+  <div class="registration-actions">
+    <%= button_to "ลงทะเบียนหน่วยงานอื่น", reset_organization_registration_path, method: :post, class: "registration-back" %>
+    <%= link_to new_user_session_path, class: "registration-next" do %>ไปหน้าเข้าสู่ระบบ<span class="material-symbols-outlined">login</span><% end %>
+  </div>
+</section>

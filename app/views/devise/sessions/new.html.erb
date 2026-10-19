@@ -22,6 +22,7 @@
         <%= form.submit "เข้าสู่ระบบ", class: "login-submit" %>
       <% end %>
       <p class="login-access-note">บัญชีผู้ใช้ถูกสร้างและกำหนดสิทธิ์โดยผู้ดูแลระบบ</p>
+      <% if system_setting.registration_enabled != false %><p class="login-access-note">หน่วยงานยังไม่มีบัญชี? <%= link_to "ลงทะเบียน อบต./เทศบาล", organization_registration_path %></p><% end %>
     </div>
   </section>
 </main>

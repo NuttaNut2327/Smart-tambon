@@ -48,9 +48,12 @@
     <%= javascript_include_tag "project_layer", defer: true, "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "activities", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "settings", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "broadcasts", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "activity_layer", defer: true, "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "fire_hotspots", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "fire_hotspot_layer", defer: true, "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "weather_panel", "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "weather_panel", defer: true, "data-turbo-track": "reload" %>
     <%= javascript_include_tag "location_picker", defer: true, "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "announcements", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "announcements", defer: true, "data-turbo-track": "reload" %>
@@ -61,5 +64,5 @@
     <%= javascript_include_tag "incident_assessment", defer: true, "data-turbo-track": "reload" %>
     <%= javascript_include_tag "public_incident_report", defer: true, "data-turbo-track": "reload" %>
   </head>
-  <body class="<%= 'auth-page' if devise_controller? %>"><%= yield %><%= render "announcements/popup", feed: announcement_feed if announcement_feed %></body>
+  <body class="<%= 'auth-page' if devise_controller? %>"><%= render "shared/impersonation_banner" if user_signed_in? && session[:impersonator_id] %><%= yield %><%= render "announcements/popup", feed: announcement_feed if announcement_feed %></body>
 </html>

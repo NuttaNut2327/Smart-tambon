@@ -62,11 +62,18 @@ class Incident
   field :organizer, type: String
   field :expected_attendees, type: Integer
   field :cover_photo_id, type: String
+  # SMS to the reporter (smsmkt): public tracking token, last send result, and the reused video room.
+  field :tracking_token, type: String
+  field :sms_status, type: String
+  field :sms_error, type: String
+  field :sms_sent_at, type: Time
+  field :video_room, type: String
 
   index({ subdistrict_id: 1, created_at: -1 })
   index({ owner_user_id: 1, report_source_name: 1, created_at: -1 })
   index({ category: 1, status: 1 })
   index({ reference_code: 1 }, { unique: true, sparse: true })
+  index({ tracking_token: 1 }, { unique: true, sparse: true })
   index({ imported_dataset_id: 1 })
   index({ category: 1, status: 1, ends_at: 1 })
 
