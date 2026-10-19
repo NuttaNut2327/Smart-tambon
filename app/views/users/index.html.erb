@@ -67,15 +67,6 @@
       const syncCount = () => { if (count) count.value = options.filter(option => option.querySelector("input[type=checkbox]")?.checked).length; };
       options.forEach(option => option.querySelector("input[type=checkbox]")?.addEventListener("change", syncCount));
       syncCount();
-      let timer;
-      form.querySelector("[data-subdistrict-search]")?.addEventListener("input", event => {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          const query = event.currentTarget.value.trim().toLocaleLowerCase();
-          options.forEach(option => { option.hidden = query.length > 0 && !option.dataset.searchText.includes(query); });
-        }, 180);
-      });
-
       form.addEventListener("submit", async event => {
         event.preventDefault();
         if (!form.reportValidity()) return;

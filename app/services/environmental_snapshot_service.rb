@@ -43,6 +43,15 @@ class EnvironmentalSnapshotService
       end
     end
 
+    def sync_missing(subdistricts)
+      areas = Array(subdistricts).compact.uniq(&:code)
+      return [] if areas.empty?
+
+      existing_codes = EnvironmentalSnapshot.in(subdistrict_code: areas.map { |area| area.code.to_s })
+        .pluck(:subdistrict_code).map(&:to_s)
+      sync(areas.reject { |area| existing_codes.include?(area.code.to_s) })
+    end
+
     private
 
     def fetch_pm25(areas)

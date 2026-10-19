@@ -1,4 +1,5 @@
 require "test_helper"
+require "minitest/mock"
 
 class UsersControllerTest < ActionDispatch::IntegrationTest
   setup do
@@ -16,6 +17,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
   teardown do
     [@same_area_user, @other_area_user, @admin].each { |user| user&.destroy }
     @created_user&.destroy
+    @system_admin&.destroy
     @province&.destroy
   end
 
@@ -57,6 +59,28 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     get edit_user_path(@other_area_user)
 
     assert_response :not_found
+  end
+
+  test "system admin starts the first environmental sync for a new organization" do
+    sign_out @admin
+    @system_admin = User.create!(username: "system_admin", email: "system_admin@example.test",
+      password: "Password123!", role: :system_admin)
+    sign_in @system_admin
+    synced_codes = []
+
+    EnvironmentalSnapshotService.stub(:sync_missing, ->(areas) { synced_codes = areas.map(&:code) }) do
+      post users_path, params: {
+        user: { username: "new_area_admin", password: "Password123!",
+                password_confirmation: "Password123!", role: "subdistrict_admin" },
+        access_area_mode: "subdistricts",
+        access_area: { name: "อบต.พื้นที่ใหม่", organization_type: "subdistrict_administrative_organization",
+                       selected_subdistrict_count: "1", subdistrict_ids: [@second_subdistrict.id] }
+      }
+    end
+
+    @created_user = User.find_by!(username: "new_area_admin")
+    assert_redirected_to users_path
+    assert_equal [@second_subdistrict.code], synced_codes
   end
 
   private

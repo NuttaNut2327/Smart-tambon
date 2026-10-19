@@ -1,3 +1,18 @@
+// User forms can be injected into a modal after the page has loaded. Delegate
+// subdistrict filtering from the document so it also survives form re-renders.
+document.addEventListener("input", event => {
+  const search = event.target.closest?.("[data-subdistrict-search]");
+  if (!search) return;
+
+  const form = search.closest("form");
+  if (!form) return;
+
+  const query = search.value.trim().toLocaleLowerCase();
+  form.querySelectorAll("[data-subdistrict-option]").forEach(option => {
+    option.hidden = query.length > 0 && !option.dataset.searchText.toLocaleLowerCase().includes(query);
+  });
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   const rulesList = document.querySelector("[data-rules-list]");
   if (rulesList) {

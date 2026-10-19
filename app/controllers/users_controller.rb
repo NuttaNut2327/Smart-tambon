@@ -13,6 +13,7 @@ class UsersController < ApplicationController
   def create
     @user = User.new(user_attributes)
     if save_user_and_access_area
+      sync_initial_environmental_snapshots if current_user.system_admin? && !@user.system_admin?
       redirect_to users_path, notice: "สร้างผู้ใช้เรียบร้อยแล้ว"
     else
       render :new, status: :unprocessable_entity
@@ -158,5 +159,12 @@ class UsersController < ApplicationController
 
   def removing_last_local_admin?
     @user.subdistrict_admin? && !current_user.system_admin? && local_admin_count <= 1
+  end
+
+  def sync_initial_environmental_snapshots
+    subdistricts = Subdistrict.where(id: @user.accessible_subdistrict_ids).to_a
+    EnvironmentalSnapshotService.sync_missing(subdistricts)
+  rescue StandardError => error
+    Rails.logger.warn("Initial environmental snapshot sync failed for user #{@user.id}: #{error.class}: #{error.message}")
   end
 end
