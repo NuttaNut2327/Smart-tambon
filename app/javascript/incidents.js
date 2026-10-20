@@ -640,12 +640,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const longitude = Number(longitudeText);
     if (!latitudeText || !longitudeText || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       label.textContent = "ไม่ระบุที่อยู่โดยประมาณ";
+      label.title = label.textContent;
       return;
     }
     label.textContent = "กำลังค้นหาที่อยู่โดยประมาณ...";
+    label.title = label.textContent;
     lookupAddress(latitude, longitude)
-      .then((address) => { label.textContent = address; label.dataset.addressResolved = "true"; })
-      .catch(() => { label.textContent = "ไม่สามารถค้นหาที่อยู่โดยประมาณได้"; });
+      .then((address) => { label.textContent = address; label.title = address; label.dataset.addressResolved = "true"; })
+      .catch(() => { label.textContent = "ไม่สามารถค้นหาที่อยู่โดยประมาณได้"; label.title = label.textContent; });
   });
 
   const element = document.querySelector("[data-incident-map]");
