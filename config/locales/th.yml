@@ -1,4 +1,17 @@
 th:
+  activerecord:
+    attributes:
+      user:
+        email: "อีเมล"
+        username: "ชื่อผู้ใช้งาน"
+    errors:
+      models:
+        user:
+          attributes:
+            email:
+              taken: "นี้ถูกใช้งานแล้ว"
+            username:
+              taken: "นี้ถูกใช้งานแล้ว"
   devise:
     confirmations:
       confirmed: "ยืนยันอีเมลเรียบร้อยแล้ว"
@@ -62,6 +75,7 @@ th:
       inclusion: "ไม่อยู่ในรายการที่กำหนด"
       not_a_number: "ต้องเป็นตัวเลข"
       not_an_integer: "ต้องเป็นจำนวนเต็ม"
+      taken: "ถูกใช้งานแล้ว"
       greater_than_or_equal_to: "ต้องมากกว่าหรือเท่ากับ %{count}"
       less_than_or_equal_to: "ต้องน้อยกว่าหรือเท่ากับ %{count}"
       not_saved:

@@ -8,7 +8,8 @@ class DatasetVersionImportService
 
   def initialize(dataset:, user:, upload: nil, manual_records: nil, change_note: nil, source_kind: nil,
                  source_filename: nil, source_content_type: nil, source_content: nil, allow_empty: false,
-                 append_records: false, display_name: nil, skip_boundary_link_state: false, skip_audit_log: false)
+                 append_records: false, display_name: nil, skip_boundary_link_state: false, skip_audit_log: false,
+                 registry_records: nil)
     @dataset = dataset
     @user = user
     @upload = upload
@@ -23,6 +24,7 @@ class DatasetVersionImportService
     @display_name = display_name
     @skip_boundary_link_state = skip_boundary_link_state
     @skip_audit_log = skip_audit_log
+    @registry_records = registry_records
   end
 
   def import!
@@ -209,7 +211,8 @@ class DatasetVersionImportService
       if @dataset.data_type == "village_boundaries"
         normalized["boundary_source"] = raw["boundary_source"].presence || (@source_kind == "file" ? "อัปโหลดไฟล์" : "วาดขอบเขตเอง")
       end
-      assign_registry_code(normalized, raw)
+      enrich_agency_location(normalized, index, errors) if @dataset.data_type == "agencies"
+      assign_registry_code(normalized, raw, index, errors)
       normalized["record_id"] = raw["record_id"].presence || existing_record_id(normalized, raw) || SecureRandom.uuid
       if device_dataset?
         sensor_id = normalized["sensor_id"].to_s.strip.downcase
@@ -248,7 +251,7 @@ class DatasetVersionImportService
     end
   end
 
-  def assign_registry_code(record, raw)
+  def assign_registry_code(record, raw, index, errors)
     if device_dataset?
       record["token"] = raw["token"].presence || SecureRandom.urlsafe_base64(32)
       return
@@ -263,7 +266,58 @@ class DatasetVersionImportService
                   end
     return unless key
 
-    record[key] = raw[key].presence || "#{prefix}-#{SecureRandom.hex(3).upcase}"
+    if @dataset.data_type == "agencies"
+      record[key] = resolved_agency_code(record, raw, index, errors)
+    else
+      record[key] = raw[key].presence || "#{prefix}-#{SecureRandom.hex(3).upcase}"
+    end
+  end
+
+  def resolved_agency_code(record, raw, index, errors)
+    code = raw["agency_code"].to_s.strip.presence
+    if code.blank?
+      matches = agencies_by_normalized_name[normalized_agency_name(record["agency_name"])] || []
+      if matches.size > 1
+        choices = matches.filter_map { |agency| agency["agency_code"].presence }.uniq.join(", ")
+        errors << "แถว #{index + 2}: ชื่อหน่วยงานตรงกับข้อมูลเดิมหลายรายการ (#{choices}) กรุณาระบุ agency_code ที่ต้องการใช้"
+        return
+      end
+      code = matches.first&.dig("agency_code").presence || next_unique_registry_code("AG")
+    end
+
+    @used_registry_codes ||= Set.new
+    normalized_code = code.downcase
+    if @used_registry_codes.include?(normalized_code)
+      errors << "แถว #{index + 2}: รหัสหน่วยงาน #{code} ซ้ำในไฟล์"
+    else
+      @used_registry_codes << normalized_code
+    end
+    code
+  end
+
+  def agencies_by_normalized_name
+    @agencies_by_normalized_name ||= agency_registry_records.group_by do |record|
+      normalized_agency_name(record["agency_name"])
+    end
+  end
+
+  def agency_registry_records
+    Array(@registry_records || current_records).map { |record| record.to_h.stringify_keys }
+  end
+
+  def normalized_agency_name(value)
+    value.to_s.unicode_normalize(:nfkc).downcase
+      .gsub(/องค์การบริหารส่วนตำบล|อบต\.?/, "อบต")
+      .gsub(/โรงพยาบาลส่งเสริมสุขภาพตำบล|รพ\.?สต\.?/, "รพสต")
+      .gsub(/[^[:alnum:]ก-๙]+/, "")
+  end
+
+  def next_unique_registry_code(prefix)
+    existing = agency_registry_records.filter_map { |record| record["agency_code"].to_s.downcase.presence }.to_set
+    loop do
+      code = "#{prefix}-#{SecureRandom.hex(3).upcase}"
+      return code unless existing.include?(code.downcase) || @used_registry_codes&.include?(code.downcase)
+    end
   end
 
   def device_dataset?
@@ -300,6 +354,7 @@ class DatasetVersionImportService
   def validate_location(record, index, errors)
     return unless @dataset.geometry_type == "point"
     lat, lon = record["latitude"], record["longitude"]
+    return if @dataset.data_type == "agencies" && lat.blank? && lon.blank?
     if lat.blank? || lon.blank? || !lat.to_f.between?(-90, 90) || !lon.to_f.between?(-180, 180)
       errors << "แถว #{index + 2}: พิกัดไม่ถูกต้อง"
       return
@@ -352,7 +407,48 @@ class DatasetVersionImportService
 
   def record_location(record)
     return unless @dataset.geometry_type == "point"
+    return if record["longitude"].blank? || record["latitude"].blank?
+
     [record["longitude"].to_f, record["latitude"].to_f]
+  end
+
+  def enrich_agency_location(record, index, errors)
+    latitude = record["latitude"]
+    longitude = record["longitude"]
+    if latitude.present? ^ longitude.present?
+      errors << "แถว #{index + 2}: กรุณาระบุละติจูดและลองจิจูดให้ครบทั้งสองค่า หรือเว้นว่างทั้งคู่"
+      return
+    end
+
+    if latitude.present? && longitude.present? && agency_address_incomplete?(record)
+      begin
+        coordinates = [latitude.to_f, longitude.to_f]
+        @agency_geocodes ||= {}
+        result = @agency_geocodes[coordinates] ||= ReverseGeocoder.call(latitude: latitude, longitude: longitude)
+        %w[address road subdistrict district province postcode].each do |key|
+          record[key] = result[key.to_sym].presence || result[key].presence || record[key]
+        end
+      rescue ReverseGeocoder::Error => error
+        Rails.logger.warn("Unable to reverse geocode agency row #{index + 2}: #{error.message}")
+      end
+    end
+
+    record["address"] = agency_address(record) if record["address"].blank?
+  end
+
+  def agency_address_incomplete?(record)
+    %w[address road subdistrict district province postcode].any? { |key| record[key].blank? }
+  end
+
+  def agency_address(record)
+    parts = [
+      record["road"].presence,
+      record["subdistrict"].presence && "ต.#{record['subdistrict']}",
+      record["district"].presence && "อ.#{record['district']}",
+      record["province"].presence && "จ.#{record['province']}",
+      record["postcode"].presence
+    ].compact
+    parts.join(" ").presence
   end
 
   def record_audit_logs!(before_records, after_records, version)
