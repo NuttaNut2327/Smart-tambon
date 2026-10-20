@@ -60,11 +60,14 @@ class DatasetImportDraftsController < ApplicationController
                       end
     preview_dataset = ImportedDataset.new(user: current_user, name: "preview", data_type: @draft.data_type,
       geometry_type: target_geometry, schema_definition: @draft.schema, map_enabled: target_geometry != "none")
-    records, errors = DatasetVersionImportService.new(dataset: preview_dataset, user: current_user).validate_records(mapped_rows)
+    registry_records = @draft.data_type == "agencies" ? current_agency_records : nil
+    records, errors = DatasetVersionImportService.new(dataset: preview_dataset, user: current_user,
+      registry_records: registry_records).validate_records(mapped_rows)
     missing = @draft.schema.select { |field| field["required"] && mapping[field["key"]].blank? }
     errors.unshift(*missing.map { |field| "ยังไม่ได้จับคู่คอลัมน์ #{field['label']}" })
     summary = { "total" => mapped_rows.size, "valid" => errors.empty? ? records.size : 0,
                 "invalid" => errors.size, "errors" => errors.first(30) }
+    summary["agency_impact"] = agency_import_impact(registry_records, records) if @draft.data_type == "agencies" && errors.empty?
     @draft.rows.update_all(ready_for_import: false, validated_payload: {})
     if errors.empty?
       mapped_entries.each_with_index do |entry, index|
@@ -181,6 +184,54 @@ class DatasetImportDraftsController < ApplicationController
     schema.reject { |field| field["generated"] }.to_h do |field|
       match = headers.find { |header| header.to_s.casecmp?(field["key"]) || header.to_s.casecmp?(field["label"]) }
       [field["key"], match]
+    end
+  end
+
+  def current_agency_records
+    scope = ImportedDataset.where(data_type: "agencies")
+    scope = scope.where(:user_id.in => current_user.organization_user_ids) unless current_user.system_admin?
+    datasets = scope.to_a
+    if current_user.subdistrict_id.present?
+      area_datasets = datasets.select { |dataset| dataset.subdistrict_id == current_user.subdistrict_id }
+      datasets = area_datasets if area_datasets.any?
+    end
+    dataset = datasets.max_by { |candidate| [candidate.current_version&.record_count.to_i, candidate.updated_at || Time.at(0)] }
+    Array(dataset&.current_version&.records).map(&:deep_dup)
+  end
+
+  def agency_import_impact(previous_records, incoming_records)
+    previous_by_code = Array(previous_records).index_by { |record| record["agency_code"].to_s.downcase }
+    incoming_codes = Array(incoming_records).filter_map { |record| record["agency_code"].to_s.downcase.presence }.to_set
+    retained_codes = previous_by_code.keys & incoming_codes.to_a
+    removed_codes = previous_by_code.keys - incoming_codes.to_a
+    new_codes = incoming_codes.to_a - previous_by_code.keys
+    removed_original_codes = removed_codes.filter_map { |code| previous_by_code[code]["agency_code"].presence }
+    referenced = agency_reference_counts(removed_original_codes)
+    {
+      "retained" => retained_codes.size,
+      "new" => new_codes.size,
+      "removed" => removed_codes.size,
+      "removed_references" => referenced.values.sum,
+      "references_by_type" => referenced,
+      "removed_agencies" => removed_codes.first(20).map do |code|
+        { "agency_code" => previous_by_code[code]["agency_code"], "agency_name" => previous_by_code[code]["agency_name"] }
+      end
+    }
+  end
+
+  def agency_reference_counts(codes)
+    return {} if codes.empty?
+
+    %w[teams workforce resources consumables].to_h do |type|
+      datasets = ImportedDataset.visible_to(current_user).where(data_type: type).to_a
+      version_ids = datasets.filter_map(&:current_version_id)
+      count = if version_ids.empty?
+                0
+              else
+                ImportedDatasetRecord.where(:imported_dataset_version_id.in => version_ids,
+                  :"payload.agency_code".in => codes).count
+              end
+      [type, count]
     end
   end
 

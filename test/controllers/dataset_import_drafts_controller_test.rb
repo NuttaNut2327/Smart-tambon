@@ -85,6 +85,40 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".automatic-destination-note", text: /รุ่นข้อมูลใหม่/
   end
 
+  test "team edit dialog selects an agency from a dropdown" do
+    get data_layers_path(data_type: "teams")
+
+    assert_response :success
+    assert_select "#edit-population-form select[name='record[agency_name]'][data-edit-agency-select]"
+    assert_select "#edit-population-form input[type='hidden'][name='record[agency_code]']"
+  end
+
+  test "workforce edit dialog selects an agency and team from dropdowns" do
+    get data_layers_path(data_type: "workforce")
+
+    assert_response :success
+    assert_select "#edit-population-form select[name='record[agency_name]'][data-edit-agency-select]"
+    assert_select "#edit-population-form select[name='record[team_name]'][data-edit-team-select]"
+    assert_select "#edit-population-form input[type='hidden'][name='record[agency_code]']"
+    assert_select "#edit-population-form input[type='hidden'][name='record[team_code]']"
+  end
+
+  test "resource edit dialog exposes the responsible agency and agency code fields" do
+    get data_layers_path(data_type: "resources")
+
+    assert_response :success
+    assert_select "#edit-population-form input[name='record[responsible_person]'][data-edit-field='responsible_person']"
+    assert_select "#edit-population-form input[type='hidden'][name='record[agency_code]']"
+  end
+
+  test "consumable edit dialog exposes the agency and agency code fields" do
+    get data_layers_path(data_type: "consumables")
+
+    assert_response :success
+    assert_select "#edit-population-form input[name='record[agency_name]'][data-edit-field='agency_name']"
+    assert_select "#edit-population-form input[type='hidden'][name='record[agency_code]']"
+  end
+
   test "village boundary data page has a back link to population data" do
     get data_layers_path(data_type: "village_boundaries")
 

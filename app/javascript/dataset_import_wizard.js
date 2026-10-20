@@ -338,6 +338,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const editPopulationDialog = document.querySelector("#edit-population-dialog");
   const editPopulationForm = document.querySelector("#edit-population-form");
+  const editOptionData = selector => { try { return JSON.parse(document.querySelector(selector)?.textContent || "[]"); } catch (_) { return []; } };
+  const editAgencyOptions = editOptionData("[data-agency-options]");
+  const editTeamOptions = editOptionData("[data-team-options]");
+  const editDatasetType = document.querySelector("#file-import-dialog")?.dataset.selectedType;
+  if (["resources", "consumables"].includes(editDatasetType)) {
+    const agencyField = editDatasetType === "resources" ? "responsible_person" : "agency_name";
+    const responsibleInput = editPopulationForm?.querySelector(`[data-edit-field="${agencyField}"]`);
+    if (responsibleInput && responsibleInput.tagName !== "SELECT") {
+      const select = document.createElement("select");
+      select.name = responsibleInput.name;
+      select.required = true;
+      select.dataset.editField = agencyField;
+      select.dataset.editAgencySelect = "";
+      select.append(new Option(editDatasetType === "resources" ? "เลือกหน่วยงานผู้รับผิดชอบ" : "เลือกหน่วยงาน", ""));
+      editAgencyOptions.forEach(agency => select.append(new Option(agency.name, agency.name)));
+      responsibleInput.replaceWith(select);
+    }
+  }
+  editPopulationForm?.querySelector("[data-edit-agency-select]")?.addEventListener("change", event => {
+    const agency = editAgencyOptions.find(item => item.name === event.target.value);
+    const codeInput = editPopulationForm.elements["record[agency_code]"];
+    if (codeInput) codeInput.value = agency?.code || "";
+  });
+  editPopulationForm?.querySelector("[data-edit-team-select]")?.addEventListener("change", event => {
+    const team = editTeamOptions.find(item => item.name === event.target.value);
+    const codeInput = editPopulationForm.elements["record[team_code]"];
+    if (codeInput) codeInput.value = team?.code || "";
+  });
   const setupBoundaryEditMap = form => {
     const geometryInput = form?.elements["record[geometry]"];
     if (!geometryInput || document.querySelector("#file-import-dialog")?.dataset.selectedType !== "village_boundaries" || !window.ol) return null;
@@ -453,15 +481,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const editor = document.createElement("dialog");
     editor.className = "dataset-modal";
-    editor.innerHTML = `<form><header><div><small>แก้ไขข้อมูลทรัพยากรและอุปกรณ์</small><h2>แก้ไขรายการ</h2></div><button type="button" aria-label="ปิด">×</button></header><div class="modal-info">ระบบจะอัปเดต Version ที่กรอกเองล่าสุด หากข้อมูลปัจจุบันมาจากไฟล์ ระบบจะสร้าง Version สำหรับการแก้ไขขึ้นใหม่</div><div class="manual-fixed-grid">${resourceFields.map(([key, label, required]) => `<label>${label}${required ? " *" : ""}<input name="record[${key}]" ${required ? "required" : ""}></label>`).join("")}</div><label class="record-change-note">รายละเอียดการแก้ไข<input name="change_note" placeholder="เช่น ปรับสถานะอุปกรณ์"></label><p class="modal-status"></p><footer><button type="button" class="button-link" data-resource-close>ยกเลิก</button><button class="data-layer-add" type="submit">บันทึกการแก้ไข</button></footer></form>`;
+    editor.innerHTML = `<form><header><div><small>แก้ไขข้อมูลทรัพยากรและอุปกรณ์</small><h2>แก้ไขรายการ</h2></div><button type="button" aria-label="ปิด">×</button></header><div class="modal-info">ระบบจะอัปเดต Version ที่กรอกเองล่าสุด หากข้อมูลปัจจุบันมาจากไฟล์ ระบบจะสร้าง Version สำหรับการแก้ไขขึ้นใหม่</div><div class="manual-fixed-grid">${resourceFields.map(([key, label, required]) => key === "responsible_person" ? `<label>${label} *<select name="record[responsible_person]" data-resource-agency required><option value="">เลือกหน่วยงานผู้รับผิดชอบ</option>${editAgencyOptions.map(agency => `<option value="${escapeHtml(agency.name)}">${escapeHtml(agency.name)}</option>`).join("")}</select></label>` : `<label>${label}${required ? " *" : ""}<input name="record[${key}]" ${required ? "required" : ""}></label>`).join("")}<input type="hidden" name="record[agency_code]"></div><label class="record-change-note">รายละเอียดการแก้ไข<input name="change_note" placeholder="เช่น ปรับสถานะอุปกรณ์"></label><p class="modal-status"></p><footer><button type="button" class="button-link" data-resource-close>ยกเลิก</button><button class="data-layer-add" type="submit">บันทึกการแก้ไข</button></footer></form>`;
     document.body.append(editor);
     const resourceForm = editor.querySelector("form"), resourceStatus = editor.querySelector(".modal-status");
     const openResourceEditor = (url, record) => {
       resourceForm.dataset.url = url;
       resourceFields.forEach(([key]) => resourceForm.elements[`record[${key}]`].value = record[key] || "");
+      const agency = editAgencyOptions.find(item => item.name === record.responsible_person);
+      resourceForm.elements["record[agency_code]"].value = agency?.code || "";
       resourceForm.elements.change_note.value = ""; resourceStatus.className = "modal-status"; resourceStatus.textContent = "";
       editor.showModal();
     };
+    resourceForm.querySelector("[data-resource-agency]")?.addEventListener("change", event => {
+      const agency = editAgencyOptions.find(item => item.name === event.target.value);
+      resourceForm.elements["record[agency_code]"].value = agency?.code || "";
+    });
     const deleteResourceRecord = async (button, url) => {
       if (!window.confirm("ยืนยันลบข้อมูลทรัพยากร/อุปกรณ์รายการนี้? ข้อมูลเดิมจะยังอยู่ในประวัติรุ่นข้อมูล")) return;
       button.disabled = true;
@@ -581,7 +615,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const body = new FormData(); Object.entries(mapping).forEach(([key, value]) => body.append(`mapping[${key}]`, value));
     draft = await request(`/dataset_import_drafts/${draft.id}/validate`, { method: "POST", body });
     const validation = draft.validation || {}, ok = !validation.errors?.length;
-    dialog.querySelector("[data-validation-result]").innerHTML = `<div class="validation-icon ${ok ? "ok" : "bad"}">${ok ? "✓" : "!"}</div><h3>${ok ? "Validation เสร็จแล้ว" : "พบข้อมูลที่ต้องแก้ไข"}</h3><p>พบข้อมูล ${Number(validation.total || 0).toLocaleString()} รายการ · ${ok ? `ผ่าน ${Number(validation.valid || 0).toLocaleString()}` : `ข้อผิดพลาด ${Number(validation.invalid || 0).toLocaleString()}`}</p>${ok ? "" : `<ul>${validation.errors.map(error => `<li>${escapeHtml(error)}</li>`).join("")}</ul>`}`;
+    const impact = validation.agency_impact;
+    const referenceLabels = { teams: "ทีมปฏิบัติงาน", workforce: "บุคลากร", resources: "ทรัพยากร", consumables: "วัสดุสิ้นเปลือง" };
+    const impactHtml = impact ? `<section class="agency-import-impact"><h4>ผลการจับคู่หน่วยงาน</h4><p>รักษารหัสเดิม ${Number(impact.retained || 0).toLocaleString()} · หน่วยงานใหม่ ${Number(impact.new || 0).toLocaleString()} · ไม่พบในไฟล์ใหม่ ${Number(impact.removed || 0).toLocaleString()}</p>${impact.removed_references ? `<div class="import-impact-warning"><b>มีข้อมูล ${Number(impact.removed_references).toLocaleString()} รายการที่ยังอ้างอิงหน่วยงานซึ่งไม่อยู่ในไฟล์ใหม่</b><span>${Object.entries(impact.references_by_type || {}).filter(([, count]) => count).map(([type, count]) => `${referenceLabels[type] || type} ${Number(count).toLocaleString()}`).join(" · ")}</span></div>` : ""}${impact.removed_agencies?.length ? `<details><summary>ดูหน่วยงานเดิมที่ไม่อยู่ในไฟล์ใหม่</summary><ul>${impact.removed_agencies.map(agency => `<li>${escapeHtml(agency.agency_code)} — ${escapeHtml(agency.agency_name)}</li>`).join("")}</ul></details>` : ""}</section>` : "";
+    dialog.querySelector("[data-validation-result]").innerHTML = `<div class="validation-icon ${ok ? "ok" : "bad"}">${ok ? "✓" : "!"}</div><h3>${ok ? "Validation เสร็จแล้ว" : "พบข้อมูลที่ต้องแก้ไข"}</h3><p>พบข้อมูล ${Number(validation.total || 0).toLocaleString()} รายการ · ${ok ? `ผ่าน ${Number(validation.valid || 0).toLocaleString()}` : `ข้อผิดพลาด ${Number(validation.invalid || 0).toLocaleString()}`}</p>${ok ? impactHtml : `<ul>${validation.errors.map(error => `<li>${escapeHtml(error)}</li>`).join("")}</ul>`}`;
     if (!ok) throw new Error("กรุณาย้อนกลับไปแก้ไข Mapping หรือไฟล์ข้อมูล");
     renderPreview();
   };
