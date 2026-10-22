@@ -45,7 +45,7 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
     append_draft_id = response.parsed_body.fetch("id")
     post validate_dataset_import_draft_path(append_draft_id), params: { mapping: mapping }
     assert_response :success, response.body
-    post finalize_dataset_import_draft_path(append_draft_id), params: { import_mode: "append" }
+    post finalize_dataset_import_draft_path(append_draft_id), params: { import_mode: "insert" }
     assert_response :success, response.body
 
     assert_equal 2, dataset.reload.current_version.version_number
@@ -77,12 +77,102 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
       assert_select ".automatic-destination-note", text: /เพิ่มรายการนี้ในรุ่นข้อมูลที่กรอกด้วยตนเองล่าสุด/
     end
     assert_select "#file-import-dialog[data-selected-type='resources']" do
-      assert_select "[name='import_mode'][value='replace'][checked]", count: 1
-      assert_select "[name='import_mode'][value='append']", count: 1
+      assert_select "[data-import-agency]", count: 1
+      assert_select "[name='import_mode'][value='insert'][checked]", count: 1
+      assert_select "[name='import_mode'][value='upsert']", count: 1
+      assert_select "[name='import_mode'][value='replace']", count: 1
+      assert_select "[data-replace-warning]", text: /ข้อมูล.*เชื่อมโยง/
       assert_select "[name='version_name'][value='ข้อมูลทรัพยากรและอุปกรณ์ #{Time.zone.today.strftime('%d-%m-%Y')}']", count: 1
     end
     assert_select "[name='target_dataset_id']", count: 0
     assert_select ".automatic-destination-note", text: /รุ่นข้อมูลใหม่/
+    assert_select ".mapping-guidance", text: /ไม่บังคับ.*ไม่จับคู่.*เว้นค่าว่าง/
+  end
+
+  test "does not show the CCTV import navigation item" do
+    get data_layers_path(data_type: "resources")
+
+    assert_response :success
+    assert_select ".dataset-type-nav a[href*='data_type=cctv_devices']", count: 0
+  end
+
+  test "places status columns immediately before the updated timestamp" do
+    %w[resources workforce teams population].each do |data_type|
+      get data_layers_path(data_type: data_type)
+      assert_response :success
+      headings = css_select("table.fixed-data-table thead th").map { |heading| heading.text.strip }
+      updated_index = headings.index("อัปเดตล่าสุด")
+      status_indexes = headings.each_index.select { |index| headings[index].include?("สถานะ") || headings[index] == "ความพร้อมปฏิบัติงาน" }
+      assert status_indexes.any?, "expected #{data_type} to have a status column"
+      assert_equal (status_indexes.min..status_indexes.max).to_a, status_indexes
+      assert_equal updated_index - 1, status_indexes.max
+    end
+  end
+
+  test "workforce file import requires agency and team selections" do
+    get data_layers_path(data_type: "workforce")
+
+    assert_response :success
+    assert_select "#file-import-dialog" do
+      assert_select "[data-import-agency]", count: 1
+      assert_select "[data-import-team]", count: 1
+    end
+  end
+
+  test "team file import injects the selected agency instead of requiring agency columns" do
+    agency_dataset = ImportedDataset.create!(user: @user, name: "หน่วยงาน", data_type: "agencies", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("agencies"), shared_with_all: true)
+    DatasetVersionImportService.new(dataset: agency_dataset, user: @user, manual_records: [
+      { agency_code: "AG-001", agency_name: "อบต.ทดสอบ", agency_type: "ท้องถิ่น" }
+    ]).import!
+
+    Tempfile.create(["teams", ".csv"]) do |file|
+      file.write("ชื่อทีม,ประเภททีม,สถานะทีม\nทีมกู้ภัย,กู้ภัย,พร้อมปฏิบัติงาน\n")
+      file.flush
+      upload = Rack::Test::UploadedFile.new(file.path, "text/csv", original_filename: "teams.csv")
+      post dataset_import_drafts_path, params: { data_type: "teams", agency_code: "AG-001", file: upload }, as: :multipart
+    end
+
+    assert_response :success, response.body
+    draft = response.parsed_body
+    assert_equal "AG-001", draft.dig("import_context", "agency_code")
+    assert_not_includes draft.fetch("schema").map { |field| field.fetch("key") }, "agency_code"
+    assert_not_includes draft.fetch("schema").map { |field| field.fetch("key") }, "agency_name"
+  end
+
+  test "agency replace mode displays the stronger relationship warning" do
+    get data_layers_path(data_type: "agencies")
+
+    assert_response :success
+    assert_select "#file-import-dialog [data-replace-warning]", text: /ทีม.*บุคลากร.*ทรัพยากร.*วัสดุสิ้นเปลือง/
+  end
+
+  test "agency import does not expose the generated approximate address for mapping" do
+    Tempfile.create(["agencies", ".csv"]) do |file|
+      file.write("ชื่อหน่วยงาน,ประเภทหน่วยงาน,ถนน,ตำบล,อำเภอ,จังหวัด,รหัสไปรษณีย์\nอบต.ทดสอบ,ท้องถิ่น,ถนนหลัก,ทดสอบ,เมือง,น่าน,55000\n")
+      file.flush
+      upload = Rack::Test::UploadedFile.new(file.path, "text/csv", original_filename: "agencies.csv")
+      post dataset_import_drafts_path, params: { data_type: "agencies", file: upload }, as: :multipart
+    end
+
+    assert_response :success, response.body
+    assert_not_includes response.parsed_body.fetch("schema").map { |field| field.fetch("key") }, "address"
+  end
+
+  test "downloads a real Excel template with importable headers" do
+    get dataset_template_path("agencies")
+
+    assert_response :success
+    assert_equal "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", response.media_type
+    assert_match(/agencies_template\.xlsx/, response.headers.fetch("Content-Disposition"))
+    Tempfile.create(["agencies-template", ".xlsx"]) do |file|
+      file.binmode
+      file.write(response.body)
+      file.flush
+      sheet = Roo::Spreadsheet.open(file.path).sheet(0)
+      assert_equal ["ชื่อหน่วยงาน", "ประเภทหน่วยงาน"], sheet.row(1).first(2)
+      assert_not_includes sheet.row(1), "ที่อยู่โดยประมาณ"
+    end
   end
 
   test "team edit dialog selects an agency from a dropdown" do
@@ -342,9 +432,9 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
                availability_status: "พร้อมปฏิบัติงาน", phone: "0812345678" }
     DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [record]).import!
 
-    patch imported_dataset_record_path(dataset, 0), params: { record: record.merge(availability_status: "ติดภารกิจ") }
+    patch imported_dataset_record_path(dataset, 0), params: { record: record.merge(availability_status: "กำลังปฏิบัติงาน") }
     assert_response :success, response.body
     assert_equal 1, dataset.reload.current_version.version_number
-    assert_equal "ติดภารกิจ", dataset.current_version.records.first["availability_status"]
+    assert_equal "กำลังปฏิบัติงาน", dataset.current_version.records.first["availability_status"]
   end
 end

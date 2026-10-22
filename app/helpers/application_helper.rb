@@ -121,8 +121,8 @@ module ApplicationHelper
     value = status.presence || "—"
     tone = case value
            when "พร้อมปฏิบัติงาน", "พร้อมใช้งาน", "พร้อมใช้", "เชื่อมแล้ว" then "ready"
-           when "กำลังปฏิบัติงาน", "กำลังใช้งาน", "รอตรวจสอบ" then "active"
-           when "ไม่พร้อมปฏิบัติงาน", "ติดภารกิจ" then "unavailable"
+           when "กำลังปฏิบัติงาน", "กำลังใช้งาน", "รอตรวจสอบ", "ติดภารกิจ" then "active"
+           when "ไม่พร้อมปฏิบัติงาน" then "unavailable"
            when "ยังไม่เชื่อมขอบเขต", "ยังไม่เชื่อม" then "neutral"
            else "neutral"
            end

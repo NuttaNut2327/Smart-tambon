@@ -11,6 +11,8 @@ class DataLayersController < ApplicationController
     @selected_type = visible_system_types.include?(params[:data_type]) ? params[:data_type] : "population"
     @form_schema = ImportedDataset.schema_for(@selected_type)
     @selected_schema = @form_schema.reject { |field| field["hidden"] }
+    regular_fields, status_fields = @selected_schema.partition { |field| !field["key"].end_with?("status") }
+    @selected_schema = regular_fields + status_fields
     @selected_datasets = @imported_datasets.select { |dataset| dataset.data_type == @selected_type }
     active_assignment_keys = Incident.visible_to(current_user).where(:status.ne => "completed").pluck(:active_assignments)
       .flatten.compact.select { |assignment| assignment["released_at"].blank? }.map { |assignment| assignment["key"] }.to_set
@@ -56,6 +58,14 @@ class DataLayersController < ApplicationController
       .flat_map { |dataset| Array(dataset.current_version&.records) }
       .filter_map { |record| [record["team_name"].to_s.strip, record["team_code"].to_s.strip] if record["team_name"].present? }
       .uniq.sort_by(&:first)
+    @team_import_options = @imported_datasets.select { |dataset| dataset.data_type == "teams" }
+      .flat_map { |dataset| Array(dataset.current_version&.records) }
+      .filter_map do |record|
+        if record["team_name"].present? && record["team_code"].present?
+          { name: record["team_name"].to_s.strip, code: record["team_code"].to_s.strip,
+            agency_code: record["agency_code"].to_s.strip }
+        end
+      end.uniq { |team| team[:code] }.sort_by { |team| team[:name] }
     if %w[population village_boundaries].include?(@selected_type)
       population_records = @population_datasets.flat_map { |dataset| Array(dataset.current_version&.records) }
       @linked_population_count = population_records.count { |record| record["boundary_status"] == "เชื่อมแล้ว" }
@@ -145,9 +155,11 @@ class DataLayersController < ApplicationController
     schema = ImportedDataset.schema_for(type)
     return head :not_found unless schema
 
-    input_schema = schema.reject { |field| field["generated"] }
-    csv = CSV.generate(write_headers: true, headers: input_schema.map { |field| field["label"] }) { |output| output << input_schema.map { nil } }
-    send_data "\uFEFF#{csv}", filename: "#{type}_template.csv", type: "text/csv; charset=utf-8"
+    relation_fields = DatasetImportDraftsController::FILE_RELATION_FIELDS.fetch(type, [])
+    input_schema = schema.reject { |field| field["generated"] || relation_fields.include?(field["key"]) }
+    workbook = DatasetTemplateWorkbookService.new(data_type: type, schema: input_schema).generate
+    send_data workbook, filename: "#{type}_template.xlsx",
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   end
 
   private

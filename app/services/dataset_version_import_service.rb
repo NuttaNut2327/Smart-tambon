@@ -8,7 +8,7 @@ class DatasetVersionImportService
 
   def initialize(dataset:, user:, upload: nil, manual_records: nil, change_note: nil, source_kind: nil,
                  source_filename: nil, source_content_type: nil, source_content: nil, allow_empty: false,
-                 append_records: false, display_name: nil, skip_boundary_link_state: false, skip_audit_log: false,
+                 append_records: false, import_mode: nil, display_name: nil, skip_boundary_link_state: false, skip_audit_log: false,
                  registry_records: nil)
     @dataset = dataset
     @user = user
@@ -21,6 +21,7 @@ class DatasetVersionImportService
     @source_content = source_content
     @allow_empty = allow_empty
     @append_records = append_records
+    @import_mode = import_mode.presence || (append_records ? "insert" : "replace")
     @display_name = display_name
     @skip_boundary_link_state = skip_boundary_link_state
     @skip_audit_log = skip_audit_log
@@ -31,11 +32,11 @@ class DatasetVersionImportService
     previous_current_version_id = @dataset.current_version_id
     previous_records_for_audit = current_records
     rows = @upload.present? ? rows_from_upload : rows_from_manual
-    rows = current_records + rows if @append_records
-    raise ArgumentError, "นำเข้าได้ไม่เกิน #{MAX_RECORDS.to_fs(:delimited)} รายการต่อ Version" if rows.size > MAX_RECORDS
     records, errors = normalize(rows)
     raise ArgumentError, errors.first(20).join(" · ") if errors.any?
     raise ArgumentError, "ไม่พบข้อมูลสำหรับนำเข้า" if records.empty? && !@allow_empty
+    records = records_for_import_mode(records)
+    raise ArgumentError, "นำเข้าได้ไม่เกิน #{MAX_RECORDS.to_fs(:delimited)} รายการต่อ Version" if records.size > MAX_RECORDS
     records = prepare_incident_records(records) if @dataset.data_type == "incidents"
 
     working_version = reusable_manual_version
@@ -183,6 +184,24 @@ class DatasetVersionImportService
     Array(@dataset.current_version&.records).map(&:deep_dup)
   end
 
+  def records_for_import_mode(incoming)
+    return incoming if @import_mode == "replace"
+    return current_records + incoming if @import_mode == "insert"
+
+    merged = current_records
+    positions = merged.each_with_index.to_h { |record, index| [record_identity_key(record), index] }
+    incoming.each do |record|
+      key = record_identity_key(record)
+      if key.present? && positions.key?(key)
+        merged[positions[key]] = record
+      else
+        positions[key] = merged.length if key.present?
+        merged << record
+      end
+    end
+    merged
+  end
+
   def normalize(rows)
     errors = []
     used_sensor_ids = Set.new
@@ -210,6 +229,12 @@ class DatasetVersionImportService
       end
       if @dataset.data_type == "village_boundaries"
         normalized["boundary_source"] = raw["boundary_source"].presence || (@source_kind == "file" ? "อัปโหลดไฟล์" : "วาดขอบเขตเอง")
+      end
+      if @dataset.data_type == "teams" && normalized["status"] == "ติดภารกิจ"
+        normalized["status"] = "กำลังปฏิบัติงาน"
+      end
+      if @dataset.data_type == "workforce" && normalized["availability_status"] == "ติดภารกิจ"
+        normalized["availability_status"] = "กำลังปฏิบัติงาน"
       end
       enrich_agency_location(normalized, index, errors) if @dataset.data_type == "agencies"
       assign_registry_code(normalized, raw, index, errors)
@@ -269,13 +294,30 @@ class DatasetVersionImportService
     if @dataset.data_type == "agencies"
       record[key] = resolved_agency_code(record, raw, index, errors)
     else
-      record[key] = raw[key].presence || "#{prefix}-#{SecureRandom.hex(3).upcase}"
+      existing = @import_mode == "insert" ? nil : matching_registry_record(record)
+      record[key] = raw[key].presence || existing&.dig(key).presence || "#{prefix}-#{SecureRandom.hex(3).upcase}"
+    end
+  end
+
+  def matching_registry_record(record)
+    current_records.find do |existing|
+      case @dataset.data_type
+      when "teams"
+        existing["team_name"].to_s.casecmp?(record["team_name"].to_s) && existing["agency_code"].to_s == record["agency_code"].to_s
+      when "workforce"
+        existing["full_name"].to_s.casecmp?(record["full_name"].to_s) && existing["team_code"].to_s == record["team_code"].to_s
+      when "resources"
+        existing["name"].to_s.casecmp?(record["name"].to_s) && existing["agency_code"].to_s == record["agency_code"].to_s
+      when "consumables"
+        existing["name"].to_s.casecmp?(record["name"].to_s) && existing["agency_code"].to_s == record["agency_code"].to_s
+      else false
+      end
     end
   end
 
   def resolved_agency_code(record, raw, index, errors)
     code = raw["agency_code"].to_s.strip.presence
-    if code.blank?
+    if code.blank? && @import_mode != "insert"
       matches = agencies_by_normalized_name[normalized_agency_name(record["agency_name"])] || []
       if matches.size > 1
         choices = matches.filter_map { |agency| agency["agency_code"].presence }.uniq.join(", ")
@@ -284,6 +326,7 @@ class DatasetVersionImportService
       end
       code = matches.first&.dig("agency_code").presence || next_unique_registry_code("AG")
     end
+    code ||= next_unique_registry_code("AG")
 
     @used_registry_codes ||= Set.new
     normalized_code = code.downcase
@@ -306,9 +349,10 @@ class DatasetVersionImportService
   end
 
   def normalized_agency_name(value)
-    value.to_s.unicode_normalize(:nfkc).downcase
+    value.to_s.downcase
       .gsub(/องค์การบริหารส่วนตำบล|อบต\.?/, "อบต")
       .gsub(/โรงพยาบาลส่งเสริมสุขภาพตำบล|รพ\.?สต\.?/, "รพสต")
+      .unicode_normalize(:nfkc)
       .gsub(/[^[:alnum:]ก-๙]+/, "")
   end
 
@@ -493,6 +537,8 @@ class DatasetVersionImportService
   end
 
   def existing_record_id(normalized, raw)
+    return if @import_mode == "insert"
+
     key = record_identity_key(normalized.merge(raw.slice("record_id", "reference_code")))
     return if key.blank?
 

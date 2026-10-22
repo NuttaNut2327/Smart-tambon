@@ -8,9 +8,9 @@ class ConsumableMovementsController < ApplicationController
       movement_type: movement_type, quantity: params.require(:quantity), user: current_user,
       incident_reference: params[:incident_reference], note: params[:note]).call
 
-    redirect_to data_layers_path(data_type: "consumables"), notice: "บันทึก#{movement_label(movement_type)}เรียบร้อยแล้ว · คงเหลือ #{result.quantity_after.to_fs(:delimited)} #{result.unit}"
+    redirect_to return_location, notice: "บันทึก#{movement_label(movement_type)}เรียบร้อยแล้ว · คงเหลือ #{result.quantity_after.to_fs(:delimited)} #{result.unit}"
   rescue ActionController::ParameterMissing, ArgumentError, Mongoid::Errors::Validations => error
-    redirect_to data_layers_path(data_type: "consumables"), alert: error.message
+    redirect_to return_location, alert: error.message
   end
 
   private
@@ -24,6 +24,13 @@ class ConsumableMovementsController < ApplicationController
       { :user_id.in => current_user.organization_user_ids },
       { shared_with_all: true, subdistrict_id: { "$in" => current_user.accessible_subdistrict_ids } }
     )
+  end
+
+  def return_location
+    requested = params[:return_to].to_s
+    return requested if requested.start_with?(data_layers_path) && !requested.start_with?("//")
+
+    data_layers_path(data_type: "consumables")
   end
 
   def movement_label(type)

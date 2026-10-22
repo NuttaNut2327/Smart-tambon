@@ -48,6 +48,48 @@ class DatasetVersionImportServiceTest < ActiveSupport::TestCase
     assert_empty DatasetChangeLog.where(imported_dataset_id: dataset.id)
   end
 
+  test "upsert updates a matching resource and keeps unrelated records" do
+    dataset = ImportedDataset.create!(user: @user, name: "ทรัพยากร", data_type: "resources", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("resources"), shared_with_all: true)
+    base = { resource_type: "เครื่องมือ", status: "พร้อมใช้", responsible_person: "อบต.ทดสอบ", agency_code: "AG-001" }
+    first = DatasetVersionImportService.new(dataset: dataset, user: @user,
+      manual_records: [base.merge(name: "เครื่องสูบน้ำ"), base.merge(name: "รถดับเพลิง")]).import!
+    pump = first.records.find { |record| record["name"] == "เครื่องสูบน้ำ" }
+
+    result = DatasetVersionImportService.new(dataset: dataset, user: @user, source_kind: "file", import_mode: "upsert",
+      manual_records: [base.merge(name: "เครื่องสูบน้ำ", status: "ซ่อมบำรุง")]).import!
+
+    assert_equal 2, result.records.size
+    updated = result.records.find { |record| record["name"] == "เครื่องสูบน้ำ" }
+    assert_equal "ซ่อมบำรุง", updated["status"]
+    assert_equal pump["code"], updated["code"]
+    assert_equal pump["record_id"], updated["record_id"]
+    assert result.records.any? { |record| record["name"] == "รถดับเพลิง" }
+  end
+
+  test "normalizes the legacy busy team status when importing" do
+    dataset = ImportedDataset.create!(user: @user, name: "ทีมปฏิบัติงาน", data_type: "teams", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("teams"), shared_with_all: true)
+    version = DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [{
+      team_name: "ทีมกู้ภัย", agency_code: "AG-001", agency_name: "อบต.ทดสอบ",
+      team_type: "กู้ภัย", status: "ติดภารกิจ"
+    }]).import!
+
+    assert_equal "กำลังปฏิบัติงาน", version.records.first["status"]
+  end
+
+  test "normalizes the legacy workforce availability status when importing" do
+    dataset = ImportedDataset.create!(user: @user, name: "บุคลากร", data_type: "workforce", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("workforce"), shared_with_all: true)
+    version = DatasetVersionImportService.new(dataset: dataset, user: @user, manual_records: [{
+      full_name: "สมชาย ทดสอบ", position: "เจ้าหน้าที่", agency_code: "AG-001", agency_name: "อบต.ทดสอบ",
+      team_code: "TEAM-001", team_name: "ทีมกู้ภัย", employment_status: "ปฏิบัติงาน",
+      availability_status: "ติดภารกิจ"
+    }]).import!
+
+    assert_equal "กำลังปฏิบัติงาน", version.records.first["availability_status"]
+  end
+
   test "creates a new file version and then one new manual working version" do
     first = import([{ "name" => "จุด A", "latitude" => "13.7", "longitude" => "100.5" }])
     file_version = import([{ "name" => "จุดจากไฟล์", "latitude" => "13.75", "longitude" => "100.55" }], source_kind: "file")

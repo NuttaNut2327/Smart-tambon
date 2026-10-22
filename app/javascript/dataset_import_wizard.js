@@ -1,21 +1,30 @@
 document.addEventListener("DOMContentLoaded", () => {
   const dataLayerTabs = [...document.querySelectorAll("[data-data-layer-tab]")];
   const dataLayerPanels = [...document.querySelectorAll("[data-data-layer-tab-panel]")];
-  dataLayerTabs.forEach(tab => {
-    tab.addEventListener("click", () => {
-      const selectedTab = tab.dataset.dataLayerTab;
-      dataLayerTabs.forEach(item => {
-        const active = item === tab;
-        item.classList.toggle("active", active);
-        item.setAttribute("aria-selected", String(active));
-      });
-      dataLayerPanels.forEach(panel => {
-        const active = panel.dataset.dataLayerTabPanel === selectedTab;
-        panel.hidden = !active;
-        panel.classList.toggle("active", active);
-      });
+  const activateDataLayerTab = (selectedTab, updateUrl = false) => {
+    const available = dataLayerTabs.some(item => item.dataset.dataLayerTab === selectedTab);
+    selectedTab = available ? selectedTab : "current";
+    dataLayerTabs.forEach(item => {
+      const active = item.dataset.dataLayerTab === selectedTab;
+      item.classList.toggle("active", active);
+      item.setAttribute("aria-selected", String(active));
     });
+    dataLayerPanels.forEach(panel => {
+      const active = panel.dataset.dataLayerTabPanel === selectedTab;
+      panel.hidden = !active;
+      panel.classList.toggle("active", active);
+    });
+    if (updateUrl) {
+      const url = new URL(window.location.href);
+      if (selectedTab === "current") url.searchParams.delete("tab");
+      else url.searchParams.set("tab", selectedTab);
+      history.replaceState({}, "", url);
+    }
+  };
+  dataLayerTabs.forEach(tab => {
+    tab.addEventListener("click", () => activateDataLayerTab(tab.dataset.dataLayerTab, true));
   });
+  activateDataLayerTab(new URLSearchParams(window.location.search).get("tab") || "current");
 
   document.querySelectorAll("[data-audit-toggle]").forEach(button => {
     button.addEventListener("click", () => {
@@ -38,6 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!response.ok) throw new Error(payload.error || "ไม่สามารถดำเนินการได้");
     return payload;
   };
+  const returnToCurrentView = () => window.location.assign(window.location.href);
 
   document.querySelector("[data-fixed-search]")?.addEventListener("input", event => {
     const query = event.target.value.trim().toLowerCase();
@@ -332,7 +342,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const payload = await request("/dataset_import_drafts/manual", { method: "POST", body: new FormData(form) });
       status.textContent = `บันทึกเป็นรุ่นข้อมูลที่ ${payload.version} แล้ว`;
-      window.location.assign(payload.redirect_url);
+      returnToCurrentView();
     } catch (error) { status.classList.add("error"); status.textContent = error.message; submit.disabled = false; }
   });
 
@@ -342,6 +352,28 @@ document.addEventListener("DOMContentLoaded", () => {
   const editAgencyOptions = editOptionData("[data-agency-options]");
   const editTeamOptions = editOptionData("[data-team-options]");
   const editDatasetType = document.querySelector("#file-import-dialog")?.dataset.selectedType;
+  if (editDatasetType === "teams") {
+    const manualTeamStatus = manualDialog?.querySelector('select[name="record[status]"]');
+    const legacyOption = [...(manualTeamStatus?.options || [])].find(option => option.value === "ติดภารกิจ");
+    if (legacyOption) { legacyOption.value = "กำลังปฏิบัติงาน"; legacyOption.textContent = "กำลังปฏิบัติงาน"; }
+
+    const teamStatusInput = editPopulationForm?.querySelector('[data-edit-field="status"]');
+    if (teamStatusInput && teamStatusInput.tagName !== "SELECT") {
+      const select = document.createElement("select");
+      select.name = teamStatusInput.name;
+      select.required = true;
+      select.dataset.editField = "status";
+      ["พร้อมปฏิบัติงาน", "กำลังปฏิบัติงาน", "ไม่พร้อมปฏิบัติงาน"].forEach(value => select.append(new Option(value, value)));
+      teamStatusInput.replaceWith(select);
+    }
+  }
+  if (editDatasetType === "workforce") {
+    [manualDialog?.querySelector('select[name="record[availability_status]"]'),
+     editPopulationForm?.querySelector('select[name="record[availability_status]"]')].forEach(select => {
+      const legacyOption = [...(select?.options || [])].find(option => option.value === "ติดภารกิจ");
+      if (legacyOption) { legacyOption.value = "กำลังปฏิบัติงาน"; legacyOption.textContent = "กำลังปฏิบัติงาน"; }
+    });
+  }
   if (["resources", "consumables"].includes(editDatasetType)) {
     const agencyField = editDatasetType === "resources" ? "responsible_person" : "agency_name";
     const responsibleInput = editPopulationForm?.querySelector(`[data-edit-field="${agencyField}"]`);
@@ -439,7 +471,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const payload = await request(form.dataset.url, { method: "PATCH", body: new FormData(form) });
       status.textContent = `แก้ไขเรียบร้อย เป็นรุ่นข้อมูลที่ ${payload.version}`;
-      window.location.assign(payload.redirect_url);
+      returnToCurrentView();
     } catch (error) { status.classList.add("error"); status.textContent = error.message; submit.disabled = false; }
   });
   document.querySelectorAll("[data-delete-population]").forEach(button => button.addEventListener("click", async () => {
@@ -448,14 +480,14 @@ document.addEventListener("DOMContentLoaded", () => {
     button.disabled = true;
     try {
       const payload = await request(button.dataset.url, { method: "DELETE" });
-      window.location.assign(payload.redirect_url);
+      returnToCurrentView();
     } catch (error) { window.alert(error.message); button.disabled = false; }
   }));
 
   const resourceTable = document.querySelector(".fixed-data-table");
-  if (resourceTable?.querySelector("thead th")?.textContent.trim() === "ชื่อทรัพยากร/อุปกรณ์") {
+  if (resourceTable && editDatasetType === "resources") {
     const resourceFields = [
-      ["name", "ชื่อทรัพยากร/อุปกรณ์", true], ["code", "รหัส", false], ["registration", "ทะเบียน", false],
+      ["code", "รหัส", false], ["name", "ชื่อทรัพยากร/อุปกรณ์", true], ["registration", "ทะเบียน", false],
       ["resource_type", "ประเภท", true], ["status", "สถานะ", false], ["responsible_person", "ผู้รับผิดชอบ", false],
       ["storage_location", "สถานที่เก็บ", false]
     ];
@@ -473,9 +505,11 @@ document.addEventListener("DOMContentLoaded", () => {
       row.querySelector("[data-resource-edit]").addEventListener("click", () => openResourceEditor(url, record));
       row.querySelector("[data-resource-delete]").addEventListener("click", event => deleteResourceRecord(event.currentTarget, url));
     });
-    const resourceStatusTones = { "พร้อมใช้": "ready", "กำลังใช้งาน": "in-use", "ชำรุด": "damaged" };
+    const resourceStatusTones = { "พร้อมใช้": "ready", "กำลังใช้งาน": "in-use", "ซ่อมบำรุง": "maintenance", "ชำรุด": "damaged", "ปลดระวาง": "retired" };
+    const resourceStatusIndex = [...resourceTable.querySelectorAll("thead th")].findIndex(header => header.textContent.trim() === "สถานะความพร้อม");
     resourceTable.querySelectorAll("tbody [data-fixed-row]").forEach(row => {
-      const statusCell = row.cells[4], status = statusCell?.textContent.trim(), tone = resourceStatusTones[status];
+      const statusCell = resourceStatusIndex >= 0 ? row.cells[resourceStatusIndex] : null;
+      const status = statusCell?.textContent.trim(), tone = resourceStatusTones[status];
       if (tone) statusCell.innerHTML = `<span class="resource-status-badge ${tone}">${escapeHtml(status)}</span>`;
     });
 
@@ -499,14 +533,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const deleteResourceRecord = async (button, url) => {
       if (!window.confirm("ยืนยันลบข้อมูลทรัพยากร/อุปกรณ์รายการนี้? ข้อมูลเดิมจะยังอยู่ในประวัติรุ่นข้อมูล")) return;
       button.disabled = true;
-      try { const payload = await request(url, { method: "DELETE" }); window.location.assign(payload.redirect_url); }
+      try { await request(url, { method: "DELETE" }); returnToCurrentView(); }
       catch (error) { window.alert(error.message); button.disabled = false; }
     };
     editor.querySelectorAll("[data-resource-close], header button").forEach(button => button.addEventListener("click", () => editor.close()));
     resourceForm.addEventListener("submit", async event => {
       event.preventDefault(); const submit = resourceForm.querySelector("[type=submit]");
       resourceStatus.className = "modal-status"; resourceStatus.textContent = "กำลังบันทึกการแก้ไข…"; submit.disabled = true;
-      try { const payload = await request(resourceForm.dataset.url, { method: "PATCH", body: new FormData(resourceForm) }); window.location.assign(payload.redirect_url); }
+      try { await request(resourceForm.dataset.url, { method: "PATCH", body: new FormData(resourceForm) }); returnToCurrentView(); }
       catch (error) { resourceStatus.classList.add("error"); resourceStatus.textContent = error.message; submit.disabled = false; }
     });
   }
@@ -546,19 +580,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const deleteWorkforceRecord = async (button, url) => {
       if (!window.confirm("ยืนยันลบข้อมูลทีมงานรายการนี้? ข้อมูลเดิมจะยังอยู่ในประวัติรุ่นข้อมูล")) return;
       button.disabled = true;
-      try { const payload = await request(url, { method: "DELETE" }); window.location.assign(payload.redirect_url); }
+      try { await request(url, { method: "DELETE" }); returnToCurrentView(); }
       catch (error) { window.alert(error.message); button.disabled = false; }
     };
     editor.querySelectorAll("[data-workforce-close], header button").forEach(button => button.addEventListener("click", () => editor.close()));
     workforceForm.addEventListener("submit", async event => {
       event.preventDefault(); const submit = workforceForm.querySelector("[type=submit]");
       workforceStatus.className = "modal-status"; workforceStatus.textContent = "กำลังบันทึกการแก้ไข…"; submit.disabled = true;
-      try { const payload = await request(workforceForm.dataset.url, { method: "PATCH", body: new FormData(workforceForm) }); window.location.assign(payload.redirect_url); }
+      try { await request(workforceForm.dataset.url, { method: "PATCH", body: new FormData(workforceForm) }); returnToCurrentView(); }
       catch (error) { workforceStatus.classList.add("error"); workforceStatus.textContent = error.message; submit.disabled = false; }
     });
   }
 
   const movementDialog = document.querySelector("#consumable-movement-dialog");
+  movementDialog?.querySelector("form")?.addEventListener("submit", event => {
+    let returnInput = event.currentTarget.querySelector('input[name="return_to"]');
+    if (!returnInput) {
+      returnInput = document.createElement("input");
+      returnInput.type = "hidden";
+      returnInput.name = "return_to";
+      event.currentTarget.append(returnInput);
+    }
+    returnInput.value = `${window.location.pathname}${window.location.search}`;
+  });
   document.querySelectorAll("[data-consumable-movement]").forEach(button => button.addEventListener("click", () => {
     if (!movementDialog) return;
     movementDialog.querySelector("[data-movement-dataset]").value = button.dataset.datasetId;
@@ -577,6 +621,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const next = dialog.querySelector("[data-wizard-next]"), back = dialog.querySelector("[data-wizard-back]");
   const status = dialog.querySelector("[data-wizard-status]");
   let step = 1, draft = null, busy = false;
+  const importAgency = dialog.querySelector("[data-import-agency]");
+  const importTeam = dialog.querySelector("[data-import-team]");
+  let importTeams = [];
+  try { importTeams = JSON.parse(dialog.querySelector("[data-import-team-options]")?.textContent || "[]"); } catch (_) { importTeams = []; }
+  const refreshImportTeams = () => {
+    if (!importTeam) return;
+    const agencyCode = importAgency?.value || "";
+    const teams = importTeams.filter(team => team.agency_code === agencyCode);
+    importTeam.innerHTML = `<option value="">${agencyCode ? "เลือกทีมปฏิบัติงาน" : "เลือกหน่วยงานก่อน"}</option>${teams.map(team => `<option value="${escapeHtml(team.code)}">${escapeHtml(team.name)}</option>`).join("")}`;
+    importTeam.disabled = !agencyCode;
+  };
+  importAgency?.addEventListener("change", refreshImportTeams);
+
+  dialog.querySelectorAll('input[name="import_mode"]').forEach(input => input.addEventListener("change", () => {
+    const warning = dialog.querySelector("[data-replace-warning]");
+    if (warning) warning.hidden = dialog.querySelector('input[name="import_mode"]:checked')?.value !== "replace";
+  }));
 
   const showStep = number => {
     step = number;
@@ -593,6 +654,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const upload = async () => {
     if (!fileInput.files[0]) throw new Error("กรุณาเลือกไฟล์ที่ต้องการนำเข้า");
     const body = new FormData(); body.append("file", fileInput.files[0]); body.append("data_type", dialog.dataset.selectedType);
+    if (importAgency) {
+      if (!importAgency.value) throw new Error("กรุณาเลือกหน่วยงานก่อนอัปโหลดไฟล์");
+      body.append("agency_code", importAgency.value);
+    }
+    if (importTeam) {
+      if (!importTeam.value) throw new Error("กรุณาเลือกทีมปฏิบัติงานก่อนอัปโหลดไฟล์");
+      body.append("team_code", importTeam.value);
+    }
     draft = await request("/dataset_import_drafts", { method: "POST", body });
     renderMapping();
   };
@@ -600,11 +669,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const renderMapping = () => {
     dialog.querySelector("[data-mapping-list]").innerHTML = draft.schema.map(field => {
       const options = ['<option value="">ไม่จับคู่</option>', ...draft.headers.map(header => `<option value="${escapeHtml(header)}" ${draft.mapping[field.key] === header ? "selected" : ""}>${escapeHtml(header)}</option>`)].join("");
-      return `<label><span>${escapeHtml(field.label)}${field.required ? " *" : ""}<small>${escapeHtml(field.key)}</small></span><b>→</b><select data-map-key="${escapeHtml(field.key)}">${options}</select><em class="${draft.mapping[field.key] ? "" : "unmatched"}">${draft.mapping[field.key] ? "จับคู่แล้ว" : "ยังไม่จับคู่"}</em></label>`;
+      return `<label><span>${escapeHtml(field.label)}${field.required ? ' <strong class="required-field">*</strong>' : ' <i class="optional-field">ไม่บังคับ</i>'}<small>${escapeHtml(field.key)}</small></span><b>→</b><select data-map-key="${escapeHtml(field.key)}">${options}</select><em class="${draft.mapping[field.key] ? "" : "unmatched"}">${draft.mapping[field.key] ? "จับคู่แล้ว" : (field.required ? "ยังไม่จับคู่" : "เว้นว่างได้")}</em></label>`;
     }).join("");
     dialog.querySelectorAll("[data-map-key]").forEach(select => select.addEventListener("change", () => {
       const badge = select.nextElementSibling;
-      badge.textContent = select.value ? "จับคู่แล้ว" : "ยังไม่จับคู่";
+      const field = draft.schema.find(item => item.key === select.dataset.mapKey);
+      badge.textContent = select.value ? "จับคู่แล้ว" : (field?.required ? "ยังไม่จับคู่" : "เว้นว่างได้");
       badge.classList.toggle("unmatched", !select.value);
     }));
   };
@@ -635,9 +705,16 @@ document.addEventListener("DOMContentLoaded", () => {
       const checkable = input.type === "checkbox" || input.type === "radio";
       if ((!checkable && input.value) || (checkable && input.checked)) body.append(input.name, input.value);
     });
+    const mode = fields.querySelector('input[name="import_mode"]:checked')?.value;
+    if (mode === "replace") {
+      const agencyMessage = dialog.dataset.selectedType === "agencies"
+        ? "ข้อมูลหน่วยงานเชื่อมต่อกับทีมปฏิบัติงาน บุคลากร ทรัพยากร อุปกรณ์ วัสดุสิ้นเปลือง และข้อมูลการปฏิบัติงาน การแทนที่อาจทำให้ข้อมูลเดิมไม่เชื่อมโยงกัน\n\nยืนยันว่าต้องการแทนที่ข้อมูลหน่วยงานทั้งหมดหรือไม่?"
+        : "การแทนที่ทั้งหมดอาจกระทบข้อมูลอื่นที่เชื่อมโยงกับรายการเดิม\n\nยืนยันว่าต้องการแทนที่ข้อมูลทั้งหมดหรือไม่?";
+      if (!window.confirm(agencyMessage)) throw new Error("ยกเลิกการแทนที่ข้อมูลแล้ว");
+    }
     const payload = await request(`/dataset_import_drafts/${draft.id}/finalize`, { method: "POST", body });
     dialog.querySelector("[data-finish-message]").textContent = `นำเข้าสำเร็จ ${payload.records.toLocaleString()} รายการ เป็นรุ่นข้อมูลที่ ${payload.version}`;
-    dialog.querySelector("[data-finish-link]").href = payload.redirect_url;
+    dialog.querySelector("[data-finish-link]").href = window.location.href;
   };
 
   document.querySelector("[data-open-import]")?.addEventListener("click", () => { showStep(1); dialog.showModal(); });

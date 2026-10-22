@@ -17,13 +17,18 @@
   <% unless manual_entry %><fieldset class="custom-import-mode system-import-mode">
     <legend>ต้องการนำเข้าข้อมูลแบบไหน?</legend>
     <label>
-      <input type="radio" name="import_mode" value="replace" checked>
-      <span><b>ใช้ข้อมูลจากไฟล์แทนข้อมูลเดิม</b><small>รุ่นข้อมูลใหม่จะมีเฉพาะข้อมูลจากไฟล์นี้ ส่วนข้อมูลเดิมยังเปิดดูและกู้คืนได้จากประวัติรุ่นข้อมูล</small></span>
+      <input type="radio" name="import_mode" value="insert" checked>
+      <span><b>เพิ่มเข้าอย่างเดียว (Insert)</b><small>เก็บข้อมูลเดิมทั้งหมดและเพิ่มทุกรายการจากไฟล์เป็นรายการใหม่</small></span>
     </label>
     <label>
-      <input type="radio" name="import_mode" value="append">
-      <span><b>เพิ่มข้อมูลจากไฟล์ต่อจากข้อมูลเดิม</b><small>ระบบจะเก็บข้อมูลปัจจุบันไว้ แล้วเพิ่มข้อมูลจากไฟล์นี้เพื่อสร้างรุ่นข้อมูลใหม่ที่มีข้อมูลทั้งหมด</small></span>
+      <input type="radio" name="import_mode" value="upsert">
+      <span><b>เพิ่มและอัปเดตรายการที่ตรงกัน (Upsert)</b><small>ค้นหาด้วยรหัสเดิม หรือชื่อและหน่วยงาน/ทีมที่เลือก แล้วอัปเดตรายการที่ตรงกันและเพิ่มรายการใหม่</small></span>
     </label>
+    <label class="replace-import-option">
+      <input type="radio" name="import_mode" value="replace">
+      <span><b>แทนที่ทั้งหมด (Replace)</b><small>ข้อมูลปัจจุบันจะเหลือเฉพาะรายการจากไฟล์นี้ และอาจกระทบข้อมูลอื่นที่เชื่อมโยงอยู่</small></span>
+    </label>
+    <div class="import-impact-warning" data-replace-warning hidden><b>คำเตือนก่อนแทนที่ข้อมูล</b><span><%= selected_type == "agencies" ? "ข้อมูลหน่วยงานเชื่อมโยงกับทีม บุคลากร ทรัพยากร อุปกรณ์ วัสดุสิ้นเปลือง และข้อมูลการปฏิบัติงาน การแทนที่อาจทำให้ข้อมูลที่เคยบันทึกไว้ไม่สามารถเชื่อมโยงกับหน่วยงานเดิมได้" : "การแทนที่ทั้งหมดอาจทำให้ข้อมูลที่ระบบส่วนอื่นอ้างอิงอยู่ไม่สามารถเชื่อมโยงกับรายการเดิมได้" %></span></div>
   </fieldset><% end %>
   <% if selected_type == "village_boundaries" %>
     <div class="map-option map-option-note">ระบบจะสร้างชั้นข้อมูลแบบพื้นที่ และจับคู่กับประชากรด้วยรหัสหมู่บ้าน หรือ ตำบล + หมู่ที่</div>

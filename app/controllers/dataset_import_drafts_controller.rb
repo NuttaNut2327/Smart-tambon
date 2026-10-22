@@ -1,4 +1,10 @@
 class DatasetImportDraftsController < ApplicationController
+  FILE_RELATION_FIELDS = {
+    "teams" => %w[agency_code agency_name],
+    "workforce" => %w[agency_code agency_name team_code team_name],
+    "resources" => %w[agency_code responsible_person],
+    "consumables" => %w[agency_code agency_name]
+  }.freeze
   before_action :require_importer!
   before_action :set_draft, only: %i[validate preview finalize destroy]
 
@@ -22,6 +28,7 @@ class DatasetImportDraftsController < ApplicationController
 
   def create
     data_type, schema, target_dataset_id = draft_context
+    import_context = resolved_import_context(data_type)
     upload = params.require(:file)
     parsed = DatasetFilePreviewService.new(upload).parse!
     mapping = suggested_mapping(parsed[:headers], schema)
@@ -29,6 +36,7 @@ class DatasetImportDraftsController < ApplicationController
     file_id = DatasetGridFileStore.upload(upload.original_filename, upload.read, content_type: upload.content_type)
     draft = DatasetImportDraft.create!(user_id: current_user.id, data_type: data_type,
       target_dataset_id: target_dataset_id, schema_definition: schema,
+      import_context: import_context,
       source_filename: upload.original_filename, source_content_type: upload.content_type,
       source_file_id: file_id, source_headers: parsed[:headers], column_mapping: mapping, expires_at: 2.hours.from_now)
     documents = parsed[:rows].each_with_index.map do |row, index|
@@ -48,6 +56,7 @@ class DatasetImportDraftsController < ApplicationController
       mapped = mapping.each_with_object({}) do |(target, source), result|
         result[target] = draft_row.raw_payload[source] if source.present?
       end
+      mapped.merge!(@draft.import_context)
       { draft_row: draft_row, mapped: mapped } unless mapped.values.all?(&:blank?)
     end
     mapped_rows = mapped_entries.map { |entry| entry[:mapped] }
@@ -87,12 +96,11 @@ class DatasetImportDraftsController < ApplicationController
     map_enabled = ActiveModel::Type::Boolean.new.cast(params[:map_enabled]) || false
     target = @draft.data_type == "custom" ? custom_target_dataset : destination_dataset(@draft.data_type, map_enabled)
     source_content = DatasetGridFileStore.download(@draft.source_file_id)
-    import_mode = params[:import_mode].to_s.presence_in(%w[replace append]) || "replace"
-    append_records = import_mode == "append"
+    import_mode = params[:import_mode].to_s.presence_in(%w[insert upsert replace]) || "insert"
     version = DatasetVersionImportService.new(dataset: target, user: current_user, manual_records: records,
       source_kind: "file", source_filename: @draft.source_filename, source_content_type: @draft.source_content_type,
       source_content: source_content, change_note: params[:change_note].presence || "นำเข้าจาก #{@draft.source_filename}",
-      append_records: append_records, display_name: params[:version_name]).import!
+      import_mode: import_mode, display_name: params[:version_name]).import!
     next_url = data_layers_path(data_type: @draft.data_type)
     @draft.destroy
     render json: { dataset_id: target.id.to_s, version: version.version_number, records: version.record_count,
@@ -122,13 +130,35 @@ class DatasetImportDraftsController < ApplicationController
 
   def draft_context
     if params[:target_dataset_id].blank?
-      schema = ImportedDataset.schema_for(normalized_type).reject { |field| field["generated"] }
-      return [normalized_type, schema, nil]
+      type = normalized_type
+      excluded = FILE_RELATION_FIELDS.fetch(type, [])
+      schema = ImportedDataset.schema_for(type).reject { |field| field["generated"] || excluded.include?(field["key"]) }
+      return [type, schema, nil]
     end
 
     dataset = editable_dataset_scope.find(params[:target_dataset_id])
     raise ArgumentError, "รองรับ Mapping แบบกำหนดเองเฉพาะชุดข้อมูลที่ผู้ใช้แก้ไขได้" unless dataset.data_type == "custom"
     [dataset.data_type, dataset.effective_schema_definition, dataset.id]
+  end
+
+  def resolved_import_context(data_type)
+    return {} unless FILE_RELATION_FIELDS.key?(data_type)
+
+    agency_code = params[:agency_code].to_s.strip
+    agency = current_agency_records.find { |record| record["agency_code"].to_s == agency_code }
+    raise ArgumentError, "กรุณาเลือกหน่วยงานก่อนอัปโหลดไฟล์" unless agency
+
+    context = { "agency_code" => agency["agency_code"], "agency_name" => agency["agency_name"] }
+    context["responsible_person"] = agency["agency_name"] if data_type == "resources"
+    return context unless data_type == "workforce"
+
+    team_code = params[:team_code].to_s.strip
+    team = current_team_records.find do |record|
+      record["team_code"].to_s == team_code && record["agency_code"].to_s == agency_code
+    end
+    raise ArgumentError, "กรุณาเลือกทีมปฏิบัติงานของหน่วยงานที่เลือกก่อนอัปโหลดไฟล์" unless team
+
+    context.merge("team_code" => team["team_code"], "team_name" => team["team_name"])
   end
 
   def custom_target_dataset
@@ -199,6 +229,11 @@ class DatasetImportDraftsController < ApplicationController
     Array(dataset&.current_version&.records).map(&:deep_dup)
   end
 
+  def current_team_records
+    scope = ImportedDataset.visible_to(current_user).where(data_type: "teams")
+    scope.flat_map { |dataset| Array(dataset.current_version&.records).map(&:deep_dup) }
+  end
+
   def agency_import_impact(previous_records, incoming_records)
     previous_by_code = Array(previous_records).index_by { |record| record["agency_code"].to_s.downcase }
     incoming_codes = Array(incoming_records).filter_map { |record| record["agency_code"].to_s.downcase.presence }.to_set
@@ -238,7 +273,8 @@ class DatasetImportDraftsController < ApplicationController
   def draft_payload(draft)
     { id: draft.id.to_s, data_type: draft.data_type, filename: draft.source_filename,
       headers: draft.source_headers, schema: draft.schema, mapping: draft.column_mapping,
-      sample: draft.source_rows.first(5), records: draft.validated_records.first(10), validation: draft.validation_summary }
+      sample: draft.source_rows.first(5), records: draft.validated_records.first(10), validation: draft.validation_summary,
+      import_context: draft.import_context }
   end
 
   def require_importer!

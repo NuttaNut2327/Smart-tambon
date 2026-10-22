@@ -11,6 +11,7 @@ class DatasetImportDraft
   field :source_headers, type: Array, default: []
   field :column_mapping, type: Hash, default: {}
   field :validation_summary, type: Hash, default: {}
+  field :import_context, type: Hash, default: {}
   field :expires_at, type: Time
   has_many :rows, class_name: "DatasetImportDraftRow", dependent: :destroy
   index({ user_id: 1 }); index({ expires_at: 1 })

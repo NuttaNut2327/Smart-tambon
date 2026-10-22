@@ -28,8 +28,8 @@ class ImportedDataset
       { "key" => "boundary_source", "label" => "วิธีบันทึก", "type" => "text", "required" => false, "generated" => true }
     ],
     "resources" => [
-      { "key" => "name", "label" => "ชื่อทรัพยากร/อุปกรณ์", "type" => "text", "required" => true },
       { "key" => "code", "label" => "รหัสทรัพยากร", "type" => "text", "required" => false, "generated" => true },
+      { "key" => "name", "label" => "ชื่อทรัพยากร/อุปกรณ์", "type" => "text", "required" => true },
       { "key" => "registration", "label" => "ทะเบียน", "type" => "text", "required" => false },
       { "key" => "resource_type", "label" => "ประเภท", "type" => "text", "required" => true },
       { "key" => "status", "label" => "สถานะความพร้อม", "type" => "text", "required" => true },
@@ -78,7 +78,7 @@ class ImportedDataset
       { "key" => "contact_person", "label" => "ผู้ประสานงาน", "type" => "text", "required" => false },
       { "key" => "phone", "label" => "เบอร์ติดต่อ", "type" => "text", "required" => false },
       { "key" => "email", "label" => "อีเมล", "type" => "text", "required" => false },
-      { "key" => "address", "label" => "ที่อยู่โดยประมาณ", "type" => "text", "required" => false },
+      { "key" => "address", "label" => "ที่อยู่โดยประมาณ", "type" => "text", "required" => false, "generated" => true },
       { "key" => "road", "label" => "ถนน", "type" => "text", "required" => false, "hidden" => true },
       { "key" => "subdistrict", "label" => "ตำบล", "type" => "text", "required" => false, "hidden" => true },
       { "key" => "district", "label" => "อำเภอ", "type" => "text", "required" => false, "hidden" => true },
