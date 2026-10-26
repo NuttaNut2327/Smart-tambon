@@ -1,7 +1,7 @@
 <% area_name = current_user.access_area&.name.presence || current_user.subdistrict&.name_th %>
 <% system_map = system_setting.map_defaults %>
 <% custom_layers = !@setting.map_layers.nil? %>
-<%= render layout: "settings/frame", locals: { title: "ตั้งค่า อบต.", kicker: "สำหรับผู้ดูแลประจำ อบต. · #{area_name}", description: "ใช้กับผู้ใช้ทุกคนของหน่วยงานนี้ — ข้อมูล อบต. การแจ้งเตือน แผนที่ และลิงก์แจ้งเหตุสาธารณะ", active: :organization } do %>
+<%= render layout: "settings/frame", locals: { title: "ตั้งค่าระบบ", kicker: "สำหรับผู้ดูแลประจำ อบต. · #{area_name}", description: "ใช้กับผู้ใช้ทุกคนของหน่วยงานนี้ — ข้อมูล อบต. การแจ้งเตือน แผนที่ และลิงก์แจ้งเหตุสาธารณะ", active: :organization } do %>
   <%= form_with model: @setting, url: organization_settings_path, method: :patch, html: { multipart: true, class: "settings-form" } do |form| %>
     <% if @setting.errors.any? %><div class="form-errors"><% @setting.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
 
@@ -65,7 +65,7 @@
       </div>
     </section>
 
-    <div class="settings-actions"><%= form.submit "บันทึกการตั้งค่า อบต.", class: "button-link primary" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %></div>
+    <div class="settings-actions"><%= form.submit "บันทึกการตั้งค่าระบบ", class: "button-link primary" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %></div>
   <% end %>
 
   <section class="settings-card settings-danger">

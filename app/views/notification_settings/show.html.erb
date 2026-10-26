@@ -1,7 +1,7 @@
 <%= stylesheet_link_tag "notifications", "data-turbo-track": "reload" %>
 <% secret_label = ->(name) { { "settings" => "ใช้ค่าจากหน้าตั้งค่า", "env" => "ใช้ค่าจาก .env" }.fetch(@setting.secret_source(name), "ยังไม่ได้กำหนด") } %>
 <% webhook_url = @setting.base_url ? "#{@setting.base_url}#{line_webhook_path}" : line_webhook_url %>
-<%= render layout: "settings/frame", locals: { title: "การแจ้งเตือนส่วนกลาง", kicker: "สำหรับผู้ดูแลระบบ (Super admin)", description: "บัญชี LINE OA บอท Telegram และ Signal gateway ที่ทุก อบต. ใช้ส่งแจ้งเตือนเข้ากลุ่ม — แต่ละ อบต. ใส่ Group ID ของตัวเองได้ที่ ตั้งค่า อบต. → ช่องทางแจ้งเตือน", active: :notifications } do %>
+<%= render layout: "settings/frame", locals: { title: "การแจ้งเตือนส่วนกลาง", kicker: "สำหรับผู้ดูแลระบบ (Super admin)", description: "บัญชี LINE OA บอท Telegram และ Signal gateway ที่ทุก อบต. ใช้ส่งแจ้งเตือนเข้ากลุ่ม — แต่ละ อบต. ใส่ Group ID ของตัวเองได้ที่ ตั้งค่าระบบ → ช่องทางแจ้งเตือน", active: :notifications } do %>
   <%= form_with model: @setting, url: notification_settings_path, method: :patch, class: "settings-form" do |form| %>
     <% if @setting.errors.any? %><div class="form-errors"><% @setting.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
 

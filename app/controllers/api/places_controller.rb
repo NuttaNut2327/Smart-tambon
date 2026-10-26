@@ -2,6 +2,8 @@ require "net/http"
 
 module Api
   class PlacesController < ApplicationController
+    before_action :require_system_admin_for_usage!, only: :usage
+
     CATEGORIES = {
       "government" => %w[government municipality],
       "education" => %w[school university library],
@@ -105,6 +107,10 @@ module Api
     end
 
     private
+
+    def require_system_admin_for_usage!
+      render_forbidden unless system_admin?
+    end
 
     def api_key
       @api_key ||= SystemSetting.current.longdo_map_key

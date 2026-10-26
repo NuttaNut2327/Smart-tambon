@@ -1,5 +1,5 @@
 <%= stylesheet_link_tag "notifications", "data-turbo-track": "reload" %>
-<%= render layout: "settings/frame", locals: { title: "ทดสอบการส่งแจ้งเตือน", kicker: "ตั้งค่า อบต.", description: "ดูตัวอย่างข้อความและลองส่งจริง — “จำลองเหตุใหม่เข้ามา” ใช้ขั้นตอนเดียวกับตอนมีเหตุจริง (เทมเพลตตามแท็ก + ช่องทางที่รับแท็กนั้น)", active: :notification_tests } do %>
+<%= render layout: "settings/frame", locals: { title: "ทดสอบการส่งแจ้งเตือน", kicker: "ตั้งค่าระบบ", description: "ดูตัวอย่างข้อความและลองส่งจริง — “จำลองเหตุใหม่เข้ามา” ใช้ขั้นตอนเดียวกับตอนมีเหตุจริง (เทมเพลตตามแท็ก + ช่องทางที่รับแท็กนั้น)", active: :notification_tests } do %>
   <%= form_with url: notification_tests_path, method: :post, class: "settings-form", data: { notify_test_form: true } do %>
     <section class="settings-card">
       <header><span class="material-symbols-outlined">send</span><div><h2>ตั้งค่าการทดสอบ</h2><p>ข้อความจะถูกส่งจริงเข้ากลุ่มที่เลือก</p></div></header>

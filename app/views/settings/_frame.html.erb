@@ -17,7 +17,7 @@
         </nav>
       <% elsif current_user.subdistrict_admin? %>
         <nav class="settings-tabs" aria-label="หมวดการตั้งค่า">
-          <%= link_to organization_settings_path, class: ("active" if active == :organization) do %><span class="material-symbols-outlined">account_balance</span>ตั้งค่า อบต.<% end %>
+          <%= link_to organization_settings_path, class: ("active" if active == :organization) do %><span class="material-symbols-outlined">account_balance</span>ตั้งค่าระบบ<% end %>
           <%= link_to notification_channels_path, class: ("active" if active == :notification_channels) do %><span class="material-symbols-outlined">group</span>ช่องทางแจ้งเตือน<% end %>
           <%= link_to notification_templates_path, class: ("active" if active == :notification_templates) do %><span class="material-symbols-outlined">edit_note</span>เทมเพลตข้อความ<% end %>
           <%= link_to notification_tests_path, class: ("active" if active == :notification_tests) do %><span class="material-symbols-outlined">send</span>ทดสอบการส่ง<% end %>

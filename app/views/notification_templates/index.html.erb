@@ -1,5 +1,5 @@
 <%= stylesheet_link_tag "notifications", "data-turbo-track": "reload" %>
-<%= render layout: "settings/frame", locals: { title: "เทมเพลตข้อความ", kicker: "ตั้งค่า อบต.", description: "ข้อความที่ส่งเข้ากลุ่มเมื่อเกิดเหตุตามแท็ก — แต่ละแท็กใช้เทมเพลตที่แก้ไขล่าสุด ถ้ายังไม่มีจะใช้ข้อความมาตรฐานของระบบ", active: :notification_templates } do %>
+<%= render layout: "settings/frame", locals: { title: "เทมเพลตข้อความ", kicker: "ตั้งค่าระบบ", description: "ข้อความที่ส่งเข้ากลุ่มเมื่อเกิดเหตุตามแท็ก — แต่ละแท็กใช้เทมเพลตที่แก้ไขล่าสุด ถ้ายังไม่มีจะใช้ข้อความมาตรฐานของระบบ", active: :notification_templates } do %>
   <section class="settings-card">
     <header><span class="material-symbols-outlined">edit_note</span><div><h2>เทมเพลตของ อบต.</h2><p>ใส่ตัวแปรเช่น <code>{{reference_code}}</code> <code>{{title}}</code> <code>{{link}}</code> ระบบจะแทนค่าด้วยข้อมูลจริงตอนส่ง</p></div></header>
     <div class="settings-actions notify-add">

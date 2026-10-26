@@ -62,6 +62,23 @@ class ApiAreaScopingTest < ActionDispatch::IntegrationTest
       response.parsed_body.fetch("data").map { |item| item["name"] }.sort
   end
 
+  test "subdistrict admin cannot view Longdo usage statistics" do
+    get usage_api_places_path
+
+    assert_response :forbidden
+  end
+
+  test "system admin can view Longdo usage statistics" do
+    sign_out @admin
+    sign_in @owner
+
+    get usage_api_places_path
+
+    assert_response :success
+    assert response.parsed_body.key?("longdo_requests")
+    assert response.parsed_body.key?("cache_hits")
+  end
+
   private
 
   def create_subdistrict(code, name, longitude)

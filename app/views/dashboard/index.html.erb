@@ -9,7 +9,7 @@
   <%= render "dashboard/sidebar", active_nav: page_mode, initial_area: initial_area, assigned_subdistrict: @assigned_subdistrict, provinces: @provinces %>
 
   <main class="dashboard-main content">
-    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= initial_area %></span><b>›</b><span><%= page_title %></span></span></div><div class="header-tools"><div id="longdo-usage" class="longdo-usage" aria-live="polite"><b>Longdo API</b><span>กำลังโหลด…</span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></div></header>
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= initial_area %></span><b>›</b><span><%= page_title %></span></span></div><div class="header-tools"><% if system_admin? %><div id="longdo-usage" class="longdo-usage" aria-live="polite"><b>Longdo API</b><span>กำลังโหลด…</span></div><% end %><div class="header-avatar"><%= current_user.username.first.upcase %></div></div></header>
     <div class="dashboard-content">
       <% unless %i[general_incidents disasters].include?(page_mode) %><section id="city-overview" class="city-heading"><div><p class="page-kicker"><%= page_mode == :overview ? "ภาพรวมประจำวัน" : "เครื่องมือภูมิสารสนเทศ" %></p><div class="city-title-line"><h1><%= page_title %></h1></div><p><%= page_mode == :analysis ? "กำหนดขอบเขตบนแผนที่เพื่อวิเคราะห์สถานที่ภายในพื้นที่" : "ข้อมูลสถานการณ์เมือง ณ วันที่ #{thai_short_date(Time.current)}" %></p></div></section><% end %>
       <% if page_mode == :overview %>
