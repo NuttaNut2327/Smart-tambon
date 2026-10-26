@@ -31,7 +31,7 @@ class ImportedDatasetTest < ActiveSupport::TestCase
   end
 
   test "resource schema uses the defined asset register columns" do
-    assert_equal %w[name code registration resource_type status responsible_person agency_code storage_location],
+    assert_equal %w[code name registration resource_type status responsible_person agency_code storage_location],
                  ImportedDataset.schema_for("resources").map { |field| field.fetch("key") }
   end
 

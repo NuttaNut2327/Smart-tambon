@@ -85,7 +85,7 @@
   <dialog id="progress-incident-dialog" class="incident-dialog progress-incident-dialog">
     <%= form_with url: incident_progress_path(incident), method: :post, scope: :progress, local: true do |form| %>
       <header><div><small><%= incident.reference_code %></small><h2>อัปเดตการทำงาน</h2></div><button type="button" data-close-incident-dialog>×</button></header>
-      <div class="incident-form-grid"><label>สถานะ<%= form.select :status, [["กำลังประเมิน", "assessing"], ["กำลังดำเนินการ", "in_progress"], ["เสร็จสิ้น", "completed"]], selected: incident.status %></label><label>ผู้รับผิดชอบ<%= form.text_field :assigned_to, value: incident.assigned_to %></label><label class="wide">หัวข้อการอัปเดต<%= form.text_field :title, required: true %></label><label class="wide">รายละเอียดการดำเนินงาน<%= form.text_area :description, rows: 4 %></label><%= render "dashboard/incident_usage_pickers" %></div>
+      <div class="incident-form-grid"><label>สถานะ<%= form.select :status, [["กำลังดำเนินการ", "in_progress"], ["เสร็จสิ้น", "completed"]], selected: (incident.status == "completed" ? "completed" : "in_progress") %></label><label>ผู้รับผิดชอบ<%= form.text_field :assigned_to, value: incident.assigned_to %></label><label class="wide">หัวข้อการอัปเดต<%= form.text_field :title, required: true %></label><label class="wide">รายละเอียดการดำเนินงาน<%= form.text_area :description, rows: 4 %></label><%= render "dashboard/incident_usage_pickers" %></div>
       <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "บันทึกการทำงาน", class: "incident-primary-action" %></footer>
     <% end %>
   </dialog>
