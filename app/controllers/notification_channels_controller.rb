@@ -5,16 +5,16 @@ class NotificationChannelsController < ApplicationController
   before_action :set_channel, only: %i[edit update destroy test]
 
   def index
-    @channels = NotificationChannel.for_organization(organization_key).order_by(created_at: :asc).to_a
+    @channels = NotificationChannel.for_organization(organization_key).where(kind: "line").order_by(created_at: :asc).to_a
     @setting = NotificationSetting.current
   end
 
   def new
-    @channel = NotificationChannel.new(kind: params[:kind].presence_in(NotificationChannel::KINDS.keys) || "line")
+    @channel = NotificationChannel.new(kind: "line")
   end
 
   def create
-    @channel = NotificationChannel.new(channel_params.merge(organization_key: organization_key, created_by: current_user.username))
+    @channel = NotificationChannel.new(channel_params.merge(kind: "line", organization_key: organization_key, created_by: current_user.username))
     save_channel(:new, "เพิ่มช่องทาง #{@channel.name} แล้ว — กด “ทดสอบ” เพื่อลองส่งข้อความ")
   end
 
@@ -61,10 +61,10 @@ class NotificationChannelsController < ApplicationController
 
   private
 
-  def set_channel = @channel = NotificationChannel.for_organization(organization_key).find(params[:id])
+  def set_channel = @channel = NotificationChannel.for_organization(organization_key).where(kind: "line").find(params[:id])
 
   def channel_params
-    params.require(:notification_channel).permit(:name, :kind, :target, :enabled, tags: [])
+    params.require(:notification_channel).permit(:name, :target, :enabled, tags: [])
   end
 
   def save_channel(template, notice)

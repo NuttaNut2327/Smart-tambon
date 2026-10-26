@@ -1,13 +1,10 @@
 <%= stylesheet_link_tag "notifications", "data-turbo-track": "reload" %>
-<%= render layout: "settings/frame", locals: { title: "ช่องทางแจ้งเตือน", kicker: "ตั้งค่าระบบ", description: "กลุ่ม LINE / Telegram / Signal และ Webhook ที่จะได้รับแจ้งเตือนเมื่อมีเหตุใหม่เข้ามา", active: :notification_channels } do %>
+<%= render layout: "settings/frame", locals: { title: "ช่องทางแจ้งเตือน", kicker: "ตั้งค่าระบบ", description: "กลุ่ม LINE OA ที่จะได้รับแจ้งเตือนเมื่อมีเหตุใหม่เข้ามา", active: :notification_channels } do %>
   <section class="settings-card">
     <header><span class="material-symbols-outlined">group</span><div><h2>ช่องทางของ อบต.</h2><p>เพิ่มได้หลายกลุ่ม แต่ละช่องทางเลือกได้ว่าจะรับแจ้งเตือนประเภทใด · ข้อความใช้ <%= link_to "เทมเพลตข้อความ", notification_templates_path %> ตามแท็ก</p></div></header>
     <div class="settings-actions notify-add">
-      <% NotificationChannel::KINDS.each do |kind, info| %>
-        <% if @setting.kind_available?(kind) %>
-          <%= link_to new_notification_channel_path(kind: kind), class: "button-link #{'primary' if kind == 'line'}" do %><span class="material-symbols-outlined"><%= info[:icon] %></span>เพิ่ม <%= info[:label] %><% end %>
-        <% end %>
-      <% end %>
+      <% info = NotificationChannel::KINDS.fetch("line") %>
+      <%= link_to new_notification_channel_path, class: "button-link primary" do %><span class="material-symbols-outlined"><%= info[:icon] %></span>เพิ่ม <%= info[:label] %><% end %>
     </div>
     <% unless @setting.line_ready? %><p class="notify-warning"><span class="material-symbols-outlined">info</span>ผู้ดูแลระบบยังไม่ได้ตั้งค่า LINE OA ส่วนกลาง — ช่องทาง LINE จะส่งไม่ได้จนกว่าจะตั้งค่า</p><% end %>
     <% if @channels.empty? %>

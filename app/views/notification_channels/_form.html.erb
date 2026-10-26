@@ -8,22 +8,8 @@
     <div class="settings-grid">
       <label>ชื่อช่องทาง<%= form.text_field :name, required: true, placeholder: "เช่น กลุ่มเวรรับแจ้งเหตุ อบต." %></label>
       <label><%= kind[:target] %>
-        <%= form.text_field :target, required: true, data: { notify_target: true }, placeholder: { "line" => "C1234567890abcdef1234567890abcdef", "telegram" => "-1001234567890", "signal" => "group.xxxxxxxx= หรือ +66812345678", "webhook" => "https://example.com/hooks/smart-tambon", "facebook" => "102345678901234", "instagram" => "17841400000000000", "pa_mqtt" => "smart-tambon/pa/#{current_user.subdistrict&.code || "550513"}" }[@channel.kind] %>
+        <%= form.text_field :target, required: true, data: { notify_target: true }, placeholder: "C1234567890abcdef1234567890abcdef" %>
       </label>
-      <% token_labels = { "telegram" => "Bot token ของ อบต. (ไม่บังคับ)", "webhook" => "Secret สำหรับลงลายมือชื่อ (ไม่บังคับ)", "facebook" => "Page Access Token", "instagram" => "Access Token (Instagram Graph API)" } %>
-      <% if token_labels.key?(@channel.kind) %>
-        <label class="span-2"><%= token_labels[@channel.kind] %>
-          <%= password_field_tag "notification_channel[token]", nil, autocomplete: "new-password", data: { notify_token: true }, placeholder: @channel.masked_token || (@channel.kind == "telegram" ? "เว้นว่างเพื่อใช้บอทกลางของระบบ" : "ยังไม่ได้กำหนด") %>
-          <small><%= { "telegram" => "สร้างบอทจาก @BotFather แล้วเพิ่มบอทเข้ากลุ่ม · เว้นว่างเพื่อคงค่าเดิม", "webhook" => "ระบบปลายทางตรวจหัว X-SmartTambon-Signature: sha256=HMAC(secret, body) · เว้นว่างเพื่อคงค่าเดิม", "facebook" => "สร้างจาก Meta for Developers › Graph API Explorer โดยเลือกเพจ อบต. ใช้แบบ long-lived token · เว้นว่างเพื่อคงค่าเดิม", "instagram" => "ใช้ token ของเพจที่เชื่อมกับบัญชี IG Business (สิทธิ์ instagram_content_publish) · เว้นว่างเพื่อคงค่าเดิม" }[@channel.kind] %></small>
-          <% if @channel.token? %><span class="settings-check"><%= check_box_tag "notification_channel[clear_token]", "1" %> ลบค่าที่บันทึก</span><% end %>
-        </label>
-      <% end %>
-      <% if %w[telegram signal].include?(@channel.kind) %>
-        <div class="span-2 notify-lookup" data-notify-lookup="<%= @channel.kind %>" data-url="<%= @channel.kind == 'telegram' ? telegram_chats_notification_channels_path : signal_groups_notification_channels_path %>" data-channel-id="<%= @channel.id if @channel.persisted? %>">
-          <button type="button" class="button-link" data-notify-lookup-button><span class="material-symbols-outlined">search</span><%= @channel.kind == "telegram" ? "ค้นหา Chat ID จากข้อความล่าสุดที่บอทได้รับ" : "ดึงรายชื่อกลุ่ม Signal" %></button>
-          <ul data-notify-lookup-results></ul>
-        </div>
-      <% end %>
       <fieldset class="settings-layers span-2"><legend>รับแจ้งเตือนเมื่อ (แท็ก)</legend>
         <% NotificationChannel::TAGS.each do |tag, label| %>
           <label class="settings-check"><%= check_box_tag "notification_channel[tags][]", tag, @channel.tags.include?(tag), id: "channel_tag_#{tag.tr('.', '_')}" %> <%= label %> <code><%= tag %></code></label>
