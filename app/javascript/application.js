@@ -205,7 +205,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if(overviewPage){
     const overviewData=JSON.parse(document.querySelector("#overview-dashboard-data")?.textContent || "{}");
     const taskItems=overviewData.tasks || [];
-    const taskFilterLabels={pending:"รอรับเรื่อง",assessing:"กำลังประเมิน",in_progress:"กำลังดำเนินการ"};
+    const taskFilterLabels={pending:"รอรับเรื่อง",in_progress:"กำลังดำเนินการ"};
     const escapeOverview=(value)=>String(value ?? "").replace(/[&<>'"]/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[character]);
     const mapSection=document.querySelector("#map-section");
     if(mapSection){

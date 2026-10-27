@@ -68,6 +68,17 @@
     <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= button_to "ยืนยันลบข้อมูล", incident_path(incident), method: :delete, class: "incident-delete-action" %></footer>
   </dialog>
 
+  <% if incident.category == "general" && %w[assessing in_progress].include?(incident.status) && (current_user.system_admin? || current_user.subdistrict_admin?) %>
+    <dialog id="promote-disaster-dialog" class="incident-dialog small">
+      <header><div><small><%= incident.reference_code %></small><h2>ยืนยันการยกระดับเหตุการณ์</h2></div><button type="button" data-close-incident-dialog aria-label="ปิด">×</button></header>
+      <div class="incident-delete-confirmation incident-promotion-confirmation">
+        <span class="material-symbols-outlined">warning</span>
+        <div><strong>ต้องการยกระดับ “<%= incident.title %>” เป็นภัยพิบัติหรือไม่?</strong><p>เหตุการณ์นี้จะย้ายไปแสดงในหน้าภัยพิบัติ และสามารถประเมินพื้นที่ผลกระทบรวมถึงทรัพยากรที่ต้องใช้ได้</p></div>
+      </div>
+      <footer class="incident-promotion-actions"><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= button_to promote_incident_to_disaster_path(incident), method: :patch, class: "incident-confirm-disaster-action" do %><span class="material-symbols-outlined">warning</span>ยืนยันการยกระดับเหตุการณ์<% end %></footer>
+    </dialog>
+  <% end %>
+
   <% if incident.status == "pending" %>
     <dialog id="acknowledge-incident-dialog" class="incident-dialog small">
       <%= form_with url: acknowledge_incident_path(incident), method: :patch, scope: :incident, local: true do |form| %>
