@@ -47,6 +47,8 @@ class Project
   field :latitude, type: Float
   field :longitude, type: Float
   field :photos, type: Array, default: []
+  # Demo record: hidden everywhere while demo data is switched off (see DemoData).
+  field :simulated, type: Boolean, default: false
 
   index({ user_id: 1, updated_at: -1 })
   index({ subdistrict_id: 1, fiscal_year: -1 })
@@ -71,10 +73,10 @@ class Project
   validate :location_must_be_inside_acting_user_area
 
   scope :visible_to, lambda { |user|
-    user.system_admin? ? all : any_of(
+    DemoData.filter(user.system_admin? ? all : any_of(
       { :user_id.in => user.organization_user_ids },
       { :subdistrict_id.in => user.accessible_subdistrict_ids }
-    )
+    ))
   }
 
   # Thai fiscal year (พ.ศ.) starts on 1 October.
@@ -93,12 +95,14 @@ class Project
   def as_map_json(photo_url: nil)
     area = subdistrict
     {
-      id: id.to_s, name:, code:, group:, group_label:, project_type:,
+      id: id.to_s, name:, code:, simulated:, group:, group_label:, project_type:,
       budget:, budget_source:, agency:, fiscal_year:,
       status:, status_label:, approval_status:, approval_status_label:, progress_percent:,
       location_name:, description:, latitude:, longitude:,
       subdistrict_name: area&.name_th, district_name: area&.district_name_th,
-      photos: Array(photos).map { |photo| { id: photo["id"], filename: photo["filename"], url: photo_url&.call(self, photo) } }
+      photos: Array(photos).map do |photo|
+        { id: photo["id"], filename: photo["filename"], url: photo_url&.call(self, photo), thumb: photo_url&.call(self, photo, "thumb") }
+      end
     }
   end
 

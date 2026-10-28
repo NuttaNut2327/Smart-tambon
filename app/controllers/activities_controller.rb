@@ -21,7 +21,7 @@ class ActivitiesController < ApplicationController
 
   def create
     @activity = Incident.new(activity_params)
-    cover, photos = uploads
+    cover, photos, picked = uploads
     @activity.assign_attributes(
       category: "activity", status: "pending", severity: "general",
       user_id: current_user.id, owner_user_id: current_user.id, access_area_id: current_user.access_area&.id,
@@ -31,7 +31,7 @@ class ActivitiesController < ApplicationController
     @activity.histories = [history("บันทึกกิจกรรม", "บันทึกกิจกรรมใหม่ในระบบ")]
     return render(:new, status: :unprocessable_entity) unless location_allowed?(@activity) && @activity.save
 
-    attach_photos(@activity, cover, photos)
+    attach_photos(@activity, cover, photos, picked)
     redirect_to activities_path, notice: "บันทึกกิจกรรม #{@activity.title} เรียบร้อยแล้ว"
   rescue IncidentPhotoUploadService::InvalidUpload => error
     @activity.errors.add(:base, error.message)
@@ -41,7 +41,7 @@ class ActivitiesController < ApplicationController
   def edit; end
 
   def update
-    cover, photos = uploads
+    cover, photos, picked = uploads
     @activity.assign_attributes(activity_params)
     @activity.subdistrict_id = subdistrict_for(@activity) || @activity.subdistrict_id if @activity.latitude_changed? || @activity.longitude_changed?
     # Moving the end time into the future reopens an activity that had finished automatically.
@@ -49,7 +49,7 @@ class ActivitiesController < ApplicationController
     return render(:edit, status: :unprocessable_entity) unless location_allowed?(@activity) && @activity.save
 
     remove_photos(@activity)
-    attach_photos(@activity, cover, photos)
+    attach_photos(@activity, cover, photos, picked)
     redirect_to activities_path, notice: "อัปเดตกิจกรรม #{@activity.title} เรียบร้อยแล้ว"
   rescue IncidentPhotoUploadService::InvalidUpload => error
     @activity.errors.add(:base, error.message)
@@ -91,24 +91,29 @@ class ActivitiesController < ApplicationController
                                      :location_name, :latitude, :longitude, :reporter_name, :reporter_contact)
   end
 
+  # The cover is either a new upload or one picture picked from the image library.
   def uploads
-    cover = params.dig(:incident, :cover_photo).presence
+    cover = params.dig(:incident, :cover_photo).presence || ImageLibrary.pick(current_user, params.dig(:incident, :cover_library_image_id)).first
     photos = Array(params.dig(:incident, :photos)).compact_blank
-    all = [cover, *photos].compact
+    picked = ImageLibrary.pick(current_user, IncidentPhotoUploadService.library_ids_from(params))
+    all = [cover, *photos, *picked].compact
     existing = (@activity&.photos || []).size - Array(params.dig(:incident, :remove_photo_ids)).size
     raise IncidentPhotoUploadService::InvalidUpload, "แนบรูปได้ไม่เกิน #{IncidentPhotoUploadService::MAX_FILES} รูปต่อกิจกรรม" if existing + all.size > IncidentPhotoUploadService::MAX_FILES
 
-    IncidentPhotoUploadService.validate!(all)
-    [cover, photos]
+    ImageLibrary.validate!([cover, *photos].grep_v(LibraryImage).compact)
+    [cover, photos, picked]
   end
 
-  def attach_photos(activity, cover, photos)
+  def attach_photos(activity, cover, photos, picked)
     if cover
-      before = Array(activity.photos).map { |photo| photo["id"] }
-      IncidentPhotoUploadService.attach!(incident: activity, uploads: [cover])
-      activity.set(cover_photo_id: (Array(activity.photos).map { |photo| photo["id"] } - before).first)
+      cover = ImageLibrary.import!(upload: cover, owner_user_id: activity.owner_user_id, subdistrict_id: activity.subdistrict_id,
+                                   source: "activity", uploaded_by: current_user.username) unless cover.is_a?(LibraryImage)
+      IncidentPhotoUploadService.attach!(incident: activity, uploads: [], picked: [cover])
+      activity.set(cover_photo_id: cover.id.to_s)
     end
-    IncidentPhotoUploadService.attach!(incident: activity, uploads: photos) if photos.any?
+    IncidentPhotoUploadService.attach!(incident: activity, uploads: photos, picked:, uploaded_by: current_user.username) if photos.any? || picked.any?
+  rescue IncidentPhotoUploadService::InvalidUpload => error
+    flash[:alert] = "บันทึกกิจกรรมแล้ว แต่แนบรูปไม่สำเร็จ: #{error.message}"
   rescue StandardError => error
     Rails.logger.error("Activity photo upload failed: #{error.class}: #{error.message}")
     flash[:alert] = "บันทึกกิจกรรมแล้ว แต่อัปโหลดรูปไม่สำเร็จ กรุณาลองแนบรูปอีกครั้ง"

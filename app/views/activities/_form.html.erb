@@ -29,14 +29,16 @@
           <fieldset class="cctv-fieldset">
             <legend>รูปหลัก (แสดงเป็นไอคอนบนแผนที่)</legend>
             <div class="activity-cover-preview" data-cover-preview>
-              <% if (cover = activity.cover_photo) %><%= image_tag incident_photo_path(activity, cover["id"]), alt: "" %><% else %><span class="material-symbols-outlined"><%= activity.activity_icon %></span><% end %>
+              <% if (cover = activity.cover_photo) %><%= image_tag incident_photo_path(activity, cover["id"], variant: "thumb"), alt: "" %><% else %><span class="material-symbols-outlined"><%= activity.activity_icon %></span><% end %>
             </div>
-            <label>เลือกรูปหลัก<%= form.file_field :cover_photo, accept: "image/jpeg,image/png,image/webp", data: { cover_input: true } %><small>JPG, PNG หรือ WebP ไม่เกิน 10 MB — ถ้าไม่ใส่ จะใช้ไอคอนตามประเภทกิจกรรม</small></label>
-            <label>รูปประกอบเพิ่มเติม<%= form.file_field :photos, multiple: true, accept: "image/jpeg,image/png,image/webp" %></label>
+            <label>เลือกรูปหลัก<%= form.file_field :cover_photo, accept: ImageLibrary::ACCEPT, data: { cover_input: true } %><small>JPG, PNG, WebP หรือ HEIC ไม่เกิน 15 MB — ถ้าไม่ใส่ จะใช้ไอคอนตามประเภทกิจกรรม</small></label>
+            <%= render "library_images/picker", field: "incident[cover_library_image_id]", max: 1, label: "เลือกรูปหลักจากคลังภาพ", selected: ImageLibrary.pick(current_user, params.dig(:incident, :cover_library_image_id)) %>
+            <label>รูปประกอบเพิ่มเติม<%= form.file_field :photos, multiple: true, accept: ImageLibrary::ACCEPT %><small>ภาพที่แนบจะถูกเก็บในคลังข้อมูลภาพและแปลงเป็น WebP อัตโนมัติ</small></label>
+            <%= render "library_images/picker", field: "incident[library_image_ids][]", max: IncidentPhotoUploadService::MAX_FILES, selected: ImageLibrary.pick(current_user, params.dig(:incident, :library_image_ids)) %>
             <% if activity.persisted? && activity.photos.any? %>
               <div class="activity-photo-list">
                 <% activity.photos.each do |photo| %>
-                  <label class="activity-photo"><%= image_tag incident_photo_path(activity, photo["id"]), alt: photo["filename"] %><span><input type="checkbox" name="incident[remove_photo_ids][]" value="<%= photo["id"] %>"> ลบ<%= " (รูปหลัก)" if photo["id"] == activity.cover_photo_id %></span></label>
+                  <label class="activity-photo"><%= image_tag incident_photo_path(activity, photo["id"], variant: "thumb"), alt: photo["filename"], loading: "lazy" %><span><input type="checkbox" name="incident[remove_photo_ids][]" value="<%= photo["id"] %>"> ลบ<%= " (รูปหลัก)" if photo["id"] == activity.cover_photo_id %></span></label>
                 <% end %>
               </div>
             <% end %>

@@ -80,6 +80,7 @@ services:
   web:
     build: .
     image: smart-tambon-web:latest
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgis://smart_city:smart_city@db:5432/smart_city_development
       MONGODB_URI: mongodb://mongo:27017/smart_city_development
@@ -96,6 +97,8 @@ services:
       # Standalone weather service (services/weather); the key must match WEATHER_ADMIN_API_KEY in services/weather/.env
       WEATHER_API_URL: ${WEATHER_API_URL:-http://host.docker.internal:8010}
       WEATHER_ADMIN_API_KEY: ${WEATHER_ADMIN_API_KEY:-}
+      # GISTDA Disaster Open API system key (fallback when the settings page has none; each อบต. may set its own)
+      GISTDA_API_KEY: ${GISTDA_API_KEY:-}
     extra_hosts: ["host.docker.internal:host-gateway"]
     ports: ["3000:3000"]
     volumes: [.:/rails, bundle_data:/usr/local/bundle]

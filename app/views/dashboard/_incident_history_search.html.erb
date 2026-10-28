@@ -1,0 +1,32 @@
+<% search = @history_search %>
+<% if part == :form %>
+  <%= form_with url: @incidents_path, method: :get, local: true, class: "incident-history-form", aria: { label: "ค้นหาเหตุการณ์ย้อนหลัง" } do %>
+    <div class="incident-history-range">
+      <span class="incident-history-label" title="ค้นหาย้อนหลัง"><span class="material-symbols-outlined" aria-hidden="true">history</span><span class="incident-history-label-text">ค้นหาย้อนหลัง</span></span>
+      <%= date_field_tag :from, search.from || 29.days.ago.to_date, max: Time.zone.today, required: true, aria: { label: "ตั้งแต่วันที่" }, title: "ตั้งแต่วันที่" %>
+      <span class="incident-history-dash" aria-hidden="true">–</span>
+      <%= date_field_tag :to, search.to || Time.zone.today, max: Time.zone.today, aria: { label: "ถึงวันที่" }, title: "ถึงวันที่" %>
+      <button type="submit" class="incident-history-submit" aria-label="ค้นหา"><span class="material-symbols-outlined" aria-hidden="true">search</span>ค้นหา</button>
+      <% if search.active? %><%= link_to @incidents_path, class: "incident-history-clear", title: "ล้างการค้นหา", aria: { label: "ล้างการค้นหา" } do %><span class="material-symbols-outlined" aria-hidden="true">close</span><% end %><% end %>
+    </div>
+  <% end %>
+<% else %>
+  <% features = @history_map_features.to_a %>
+  <section class="incident-history-search" aria-label="ผลการค้นหาย้อนหลัง">
+    <p class="incident-history-summary">
+      <span class="material-symbols-outlined" aria-hidden="true">history</span>
+      พบ <b><%= @incidents.size %></b> <%= @incident_category == "disaster" ? "ภัยพิบัติ" : "เหตุการณ์" %>
+      ระหว่าง <%= thai_short_date(search.from) %> – <%= thai_short_date(search.to) %>
+      <% if @incidents.any? %>· แสดงบนแผนที่ <%= features.size %> รายการ (มีขอบเขตพื้นที่ประเมิน <%= features.count { |feature| feature[:area].present? } %>)<% end %>
+    </p>
+    <% if features.any? %>
+      <div class="incident-history-map" data-incident-history-map data-selected-id="<%= @selected_incident&.id %>" data-features="<%= features.to_json %>" aria-label="แผนที่ผลการค้นหาย้อนหลัง"></div>
+      <ul class="incident-history-legend">
+        <li><i class="point"></i>จุดเกิดเหตุ</li>
+        <li><i class="area"></i>ขอบเขตพื้นที่ประเมิน</li>
+        <li><i class="selected"></i>รายการที่เลือก</li>
+      </ul>
+    <% end %>
+  </section>
+  <%= javascript_include_tag "incident_history_map", defer: true %>
+<% end %>

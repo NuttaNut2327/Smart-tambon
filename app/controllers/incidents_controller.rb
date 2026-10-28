@@ -159,7 +159,8 @@ class IncidentsController < ApplicationController
 
   def create
     uploads = IncidentPhotoUploadService.uploads_from(params)
-    IncidentPhotoUploadService.validate!(uploads)
+    picked = ImageLibrary.pick(current_user, IncidentPhotoUploadService.library_ids_from(params))
+    IncidentPhotoUploadService.validate!(uploads, picked_count: picked.size)
     incident = Incident.new(incident_attributes)
     incident.category = "general"
     incident.status = "pending"
@@ -175,7 +176,7 @@ class IncidentsController < ApplicationController
 
     incident.save!
     begin
-      IncidentPhotoUploadService.attach!(incident: incident, uploads: uploads)
+      IncidentPhotoUploadService.attach!(incident: incident, uploads: uploads, picked: picked, uploaded_by: current_user.username)
     rescue StandardError => error
       Rails.logger.error("Incident photo upload failed: #{error.class}: #{error.message}")
       IncidentPhotoUploadService.purge_for(incident)
@@ -217,7 +218,8 @@ class IncidentsController < ApplicationController
     photo = Array(incident.photos).find { |item| item["id"] == params[:photo_id] }
     return head :not_found unless photo
 
-    object = IncidentPhotoUploadService.download(photo)
+    object = IncidentPhotoUploadService.download(photo, variant: params[:variant])
+    expires_in 1.hour, public: false
     send_data object.body.read,
       filename: photo["filename"].presence || "incident-photo",
       type: photo["content_type"].presence || object.content_type,
@@ -312,7 +314,7 @@ class IncidentsController < ApplicationController
 
   def assess
     incident = find_incident
-    assessment = params.require(:assessment).permit(:title, :area_sq_km, :affected_people, :affected_households, :budget, :resource_lines, :activate)
+    assessment = params.require(:assessment).permit(:title, :area_sq_km, :area_geojson, :affected_people, :affected_households, :budget, :resource_lines, :activate)
     next_version = incident.response_plan_versions.map { |item| item["version"].to_i }.max.to_i + 1
     resources = assessment[:resource_lines].to_s.lines.filter_map do |line|
       name, required, available, unit = line.strip.split("|").map(&:strip)
@@ -330,8 +332,9 @@ class IncidentsController < ApplicationController
       "affected_households" => assessment[:affected_households].to_i,
       "budget" => assessment[:budget].to_i,
       "assessed_at" => assessed_at,
-      "resources" => resources
-    }
+      "resources" => resources,
+      "area_geojson" => assessment_area_geojson(assessment[:area_geojson])
+    }.compact
     incident.histories << {
       "title" => "ประเมินสถานการณ์ Version #{next_version}",
       "description" => "#{assessment_title} · พื้นที่ #{assessment[:area_sq_km].to_f.round(3)} ตร.กม. · ประชากร #{assessment[:affected_people].to_i} คน · #{assessment[:affected_households].to_i} ครัวเรือน",
@@ -459,6 +462,25 @@ class IncidentsController < ApplicationController
   end
 
   private
+
+  # The drawn impact area, validated and repaired by PostGIS and kept as polygon GeoJSON in EPSG:4326 so the
+  # look-back search map can show it later. Anything that is not a usable polygon is dropped.
+  def assessment_area_geojson(raw)
+    return if raw.blank? || raw.bytesize > 500.kilobytes
+
+    geometry = JSON.parse(raw)
+    return unless geometry.is_a?(Hash) && %w[Polygon MultiPolygon].include?(geometry["type"])
+
+    sql = ActiveRecord::Base.sanitize_sql_array([<<~SQL.squish, geometry.to_json])
+      SELECT ST_AsGeoJSON(area, 6) AS geojson FROM (
+        SELECT ST_CollectionExtract(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(?), 4326)), 3) AS area
+      ) shape WHERE NOT ST_IsEmpty(area)
+    SQL
+    result = ActiveRecord::Base.connection.select_value(sql)
+    JSON.parse(result) if result
+  rescue JSON::ParserError, ActiveRecord::StatementInvalid
+    nil
+  end
 
   def load_map_layer_data(include_incidents:)
     @map_incidents =

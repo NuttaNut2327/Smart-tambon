@@ -43,6 +43,19 @@ def observation_job(scheduler: BlockingScheduler | None = None) -> None:
             log.info("observation retry scheduled", extra={"run_date": when.isoformat()})
 
 
+def gistda_prune_job() -> None:
+    from app import db as db_module
+    from app.services import gistda
+
+    session = db_module.SessionLocal()
+    try:
+        log.info("gistda cache pruned", extra=gistda.prune(session))
+    except Exception:
+        log.exception("gistda prune crashed")
+    finally:
+        session.close()
+
+
 def build_scheduler() -> BlockingScheduler:
     scheduler = BlockingScheduler(timezone=TZ, job_defaults={"coalesce": True, "max_instances": 1,
                                                              "misfire_grace_time": 600})
@@ -50,6 +63,7 @@ def build_scheduler() -> BlockingScheduler:
     scheduler.add_job(_run, CronTrigger(hour="*/6", minute=15, timezone=TZ), args=["forecast"], id="forecast")
     scheduler.add_job(observation_job, CronTrigger(hour=2, minute=0, timezone=TZ), args=[scheduler],
                       id="observation")
+    scheduler.add_job(gistda_prune_job, CronTrigger(hour=3, minute=30, timezone=TZ), id="gistda-prune")
     return scheduler
 
 

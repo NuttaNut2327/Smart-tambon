@@ -20,7 +20,7 @@ module Api
         location_name: activity.location_name, organizer: activity.organizer, expected_attendees: activity.expected_attendees,
         description: activity.description.to_s.truncate(240),
         latitude: activity.latitude, longitude: activity.longitude,
-        cover_url: cover && incident_photo_path(activity, cover["id"]),
+        cover_url: cover && incident_photo_path(activity, cover["id"], variant: "thumb"),
         url: activities_path(filter: activity.status == "completed" ? "finished" : "current", anchor: "activity-#{activity.id}")
       }
     end

@@ -9,7 +9,7 @@ class DatasetVersionImportService
   def initialize(dataset:, user:, upload: nil, manual_records: nil, change_note: nil, source_kind: nil,
                  source_filename: nil, source_content_type: nil, source_content: nil, allow_empty: false,
                  append_records: false, import_mode: nil, display_name: nil, skip_boundary_link_state: false, skip_audit_log: false,
-                 registry_records: nil)
+                 registry_records: nil, allow_missing_location: false)
     @dataset = dataset
     @user = user
     @upload = upload
@@ -26,6 +26,7 @@ class DatasetVersionImportService
     @skip_boundary_link_state = skip_boundary_link_state
     @skip_audit_log = skip_audit_log
     @registry_records = registry_records
+    @allow_missing_location = allow_missing_location
   end
 
   def import!
@@ -365,7 +366,7 @@ class DatasetVersionImportService
   end
 
   def device_dataset?
-    %w[cctv_devices water_level_sensors pm25_sensors].include?(@dataset.data_type)
+    %w[cctv_devices water_level_sensors pm25_sensors location_trackers].include?(@dataset.data_type)
   end
 
   def next_incident_reference_code(used_codes)
@@ -377,6 +378,7 @@ class DatasetVersionImportService
 
   def cast(value, type)
     return nil if value.blank?
+    value = value.tr("๐-๙", "0-9") if value.is_a?(String) # Thai digits are stored as Arabic digits
     case type
     when "number" then Float(normalized_numeric_value(value))
     when "integer"
@@ -398,7 +400,8 @@ class DatasetVersionImportService
   def validate_location(record, index, errors)
     return unless @dataset.geometry_type == "point"
     lat, lon = record["latitude"], record["longitude"]
-    return if @dataset.data_type == "agencies" && lat.blank? && lon.blank?
+    return if %w[agencies location_trackers].include?(@dataset.data_type) && lat.blank? && lon.blank?
+    return if @allow_missing_location && lat.blank? && lon.blank?
     if lat.blank? || lon.blank? || !lat.to_f.between?(-90, 90) || !lon.to_f.between?(-180, 180)
       errors << "แถว #{index + 2}: พิกัดไม่ถูกต้อง"
       return
@@ -553,7 +556,7 @@ class DatasetVersionImportService
     values = case @dataset.data_type
              when "population", "village_boundaries"
                [record["village_code"].presence || record["subdistrict_code"].presence || record["subdistrict"], record["village_number"].presence || record["village_name"]]
-             when "cctv_devices", "water_level_sensors", "pm25_sensors" then [record["sensor_id"]]
+             when "cctv_devices", "water_level_sensors", "pm25_sensors", "location_trackers" then [record["sensor_id"]]
              when "agencies" then [record["agency_code"].presence || record["agency_name"]]
              when "teams" then [record["team_code"].presence || record["team_name"]]
              when "workforce" then [record["personnel_code"].presence || record["full_name"], record["agency_code"]]

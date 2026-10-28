@@ -1,0 +1,12 @@
+/* GISTDA Disaster Open API map layers (flood, VIIRS hotspots, drought DRI+) */
+.layer-dot.gistda-flood{background:#1e88e5}
+.layer-dot.gistda-hotspot{background:#c2255c}
+.layer-dot.gistda-drought{background:#c9b27a}
+.gistda-layer-filter{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:0 0 6px 28px}
+.gistda-layer-filter select{flex:0 0 auto;padding:4px 6px;border:1px solid #dfe4df;border-radius:8px;font:inherit;font-size:12px;background:#fff}
+.gistda-layer-status{flex:1 1 120px;min-width:0;color:#806f5f;font-size:9px;line-height:1.3}
+.gistda-popup strong{display:flex;align-items:center;gap:6px}
+.gistda-popup-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;border:1.5px solid #fff;box-shadow:0 0 0 1px rgb(0 0 0 / 15%)}
+.gistda-popup-swatch.flood{background:#1e88e5}
+.gistda-popup-swatch.hotspot{background:#c2255c;border-radius:50%}
+.gistda-popup .gistda-popup-meta{color:#806f5f;font-size:10px;overflow-wrap:anywhere}

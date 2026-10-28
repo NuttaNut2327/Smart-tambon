@@ -40,6 +40,7 @@ module Broadcasts
 
         send(task)
         @broadcast.pull(pending_tasks: task)
+        break if @broadcast.status == "skipped"
       end
     rescue StandardError => error
       @logger.error("[broadcast] #{@broadcast.id} failed: #{error.class}: #{error.message}")
@@ -52,6 +53,11 @@ module Broadcasts
       program = @broadcast.broadcast_program or raise "ไม่พบรายการข่าวของข่าวนี้"
       @broadcast.set(status: "generating", error_message: nil)
       context = Context.for(program)
+      if program.alert_only? && context["alerts"].blank?
+        return @broadcast.set(title: "#{program.name} #{context['today']}: ไม่มีเรื่องต้องเตือน", context_snapshot: context, generated_at: Time.current,
+                              status: "skipped", pending_tasks: [])
+      end
+
       result = Writer.call(program, context)
       @broadcast.set(title: result.title.presence || "#{program.name} #{context['today']}", bullets: result.bullets, script: result.script,
                      prompt_used: program.prompt, context_snapshot: context, ai_model: result.model, generated_at: Time.current, status: "draft")
@@ -62,7 +68,7 @@ module Broadcasts
       raise "ยังไม่มีข้อความสำหรับสร้างเสียง" if text.blank?
 
       program = @broadcast.broadcast_program
-      result = Tts::Synthesizer.call(text, provider: program&.tts_provider || TtsProvider.default, voice: program&.tts_voice)
+      result = Tts::Synthesizer.call(text, provider: program&.tts_provider || TtsProvider.default_for(@broadcast.organization_key), voice: program&.tts_voice)
       Media.store(@broadcast, :audio, data: result.audio, content_type: result.content_type, filename: "broadcast-#{@broadcast.id}.mp3")
       @broadcast.set(audio_text_digest: Digest::SHA256.hexdigest(text), error_message: nil)
     end

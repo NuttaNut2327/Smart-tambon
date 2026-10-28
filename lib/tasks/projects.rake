@@ -11,6 +11,6 @@ namespace :projects do
 
   desc "Remove simulated projects (code starting with SIM-)"
   task clear_simulated: :environment do
-    puts "Removed #{Project.where(code: ProjectSimulator::CODE_PATTERN).delete_all} simulated projects"
+    puts "Removed #{DemoData.purge!("projects")} simulated projects"
   end
 end

@@ -586,6 +586,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const saveResources = page.querySelector("[data-save-resources]");
       const saveButton = page.querySelector("[data-save-button]");
       if (saveArea) saveArea.value = result.area_sq_km;
+      const saveAreaGeojson = page.querySelector("[data-save-area-geojson]");
+      if (saveAreaGeojson) saveAreaGeojson.value = JSON.stringify(geometryGeoJSON);
       if (savePopulation) savePopulation.value = result.affected_people;
       if (saveHouseholds) saveHouseholds.value = result.affected_households;
       if (saveResources) saveResources.value = result.resources.map((resource) => `${resource.name} | ${resource.required} | ${resource.available} | ${resource.unit}`).join("\n");

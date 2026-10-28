@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -265,3 +266,62 @@ class WeatherIngestionLog(Base):
     details: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
     __table_args__ = (Index("ix_weather_ingestion_logs_started", "started_at"),)
+
+
+class GistdaFetch(Base):
+    """One cached GISTDA Disaster API query (dataset + period + bbox). Its features are kept until a newer
+    fetch of the same query replaces them; the cache is shared because the data is the same for every API key."""
+
+    __tablename__ = "gistda_fetches"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    dataset: Mapped[str] = mapped_column(String(32))  # flood | hotspots
+    period_days: Mapped[int] = mapped_column(Integer)
+    bbox_key: Mapped[str] = mapped_column(String(96))
+    bbox = mapped_column(Geometry(geometry_type="POLYGON", srid=4326, spatial_index=False), nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    number_matched: Mapped[int | None] = mapped_column(Integer)
+    number_stored: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    truncated: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # GISTDA's own response timeStamp (when the upstream answered), kept as sent
+    data_timestamp: Mapped[str | None] = mapped_column(String(40))
+
+    features: Mapped[list["GistdaFeature"]] = relationship(back_populates="fetch", cascade="all, delete-orphan",
+                                                          passive_deletes=True)
+
+    __table_args__ = (Index("ix_gistda_fetches_lookup", "dataset", "period_days", "bbox_key", "fetched_at"),)
+
+
+class GistdaFeature(Base):
+    __tablename__ = "gistda_features"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    fetch_id: Mapped[int] = mapped_column(ForeignKey("gistda_fetches.id", ondelete="CASCADE"), index=True)
+    feature_id: Mapped[str | None] = mapped_column(String(64))
+    geom = mapped_column(Geometry(geometry_type="GEOMETRY", srid=4326, spatial_index=False), nullable=False)
+    # Whitelisted upstream properties only; missing values are NULL
+    properties: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+
+    fetch: Mapped[GistdaFetch] = relationship(back_populates="features")
+
+    __table_args__ = (Index("ix_gistda_features_geom", "geom", postgresql_using="gist"),)
+
+
+class GistdaTile(Base):
+    """Cached GISTDA map tile (PNG). content NULL means GISTDA had no tile there."""
+
+    __tablename__ = "gistda_tiles"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    layer: Mapped[str] = mapped_column(String(32))
+    period_days: Mapped[int] = mapped_column(Integer)
+    z: Mapped[int] = mapped_column(Integer)
+    x: Mapped[int] = mapped_column(Integer)
+    y: Mapped[int] = mapped_column(Integer)
+    content: Mapped[bytes | None] = mapped_column(LargeBinary)
+    content_type: Mapped[str | None] = mapped_column(String(64))
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+    __table_args__ = (UniqueConstraint("layer", "period_days", "z", "x", "y", name="uq_gistda_tiles"),)

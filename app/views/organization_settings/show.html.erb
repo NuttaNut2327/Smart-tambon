@@ -17,7 +17,8 @@
         <div class="settings-logo">
           <%= image_tag(@setting.logo.present? ? logo_organization_settings_path(key: @setting.organization_key, v: @setting.logo["id"]) : system_logo_src, alt: "โลโก้ อบต.") %>
           <div>
-            <label>โลโก้ อบต.<%= file_field_tag "organization_setting[logo_file]", accept: "image/jpeg,image/png,image/webp" %><small>ถ้าไม่ใส่ จะใช้โลโก้ของระบบ</small></label>
+            <label>โลโก้ อบต.<%= file_field_tag "organization_setting[logo_file]", accept: ImageLibrary::ACCEPT %><small>ถ้าไม่ใส่ จะใช้โลโก้ของระบบ</small></label>
+            <%= render "library_images/picker", field: "organization_setting[logo_library_image_id]", max: 1, label: "เลือกโลโก้จากคลังภาพ" %>
             <% if @setting.logo.present? %><label class="settings-check"><%= check_box_tag "organization_setting[remove_logo]", "1" %> ลบโลโก้</label><% end %>
           </div>
         </div>
@@ -45,6 +46,17 @@
             <% SystemSetting::MAP_LAYERS.each do |key, label| %><label class="settings-check"><%= check_box_tag "organization_setting[map_layers][]", key, (custom_layers ? @setting.map_layers : system_map[:layers]).include?(key), id: "org_layer_#{key}" %> <%= label %></label><% end %>
           </div>
         </fieldset>
+      </div>
+    </section>
+
+    <section class="settings-card" id="settings-gistda">
+      <header><span class="material-symbols-outlined">key</span><div><h2>คีย์ข้อมูลภัยพิบัติ GISTDA</h2><p>ใช้ดึงชั้นข้อมูลน้ำท่วม จุดความร้อน และภัยแล้งบนแผนที่ของ อบต. นี้ — คีย์ถูกเข้ารหัส และไม่ถูกส่งไปยังเบราว์เซอร์</p></div></header>
+      <div class="settings-grid">
+        <label class="span-2">GISTDA Disaster API key
+          <%= password_field_tag "organization_setting[gistda_api_key]", nil, autocomplete: "new-password", placeholder: @setting.masked_gistda_api_key || (system_setting.gistda_api_key.present? ? "ใช้คีย์ของระบบ" : "ยังไม่ได้กำหนด") %>
+          <small>สมัครได้ที่ disaster.gistda.or.th/services/open-api · <span class="settings-source <%= @setting.gistda_api_key.present? ? "settings" : (system_setting.gistda_api_key.present? ? "env" : "none") %>"><%= @setting.gistda_api_key.present? ? "ใช้คีย์ของ อบต." : (system_setting.gistda_api_key.present? ? "ใช้คีย์ของระบบ" : "ยังไม่มีคีย์ทั้งของ อบต. และของระบบ") %></span> · เว้นว่างเพื่อคงค่าเดิม</small>
+          <% if @setting.gistda_api_key.present? %><span class="settings-check"><%= check_box_tag "organization_setting[clear_gistda_api_key]", "1" %> ลบคีย์ของ อบต. (กลับไปใช้คีย์ของระบบ)</span><% end %>
+        </label>
       </div>
     </section>
 

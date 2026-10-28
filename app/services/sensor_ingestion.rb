@@ -4,6 +4,8 @@
 #
 #   SensorIngestion.call(sensor_type: "pm25", sensor_id: "PM-001", token: "...",
 #                        payload: { "pm25" => 38.2, "observed_at" => "2026-10-14T10:00:00+07:00" }, source: "mqtt")
+#   SensorIngestion.call(sensor_type: "location", sensor_id: "GPS-001", token: "...",
+#                        payload: { "latitude" => 13.75, "longitude" => 100.50, "speed_kmh" => 32 }, source: "http")
 class SensorIngestion
   class Error < StandardError; end
   class Unauthorized < Error; end
@@ -21,8 +23,14 @@ class SensorIngestion
       dataset_type: "water_level_sensors", model: WaterLevelSensorReading,
       primary: :water_level_m, primary_keys: %w[water_level_m water_level value], primary_range: -500..10_000,
       optional: { rainfall_mm: 0..2000 }
+    },
+    # Moving devices (vehicles, field staff): each reading carries its own position instead of the registered one.
+    "location" => {
+      dataset_type: "location_trackers", model: LocationTrackerReading, moving: true,
+      optional: { speed_kmh: 0..500, heading_deg: 0..360, accuracy_m: 0..100_000, altitude_m: -500..10_000 }
     }
   }.freeze
+  POSITION_KEYS = { latitude: [%w[latitude lat], -90..90], longitude: [%w[longitude lon lng], -180..180] }.freeze
   # Device extras worth keeping (battery, signal) without letting payloads grow unbounded.
   METADATA_KEYS = %w[battery battery_v battery_percent rssi snr firmware].freeze
   MAX_FUTURE_SKEW = 5.minutes
@@ -48,8 +56,14 @@ class SensorIngestion
       source: @source,
       metadata: @payload.slice(*METADATA_KEYS)
     }
-    attributes[@config[:primary]] = number!(@config[:primary_keys].lazy.map { |key| @payload[key] }.find { |value| !value.nil? },
-                                            @config[:primary_keys].first, @config[:primary_range], required: true)
+    if @config[:moving]
+      POSITION_KEYS.each do |attribute, (keys, range)|
+        attributes[attribute] = number!(first_present(keys), keys.first, range, required: true)
+      end
+    else
+      attributes[@config[:primary]] = number!(first_present(@config[:primary_keys]), @config[:primary_keys].first,
+                                              @config[:primary_range], required: true)
+    end
     @config[:optional].each { |key, range| attributes[key] = number!(@payload[key.to_s], key.to_s, range) }
 
     model = @config[:model]
@@ -62,6 +76,8 @@ class SensorIngestion
   end
 
   private
+
+  def first_present(keys) = keys.lazy.map { |key| @payload[key] }.find { |value| !value.nil? }
 
   def find_sensor!
     raise Unauthorized, "ต้องระบุ Sensor Token" if @token.blank?

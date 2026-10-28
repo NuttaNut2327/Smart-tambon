@@ -183,7 +183,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const disasterDefaultFilter = incidentCategory === "disaster" && !hasRequestedIncident
       ? filters.querySelector('[data-incident-status-filter="pending"]')
       : null;
-    (disasterDefaultFilter || activeCardFilter || savedFilter || filters.querySelector("[data-incident-status-filter].active"))?.click();
+    // A look-back search shows every status so the list matches the results map.
+    const historyFilter = incidentPage?.dataset.historyActive === "true" ? filters.querySelector('[data-incident-status-filter="all"]') : null;
+    (historyFilter || disasterDefaultFilter || activeCardFilter || savedFilter || filters.querySelector("[data-incident-status-filter].active"))?.click();
     sourceFilters?.querySelector("[data-incident-source-filter].active")?.click();
   });
 

@@ -112,3 +112,10 @@
 .admin-review-actions form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0}
 .admin-review-actions input[type=text]{min-width:260px}
 @media (max-width:760px){.admin-detail{grid-template-columns:1fr}}
+.settings-demo-purge{margin-top:16px}
+.settings-demo-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.settings-demo-actions>div{display:grid;gap:4px;align-content:start;padding:12px 14px;border:1px solid #eef1ee;border-radius:10px}
+.settings-demo-actions small{color:#6b756f;font-size:12px}
+.settings-demo-actions form{margin-top:6px}
+.settings-demo-actions .button-link.danger{color:#b42318;border-color:#f1c7c2}
+.settings-demo-actions .button-link:disabled{opacity:.45;cursor:not-allowed}

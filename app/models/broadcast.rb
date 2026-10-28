@@ -11,6 +11,7 @@ class Broadcast
     "generating" => "กำลังสรุปข่าว",
     "draft" => "ร่าง รอตรวจ",
     "failed" => "สร้างไม่สำเร็จ",
+    "skipped" => "ไม่มีเรื่องต้องเตือน",
     "publishing" => "กำลังเผยแพร่",
     "published" => "เผยแพร่แล้ว"
   }.freeze

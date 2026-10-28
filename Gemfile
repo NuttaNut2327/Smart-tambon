@@ -19,6 +19,8 @@ gem "pdf-reader", "~> 2.13"
 gem "rexml", "~> 3.3"
 gem "rubyzip", "~> 2.3"
 gem "chunky_png", "~> 1.4"
+# Image library: converts uploads to WebP and builds thumbnails (needs libvips from the Dockerfile).
+gem "ruby-vips", "~> 2.2", require: false
 gem "aws-sdk-s3", require: false
 gem "mqtt", "~> 0.6"
 gem "bootsnap", require: false

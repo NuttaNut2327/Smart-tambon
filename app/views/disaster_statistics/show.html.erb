@@ -1,0 +1,59 @@
+<%= stylesheet_link_tag "disaster_statistics", "data-turbo-track": "reload" %>
+<%= javascript_include_tag "disaster_statistics", defer: true, "data-turbo-track": "reload" %>
+<%# Stack order (bottom to top) keeps neighbouring hazard colours apart for colour-blind readers. %>
+<% hazards = %w[flood landslide storm drought wildfire].map { |key| { key:, **DisasterEvent::HAZARDS[key].slice(:label, :color, :icon) } } %>
+<div class="shell dashboard-shell gis-dashboard users-shell dstat-shell">
+  <%= render "dashboard/sidebar", active_nav: :disaster_statistics, initial_area: @area_name %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= @area_name %></span><b>›</b><span>สถิติภัยพิบัติ</span></span></div><div class="header-avatar"><%= current_user.username.first.upcase %></div></header>
+    <div class="dashboard-content users-page dstat-page" data-disaster-stats data-hazards="<%= hazards.to_json %>">
+      <section class="city-heading users-title-row">
+        <div><p class="page-kicker">ข้อมูลภัยพิบัติย้อนหลัง</p><h1>สถิติและคาดการณ์ภัยพิบัติ</h1><p data-stats-period>กำลังโหลดข้อมูล…</p></div>
+        <% if @simulated %><span class="dstat-badge"><span class="material-symbols-outlined">science</span>มีข้อมูลจำลองเพื่อการสาธิต</span><% end %>
+      </section>
+
+      <section class="dstat-card dstat-outlook" data-outlook aria-labelledby="dstat-outlook-title">
+        <div class="dstat-card-head">
+          <div><h2 id="dstat-outlook-title">คาดการณ์ภัยช่วงนี้จากสถิติย้อนหลัง</h2><p>เทียบช่วงเวลาเดียวกันของปีก่อน ๆ กับปริมาณฝนสะสม 3 วันข้างหน้า</p></div>
+          <form class="dstat-outlook-form" data-outlook-form>
+            <label>วันที่คาดการณ์<input type="date" name="date" value="<%= Date.current.iso8601 %>" required></label>
+            <label>ฝนสะสม 3 วัน (มม.)<input type="number" name="rain_3d_mm" min="0" max="1000" step="1" placeholder="ใช้พยากรณ์จริง"></label>
+            <button type="submit" class="button-link primary"><span class="material-symbols-outlined">query_stats</span>คาดการณ์</button>
+          </form>
+        </div>
+        <div class="dstat-outlook-body" data-outlook-body aria-live="polite"><p class="dstat-loading">กำลังคำนวณ…</p></div>
+      </section>
+
+      <section class="dstat-kpis" data-stats-kpis aria-label="ผลกระทบรวม"></section>
+
+      <section class="dstat-card" aria-labelledby="dstat-year-title">
+        <div class="dstat-card-head"><div><h2 id="dstat-year-title">จำนวนเหตุรายปี แยกตามประเภทภัย</h2><p>ปีพุทธศักราช · ชี้ที่แท่งเพื่อดูจำนวนแต่ละประเภท</p></div></div>
+        <ul class="dstat-legend" data-stats-legend></ul>
+        <div class="dstat-year-chart" data-year-chart></div>
+        <details class="dstat-table"><summary>ดูข้อมูลแบบตาราง</summary><div class="users-table-wrap" data-year-table></div></details>
+      </section>
+
+      <section class="dstat-card" aria-labelledby="dstat-season-title">
+        <div class="dstat-card-head"><div><h2 id="dstat-season-title">ฤดูกาลของภัย: จำนวนเหตุเฉลี่ยต่อปีในแต่ละเดือน</h2><p>ทุกแถวใช้มาตราส่วนเดียวกัน เดือนที่สูงสุดของแต่ละภัยแสดงตัวเลขกำกับ</p></div></div>
+        <div class="dstat-season" data-season-chart></div>
+      </section>
+
+      <section class="dstat-card" aria-labelledby="dstat-impact-title">
+        <div class="dstat-card-head"><div><h2 id="dstat-impact-title">ผลกระทบสะสมแยกตามประเภทภัย</h2><p>รวมทุกเหตุในช่วงข้อมูล</p></div></div>
+        <div class="users-table-wrap" data-impact-table></div>
+      </section>
+
+      <div class="dstat-pair">
+        <section class="dstat-card" aria-labelledby="dstat-top-title">
+          <div class="dstat-card-head"><div><h2 id="dstat-top-title">ตำบลที่เกิดเหตุมากที่สุด</h2><p>จำนวนเหตุทั้งหมด แยกตามประเภทภัย</p></div></div>
+          <ol class="dstat-ranking" data-top-subdistricts></ol>
+        </section>
+        <section class="dstat-card" aria-labelledby="dstat-repeat-title">
+          <div class="dstat-card-head"><div><h2 id="dstat-repeat-title">หมู่บ้านที่เกิดภัยซ้ำ</h2><p>หมู่บ้านที่โดนภัยเดิมมากกว่า 1 ครั้ง ควรแจ้งเตือนก่อน</p></div></div>
+          <ol class="dstat-ranking" data-repeat-villages></ol>
+        </section>
+      </div>
+      <div class="dstat-tooltip" data-stats-tooltip role="tooltip" hidden></div>
+    </div>
+  </main>
+</div>

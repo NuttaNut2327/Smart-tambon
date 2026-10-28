@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from app.api import locations, weather
+from app.api import gistda, locations, weather
 from app.config import get_settings
 from app.db import get_db
 from app.logging_setup import setup_logging
@@ -23,6 +23,7 @@ app = FastAPI(
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
 app.include_router(locations.router, prefix="/api/v1")
 app.include_router(weather.router, prefix="/api/v1")
+app.include_router(gistda.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["meta"])

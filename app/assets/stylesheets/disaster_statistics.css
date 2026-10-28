@@ -1,0 +1,153 @@
+/* Disaster statistics and outlook page (/disaster_statistics). Charts are plain HTML/CSS like the project budget chart. */
+.dstat-page{position:relative;display:grid;gap:18px}
+.dstat-page .city-heading{margin:0}
+.dstat-badge{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border:1px solid #e2dac8;border-radius:999px;background:#fffaf0;color:#806f5f;font-size:12px}
+.dstat-badge .material-symbols-outlined{font-size:16px}
+
+.dstat-card{padding:18px 20px;border:1px solid #e3e7e2;border-radius:14px;background:#fff;box-shadow:0 4px 16px rgb(44 57 48 / 5%);min-width:0}
+.dstat-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px 20px;flex-wrap:wrap}
+.dstat-card-head h2{margin:0;color:#2c3930;font-size:17px}
+.dstat-card-head p{margin:3px 0 0;font-size:12px;color:#6b756f}
+.dstat-empty{margin:14px 0 0;color:#806f5f;font-size:13px}
+.dstat-swatch{display:inline-block;flex:none;width:10px;height:10px;margin-right:6px;border-radius:3px;background:var(--hazard);vertical-align:-1px}
+
+/* KPI tiles */
+.dstat-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.dstat-kpis article{padding:15px 16px;border:1px solid #e3e7e2;border-radius:12px;background:#fff}
+.dstat-kpis p{margin:0 0 6px;color:#607466;font-size:12px}
+.dstat-kpis strong{display:block;color:#1f2a23;font-size:22px;line-height:1.15}
+.dstat-kpis small{display:block;margin-top:6px;color:#806f5f;font-size:11px;line-height:1.45}
+
+/* Legend */
+.dstat-legend{display:flex;flex-wrap:wrap;gap:6px 20px;margin:14px 0 4px;padding:0;list-style:none;font-size:12px;color:#5f6b63}
+.dstat-legend li{display:flex;align-items:center}
+.dstat-legend b{margin-left:6px;color:#1f2a23}
+.dstat-legend.compact{margin:0;gap:4px 14px}
+.dstat-line-key{display:inline-block;width:14px;height:0;margin-right:6px;border-top:2px solid #1f2a23}
+
+/* Column charts (yearly stack, weekly outlook) */
+.dstat-year-chart,.dstat-week-chart{position:relative;height:280px;margin-top:8px}
+.dstat-week-chart{height:230px}
+.dstat-grid{position:absolute;top:22px;bottom:40px;left:0;right:0;pointer-events:none}
+.dstat-grid div{position:absolute;left:44px;right:0;border-top:1px solid #edf0ec}
+.dstat-grid div:first-child{border-top-color:#c9d0ca}
+.dstat-grid span{position:absolute;right:calc(100% + 8px);top:-8px;font-size:11px;color:#7a847d;white-space:nowrap}
+.dstat-columns{position:absolute;top:22px;bottom:0;left:44px;right:0;display:flex;gap:4px}
+.dstat-column{flex:1 1 0;min-width:0;display:grid;grid-template-rows:1fr 40px;justify-items:center;border-radius:8px;outline-offset:2px;cursor:default}
+.dstat-column:hover,.dstat-column:focus-visible{background:#f5f7f4}
+.dstat-column.current{background:#f3f6fa}
+.dstat-stack{position:relative;width:min(64px,64%);display:flex;flex-direction:column-reverse}
+.dstat-stack i{display:block;box-sizing:border-box;width:100%;flex:none;background:var(--hazard)}
+.dstat-stack i+i{border-bottom:2px solid #fff}
+.dstat-stack i:last-of-type{border-radius:4px 4px 0 0}
+.dstat-column:hover .dstat-stack i,.dstat-column:focus-visible .dstat-stack i{filter:brightness(1.08)}
+.dstat-total{position:absolute;left:50%;transform:translate(-50%,-4px);font-size:11px;font-weight:600;color:#1f2a23;white-space:nowrap}
+.dstat-axis-label{display:grid;align-content:start;justify-items:center;padding-top:6px;font-size:12px;color:#5f6b63;text-align:center;line-height:1.25}
+.dstat-axis-label small{color:#806f5f;font-size:10px}
+.dstat-week-chart .dstat-axis-label{font-size:11px}
+.dstat-column.current .dstat-axis-label{color:#1f2a23;font-weight:700}
+.dstat-column.current .dstat-axis-label small{color:#2f6fb0;font-weight:700}
+.dstat-last-year{position:absolute;left:-6px;right:-6px;height:0;border-top:2px solid #1f2a23;box-shadow:0 0 0 1px #fff;transform:translateY(1px)}
+
+/* Seasonal small multiples */
+.dstat-season{display:grid;gap:4px;margin-top:14px}
+.dstat-season-row{display:grid;grid-template-columns:96px repeat(12,minmax(0,1fr));gap:4px;align-items:end}
+.dstat-season-label{display:flex;align-items:center;align-self:center;font-size:12px;color:#3f4f44}
+.dstat-season-cell{position:relative;display:flex;align-items:flex-end;height:62px;border-bottom:1px solid #c9d0ca;border-radius:6px 6px 0 0;outline-offset:1px}
+.dstat-season-cell:hover,.dstat-season-cell:focus-visible{background:#f5f7f4}
+.dstat-season-cell i{display:block;width:100%;height:calc((100% - 18px) * var(--share));margin:0 2px;border-radius:3px 3px 0 0;background:var(--hazard)}
+.dstat-season-cell b{position:absolute;left:50%;bottom:calc((100% - 18px) * var(--share) + 2px);transform:translateX(-50%);color:#1f2a23;font-size:11px;font-weight:600;white-space:nowrap}
+.dstat-season-months span{font-size:11px;color:#6b756f;text-align:center}
+
+/* Tables */
+.dstat-table{margin-top:12px;font-size:13px}
+.dstat-table summary{cursor:pointer;color:#2f6fb0;font-size:12px}
+.dstat-page .numeric{text-align:right;font-variant-numeric:tabular-nums}
+.dstat-page .users-table{table-layout:auto;min-width:0}
+.dstat-shell .dstat-page .users-table tbody tr,.dstat-shell .dstat-page .users-table td{height:auto}
+.dstat-page .users-table th:nth-child(n),.dstat-page .users-table td:nth-child(n){width:auto;height:auto;padding:10px 12px;overflow:visible;white-space:nowrap;text-overflow:clip}
+.dstat-page .users-table .numeric{text-align:right}
+.dstat-impact tfoot td{font-weight:700;color:#1f2a23;border-top:1px solid #c9d0ca}
+
+/* Rankings */
+.dstat-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.dstat-ranking{display:grid;gap:2px;margin:12px 0 0;padding:0;list-style:none}
+.dstat-ranking li{display:grid;grid-template-columns:minmax(120px,38%) 1fr auto;align-items:center;gap:10px;padding:7px 6px;border-radius:8px;font-size:12px;color:#3f4f44}
+.dstat-ranking li[tabindex]:hover,.dstat-ranking li[tabindex]:focus-visible{background:#f5f7f4}
+.dstat-ranking li>span:first-child{display:flex;align-items:center;flex-wrap:wrap;gap:0 4px}
+.dstat-ranking small{color:#806f5f;font-size:11px}
+.dstat-ranking b{color:#1f2a23;font-variant-numeric:tabular-nums}
+.dstat-hbar{display:flex;gap:2px;height:12px;min-width:4px}
+.dstat-hbar i{display:block;flex:1 1 0;min-width:2px;background:var(--hazard)}
+.dstat-hbar i:last-child{border-radius:0 4px 4px 0}
+
+/* Tooltip */
+.dstat-tooltip{position:absolute;z-index:20;min-width:200px;max-width:280px;padding:10px 12px;border-radius:10px;background:#1f2a23;color:#f3f5f2;font-size:12px;box-shadow:0 8px 24px rgb(0 0 0 / 18%);pointer-events:none}
+.dstat-tooltip strong{display:block;margin-bottom:4px}
+.dstat-tooltip>small{display:block;margin-bottom:4px;color:#b9c2bb}
+.dstat-tooltip div{display:flex;align-items:center;gap:6px;padding:2px 0}
+.dstat-tooltip div b{margin-left:auto;padding-left:10px;font-weight:600;text-align:right;white-space:nowrap}
+.dstat-tooltip .dstat-swatch{width:12px;height:3px;margin-right:0;border-radius:2px}
+.dstat-tooltip .total{margin-top:4px;padding-top:6px;border-top:1px solid #3b4740}
+
+/* Outlook */
+.dstat-outlook{border-color:#d7e1ec;background:linear-gradient(180deg,#f7fafd,#fff 140px)}
+.dstat-outlook-form{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.dstat-outlook-form label{display:grid;gap:4px;font-size:12px;font-weight:600;color:#3f4f44}
+.dstat-outlook-form input{width:170px;padding:8px 10px;border:1px solid #d8cfbd;border-radius:8px;background:#fff;font:inherit;font-size:13px}
+.dstat-outlook-form .button-link{display:inline-flex;align-items:center;gap:6px;padding:9px 14px}
+.dstat-outlook-form .button-link .material-symbols-outlined{font-size:18px}
+.dstat-outlook-body{margin-top:16px;transition:opacity .2s}
+.dstat-outlook-body.refreshing{opacity:.5}
+.dstat-loading{color:#806f5f;font-size:13px}
+.dstat-outlook-top{display:grid;grid-template-columns:260px minmax(0,1fr);gap:18px;align-items:start}
+.dstat-outlook-top h3,.dstat-weekly h3{margin:0 0 6px;color:#2c3930;font-size:14px}
+.dstat-rain{display:flex;gap:12px;padding:14px;border-radius:12px;background:#eaf2fb;color:#1f3f63}
+.dstat-rain>.material-symbols-outlined{font-size:30px;color:#2f6fb0}
+.dstat-rain b{display:block;font-size:24px;line-height:1.2}
+.dstat-rain small{display:block;font-size:11px;color:#4d6680}
+.dstat-rain.unavailable{background:#f6f3ec;color:#674427}
+.dstat-rain.unavailable>.material-symbols-outlined{color:#967326}
+.dstat-rain.unavailable b{font-size:14px}
+.dstat-rain-days{display:flex;flex-wrap:wrap;gap:2px 10px;margin:6px 0 0;font-size:11px}
+.dstat-rain-days b{display:inline;font-size:11px}
+.dstat-summary{display:grid;gap:6px;margin:0;padding-left:18px;font-size:13px;line-height:1.55;color:#1f2a23}
+.dstat-summary-empty{margin:0;font-size:13px;color:#6b756f}
+.dstat-outlook-grid{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:18px;margin-top:16px}
+.dstat-risks{display:grid;gap:6px;align-content:start}
+.dstat-risk{display:grid;grid-template-columns:1fr auto;gap:3px 8px;padding:10px 12px;border:1px solid #e3e7e2;border-radius:10px;background:#fff;font:inherit;text-align:left;cursor:pointer;color:#3f4f44}
+.dstat-risk:hover{border-color:#c9d0ca}
+.dstat-risk[aria-selected=true]{border-color:#2c3930;box-shadow:inset 3px 0 0 #2c3930}
+.dstat-risk small{grid-column:1/-1;font-size:11px;color:#6b756f}
+.dstat-risk-name{display:flex;align-items:center;font-size:13px;font-weight:700;color:#1f2a23}
+.dstat-risk-level{display:inline-flex;align-items:center;gap:3px;justify-self:end;padding:2px 8px 2px 5px;border-radius:999px;font-size:12px;font-weight:700}
+.dstat-risk-level .material-symbols-outlined{font-size:16px}
+.dstat-risk-level.critical{background:#fde8e8;color:#a32020}
+.dstat-risk-level.critical .material-symbols-outlined{color:#d03b3b}
+.dstat-risk-level.serious{background:#fdeee6;color:#9a4317}
+.dstat-risk-level.serious .material-symbols-outlined{color:#ec835a}
+.dstat-risk-level.warning{background:#fff5dc;color:#7a5400}
+.dstat-risk-level.warning .material-symbols-outlined{color:#e09a00}
+.dstat-risk-level.good{background:#e7f6e7;color:#1c6b1c}
+.dstat-risk-level.good .material-symbols-outlined{color:#0ca30c}
+.dstat-risk-trend{display:inline-flex;align-items:center;gap:3px;font-size:12px;color:#5f6b63}
+.dstat-risk-trend .material-symbols-outlined{font-size:16px}
+.dstat-weekly{min-width:0;padding:12px 14px;border:1px solid #e3e7e2;border-radius:12px;background:#fff}
+.dstat-weekly-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.dstat-weekly-head h3{margin:0}
+.dstat-hotspots{margin:10px 0 0;font-size:12px;color:#5f6b63}
+.dstat-footnote{margin:12px 0 0;font-size:11px;color:#806f5f}
+
+@media (max-width:1180px){
+  .dstat-outlook-grid,.dstat-outlook-top{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  .dstat-pair{grid-template-columns:1fr}
+  .dstat-card{padding:14px}
+  .dstat-season-row{grid-template-columns:64px repeat(12,minmax(0,1fr));gap:2px}
+  .dstat-season-months span{font-size:9px}
+  .dstat-outlook-form input{width:100%}
+  .dstat-outlook-form label{flex:1 1 140px}
+}
+.dstat-no-data .dstat-kpis,.dstat-no-data .dstat-legend:not(.compact),.dstat-no-data .dstat-table{display:none}
+.dstat-no-data .dstat-year-chart{height:auto}

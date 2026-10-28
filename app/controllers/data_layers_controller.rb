@@ -7,7 +7,7 @@ class DataLayersController < ApplicationController
   def show
     @can_upload = current_user.system_admin? || current_user.subdistrict_admin?
     @imported_datasets = ImportedDataset.visible_to(current_user).order_by(updated_at: :desc).to_a
-    visible_system_types = %w[population village_boundaries resources consumables workforce teams agencies cctv_devices water_level_sensors pm25_sensors]
+    visible_system_types = %w[population village_boundaries resources consumables workforce teams agencies cctv_devices water_level_sensors pm25_sensors location_trackers]
     @selected_type = visible_system_types.include?(params[:data_type]) ? params[:data_type] : "population"
     @form_schema = ImportedDataset.schema_for(@selected_type)
     @selected_schema = @form_schema.reject { |field| field["hidden"] }
@@ -37,6 +37,9 @@ class DataLayersController < ApplicationController
         { dataset: dataset, record: record, position: position, editable: can_edit }
       end
     end
+    @fixed_record_count = all_fixed_records.size
+    @record_query = DatasetRecordQuery.new(all_fixed_records, data_type: @selected_type, schema: @selected_schema, params:)
+    all_fixed_records = @record_query.results
     @fixed_record_total = all_fixed_records.size
     @fixed_page_size = 10
     @fixed_total_pages = [(@fixed_record_total.to_f / @fixed_page_size).ceil, 1].max
@@ -44,6 +47,7 @@ class DataLayersController < ApplicationController
     @fixed_page = 1 if @fixed_page < 1
     @fixed_page = @fixed_total_pages if @fixed_page > @fixed_total_pages
     @fixed_records = all_fixed_records.slice((@fixed_page - 1) * @fixed_page_size, @fixed_page_size) || []
+    @record_photos = DatasetRecordPhoto::DATA_TYPES.include?(@selected_type) ? DatasetRecordPhoto.grouped_for(@selected_datasets) : nil
     @editable_datasets = @selected_datasets.select do |dataset|
       current_user.system_admin? || dataset.user_id == current_user.id ||
         (current_user.subdistrict_admin? && current_user.accessible_subdistrict_ids.include?(dataset.subdistrict_id))

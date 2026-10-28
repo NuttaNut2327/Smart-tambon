@@ -1,0 +1,57 @@
+<div class="shell dashboard-shell gis-dashboard data-layers-shell">
+  <%= render "dashboard/sidebar", active_nav: :data_layers, initial_area: @area_label %>
+  <main class="dashboard-main content"><header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb"><span id="selection-label"><%= @area_label %></span><b>›</b><span>คลังข้อมูลภาพ</span></span></div></header><div class="dashboard-content import-workspace">
+    <% if notice %><div class="import-flash success"><%= notice %></div><% end %><% if alert %><div class="import-flash error"><%= alert %></div><% end %>
+    <section class="city-heading import-heading"><div><h1>คลังข้อมูลภาพ</h1><p>ภาพทั้งหมดที่ใช้ในเหตุการณ์ กิจกรรม โครงการ และข้อมูลทรัพยากร เก็บไว้ที่เดียวและเลือกใช้ซ้ำได้</p></div></section>
+    <div class="import-layout"><%= render "data_layers/dataset_type_nav", active_type: "image_library" %>
+      <section class="dataset-catalog image-library">
+        <div class="catalog-hero"><div><span class="material-symbols-outlined">photo_library</span><div><h2>ภาพในคลัง</h2><p>ระบบแปลงเป็น WebP ย่อด้านยาวไม่เกิน <%= ImageLibrary::MAX_DIMENSION %> px และสร้างภาพย่อให้อัตโนมัติ</p></div></div><b><%= @total %> ภาพ</b></div>
+        <div class="image-library-toolbar">
+          <%= form_with url: library_images_path, method: :get, class: "image-library-search" do %>
+            <input type="search" name="q" value="<%= params[:q] %>" placeholder="ค้นหาชื่อภาพ" aria-label="ค้นหาชื่อภาพ">
+            <select name="source" aria-label="แหล่งที่มา" onchange="this.form.requestSubmit()"><option value="">ทุกแหล่งที่มา</option><% LibraryImage::SOURCES.each do |key, label| %><option value="<%= key %>" <%= "selected" if params[:source] == key %>><%= label %></option><% end %></select>
+            <button type="submit" class="button-link">ค้นหา</button>
+          <% end %>
+          <%= form_with url: library_images_path, multipart: true, class: "image-library-upload", data: { image_library_upload: true } do %>
+            <label class="data-layer-add"><span class="material-symbols-outlined" aria-hidden="true">add_photo_alternate</span>อัปโหลดภาพ<input type="file" name="images[]" multiple accept="<%= ImageLibrary::ACCEPT %>" hidden></label>
+            <small>JPG, PNG, WebP, HEIC ไม่เกิน <%= ImageLibrary::MAX_FILE_SIZE / 1.megabyte %> MB/ภาพ</small>
+          <% end %>
+        </div>
+        <% if @images.any? %>
+          <div class="image-library-grid">
+            <% @images.each do |image| %>
+              <% usages = @usages[image.id.to_s] %>
+              <button type="button" class="image-library-card" data-library-preview
+                      data-title="<%= image.title %>" data-url="<%= library_image_file_path(image) %>"
+                      data-meta="<%= [image.source_label, ("#{image.width}×#{image.height} px" if image.width), number_to_human_size(image.image["byte_size"]), (image.uploaded_by.presence && "โดย #{image.uploaded_by}"), thai_numeric_datetime(image.created_at)].compact.join(" · ") %>"
+                      data-usages="<%= usages.map { |usage| "#{usage[:kind]}: #{usage[:label]}" }.to_json %>"
+                      data-update-url="<%= library_image_path(image, q: params[:q], page: @page) if image.editable_by?(current_user) %>">
+                <img src="<%= library_image_file_path(image, variant: "thumb") %>" alt="" loading="lazy">
+                <span class="image-library-caption"><b><%= image.title %></b><small><%= image.source_label %><%= " · ใช้งาน #{usages.size}" if usages.any? %></small></span>
+              </button>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="image-library-empty"><span class="material-symbols-outlined">imagesmode</span><b><%= params[:q].present? || params[:source].present? ? "ไม่พบภาพที่ตรงกับการค้นหา" : "ยังไม่มีภาพในคลัง" %></b><small>ภาพที่แนบในเหตุการณ์ โครงการ หรือข้อมูลทรัพยากรจะถูกเก็บไว้ที่นี่โดยอัตโนมัติ</small></div>
+        <% end %>
+        <% if @page_count > 1 %>
+          <nav class="fixed-pagination" aria-label="เปลี่ยนหน้า"><span>แสดง <%= ((@page - 1) * LibraryImagesController::PAGE_SIZE) + 1 %>–<%= [@page * LibraryImagesController::PAGE_SIZE, @total].min %> จาก <%= @total %> ภาพ</span><div><% (1..@page_count).each do |page| %><%= link_to page, library_images_path(q: params[:q], source: params[:source], page:), class: "page-button #{'active' if page == @page}" %><% end %></div></nav>
+        <% end %>
+      </section>
+    </div>
+  </div></main>
+</div>
+<dialog class="dataset-modal image-library-preview" data-library-dialog>
+  <header><div><small>คลังข้อมูลภาพ</small><h2 data-preview-title></h2></div><button type="button" aria-label="ปิด" data-preview-close>×</button></header>
+  <a class="image-library-preview-image" data-preview-link target="_blank" rel="noopener"><img alt="" data-preview-image></a>
+  <p class="image-library-meta" data-preview-meta></p>
+  <div class="image-library-usages"><b>การใช้งาน</b><ul data-preview-usages></ul></div>
+  <footer data-preview-actions>
+    <%= form_with url: "#", method: :patch, scope: :library_image, class: "image-library-rename", data: { preview_rename: true } do |form| %>
+      <%= form.text_field :title, maxlength: 120, required: true, aria: { label: "ชื่อภาพ" } %><button type="submit" class="button-link">เปลี่ยนชื่อ</button>
+    <% end %>
+    <%= form_with url: "#", method: :delete, data: { preview_delete: true }, html: { onsubmit: "return confirm('ลบภาพนี้ออกจากคลัง?')" } do %>
+      <button type="submit" class="button-link danger">ลบภาพ</button>
+    <% end %>
+  </footer>
+</dialog>

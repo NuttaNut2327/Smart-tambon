@@ -24,6 +24,8 @@ Rails.application.routes.draw do
   resources :users, except: :show
   resource :my_access_area, only: :update
   resource :data_layers, only: :show
+  resources :library_images, path: "image_library", only: %i[index create update destroy]
+  get "image_library/:id/file(/:variant)", to: "library_images#show", as: :library_image_file, constraints: { variant: /thumb/ }
   get "data_layers/population_villages", to: "data_layers#population_villages", as: :population_villages
   post "data_layers/link_village_boundaries", to: "data_layers#link_village_boundaries", as: :link_village_boundaries
   post "data_layers/consumable_movements", to: "consumable_movements#create", as: :consumable_movements
@@ -31,6 +33,7 @@ Rails.application.routes.draw do
   get "area_analysis", to: "dashboard#area_analysis", as: :area_analysis
   get "general_incidents", to: "dashboard#general_incidents", as: :general_incidents
   get "disasters", to: "dashboard#disasters", as: :disasters
+  get "disaster_statistics", to: "disaster_statistics#show", as: :disaster_statistics
   get "report/:token", to: "public_incident_reports#show", as: :public_incident_report
   post "report/:token", to: "public_incident_reports#create"
   get "report/:token/reverse_geocode", to: "public_incident_reports#reverse_geocode", as: :reverse_geocode_public_incident_report
@@ -38,7 +41,7 @@ Rails.application.routes.draw do
   post "incidents", to: "incidents#create", as: :incidents
   patch "incidents/:id", to: "incidents#update", as: :incident
   delete "incidents/:id", to: "incidents#destroy"
-  get "incidents/:id/photos/:photo_id", to: "incidents#photo", as: :incident_photo
+  get "incidents/:id/photos/:photo_id(/:variant)", to: "incidents#photo", as: :incident_photo, constraints: { variant: /thumb/ }
   get "incidents/:id/assessment", to: "incidents#assessment", as: :assessment_incident
   post "incidents/:id/calculate_assessment", to: "incidents#calculate_assessment", as: :calculate_incident_assessment
   get "situation_assessment", to: "incidents#standalone_assessment", as: :situation_assessment
@@ -55,8 +58,17 @@ Rails.application.routes.draw do
   resources :population_imports, only: :create
   resources :population_datasets, only: :destroy
   resources :population_dashboards, only: :show
+  resources :smart_imports, only: %i[new create show update] do
+    member do
+      post :geocode
+      post :finalize
+    end
+  end
   resources :imported_datasets do
     resources :records, controller: "imported_dataset_records", only: %i[update destroy]
+    post "records/:record_id/photos", to: "dataset_record_photos#create", as: :record_photos
+    get "records/:record_id/photos/:id(/:variant)", to: "dataset_record_photos#show", as: :record_photo, constraints: { variant: /thumb/ }
+    delete "records/:record_id/photos/:id", to: "dataset_record_photos#destroy"
     resources :versions, controller: "imported_dataset_versions", only: %i[show create update] do
       post :checkpoint, on: :collection
       get :download, on: :member
@@ -119,6 +131,7 @@ Rails.application.routes.draw do
   get "settings", to: "settings#index", as: :settings
   resource :system_settings, only: %i[show update] do
     get :status
+    post :purge_demo_data
     get :logo
   end
   resource :organization_settings, only: %i[show update] do
@@ -143,6 +156,7 @@ Rails.application.routes.draw do
   resources :tts_providers, except: :show do
     member do
       post :test
+      get :voices
       patch :make_default
     end
   end
@@ -154,7 +168,7 @@ Rails.application.routes.draw do
     end
   end
   resources :projects, except: :show do
-    get "photos/:photo_id", action: :photo, on: :member, as: :photo
+    get "photos/:photo_id(/:variant)", action: :photo, on: :member, as: :photo, constraints: { variant: /thumb/ }
   end
   authenticated :user do
     root "dashboard#index", as: :authenticated_root
@@ -177,12 +191,19 @@ Rails.application.routes.draw do
     resources :imported_datasets, only: %i[index show]
     resources :water_stations, only: :index
     resources :fire_hotspots, only: :index
+    get "gistda/tiles/:layer/:z/:x/:y", to: "gistda#tile", as: :gistda_tile
+    get "gistda/:dataset", to: "gistda#index", as: :gistda
     get "weather", to: "weather#show"
     resources :cctv_cameras, only: :index
     resources :activities, only: :index
     resources :projects, only: :index
+    resources :disaster_events, only: :index do
+      get :statistics, on: :collection
+      get :outlook, on: :collection
+    end
     resources :pm25_readings, only: :create
     resources :water_level_readings, only: :create
+    resources :location_readings, only: :create
     get "sensors", to: "sensors#index"
     get "sensors/:sensor_type/:sensor_id/readings", to: "sensors#readings", as: :sensor_readings
     resource :access_area, only: :show

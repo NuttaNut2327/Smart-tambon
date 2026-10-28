@@ -7,9 +7,10 @@ class SystemSetting
   DEFAULT_NAME = "SMART TAMBON SAFETY THAILAND".freeze
   DEFAULT_SHORT_NAME = "SMART TAMBON".freeze
   DEFAULT_GEOCODER_URL = "https://geocode.pcm-life.com".freeze
-  SECRETS = { "longdo_map_key" => "LONGDO_MAP_KEY", "maptiler_key" => "MAPTILER_KEY" }.freeze
+  SECRETS = { "longdo_map_key" => "LONGDO_MAP_KEY", "maptiler_key" => "MAPTILER_KEY", "gistda_api_key" => "GISTDA_API_KEY" }.freeze
   BASEMAPS = { "street" => "แผนที่ถนน", "satellite" => "ภาพดาวเทียม" }.freeze
   MAP_LAYERS = { "water" => "สถานีวัดน้ำและฝน", "cctv" => "กล้องวงจรปิด", "activities" => "กิจกรรมในพื้นที่", "projects" => "โครงการ", "hotspots" => "จุดความร้อน (Hotspot)",
+                 "gistda_flood" => "พื้นที่น้ำท่วม (GISTDA)", "gistda_hotspots" => "จุดความร้อน (GISTDA)", "gistda_drought" => "พื้นที่เสี่ยงภัยแล้ง (GISTDA)",
                  "buildings" => "อาคาร (Building polygon)" }.freeze
   # Off by default: a building tile server has to be configured first, and the layer only draws when zoomed in.
   DEFAULT_MAP_LAYERS = (MAP_LAYERS.keys - %w[buildings]).freeze
@@ -25,6 +26,7 @@ class SystemSetting
   field :logo, type: Hash
   field :longdo_map_key_ciphertext, type: String
   field :maptiler_key_ciphertext, type: String
+  field :gistda_api_key_ciphertext, type: String
   field :geocoder_url, type: String
   field :map_basemap, type: String, default: "street"
   field :map_center_lat, type: Float, default: 13.7563
@@ -39,6 +41,8 @@ class SystemSetting
   field :registration_enabled, type: Boolean, default: true
   field :registration_terms, type: String
   field :registration_pdpa, type: String
+  # Show simulated demo records (projects, disaster history). Off keeps them out of every list and statistic.
+  field :demo_data_visible, type: Boolean, default: true
   field :updated_by, type: String
 
   index({ singleton_key: 1 }, unique: true)
@@ -78,6 +82,7 @@ class SystemSetting
 
   def longdo_map_key = secret("longdo_map_key")
   def maptiler_key = secret("maptiler_key")
+  def gistda_api_key = secret("gistda_api_key")
   def effective_geocoder_url = geocoder_url.presence || ENV["GEOCODER_URL"].presence || DEFAULT_GEOCODER_URL
   def effective_building_tiles_url = building_tiles_url.presence || ENV["BUILDING_TILES_URL"].presence
 

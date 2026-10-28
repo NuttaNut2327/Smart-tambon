@@ -19,6 +19,9 @@ class WeatherPanelService
     payload.merge("distance_km" => distance_km, "locations" => location_options)
   end
 
+  # [weather location, distance_km] for the user's area (registers the subdistrict when nothing is near).
+  def location = resolve_location(nil)
+
   private
 
   def resolve_location(location_id)

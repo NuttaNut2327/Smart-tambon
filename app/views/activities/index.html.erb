@@ -21,7 +21,7 @@
             <% cover = activity.cover_photo %>
             <article class="activity-card phase-<%= phase %>" id="activity-<%= activity.id %>">
               <div class="activity-cover">
-                <% if cover %><%= image_tag incident_photo_path(activity, cover["id"]), alt: activity.title, loading: "lazy" %><% else %><span class="material-symbols-outlined"><%= activity.activity_icon %></span><% end %>
+                <% if cover %><%= image_tag incident_photo_path(activity, cover["id"], variant: "thumb"), alt: activity.title, loading: "lazy" %><% else %><span class="material-symbols-outlined"><%= activity.activity_icon %></span><% end %>
                 <span class="activity-phase"><%= activity.activity_phase_label %></span>
               </div>
               <div class="activity-body">

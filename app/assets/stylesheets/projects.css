@@ -131,3 +131,8 @@
 .project-shell .project-filters .button-link{padding:0 14px}
 .project-shell .project-table th:nth-child(8){width:140px}
 .project-shell .project-table td.cctv-actions{text-align:right}
+
+/* Demo (simulated) records */
+.demo-badge{display:inline-block;width:fit-content;margin-left:6px;padding:1px 7px;border-radius:999px;background:#efe9fb;color:#5b3fa0;font-size:11px;font-weight:600;vertical-align:1px;white-space:nowrap}
+.cctv-fieldset label.project-demo-flag{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px dashed #cbbfe8;border-radius:10px;background:#faf8fe;font-weight:400}
+.users-card .project-demo-flag input{width:auto}

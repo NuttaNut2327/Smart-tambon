@@ -58,6 +58,9 @@
 .tts-test-status.error{color:#b42318}
 
 @media (max-width:1000px){.broadcast-layout{grid-template-columns:1fr}}
+.broadcast-templates{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 16px}
+.broadcast-templates>span{font-size:13px;color:#4b5a50}
+.broadcast-templates .material-symbols-outlined{font-size:18px}
 .broadcast-delivery-modes{display:grid;gap:10px}
 .broadcast-delivery-mode{margin:0;padding:10px 12px 12px;border:1px solid #e3e8e4;border-radius:10px;background:#fbfcfb;min-width:0}
 .broadcast-delivery-mode>.settings-switch{padding:0;border:0;border-radius:0}

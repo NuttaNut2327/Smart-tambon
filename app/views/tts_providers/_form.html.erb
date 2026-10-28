@@ -1,6 +1,6 @@
 <% info = TtsProvider::KINDS.fetch(@provider.kind) %>
 <%= stylesheet_link_tag "ai_assistant", "data-turbo-track": "reload" %>
-<%= render layout: "settings/frame", locals: { title: @provider.new_record? ? "เพิ่มผู้ให้บริการเสียง" : "แก้ไข #{@provider.name}", kicker: "ผู้ให้บริการเสียง (Text-to-Speech)", description: info[:label], active: :tts } do %>
+<%= render layout: "settings/frame", locals: { title: @provider.new_record? ? "เพิ่มผู้ให้บริการเสียง" : "แก้ไข #{@provider.name}", kicker: central_scope? ? "ผู้ให้บริการเสียงส่วนกลาง (Text-to-Speech)" : "เสียงอ่านข่าวของ อบต.", description: info[:label], active: :tts } do %>
   <%= form_with model: @provider, url: @provider.new_record? ? tts_providers_path : tts_provider_path(@provider), html: { class: "settings-form" } do |form| %>
     <% if @provider.errors.any? %><div class="form-errors"><% @provider.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
     <%= form.hidden_field :kind %>
@@ -17,12 +17,25 @@
           <%= form.text_field :voice, list: "tts-voices", required: true %>
           <datalist id="tts-voices"><% @provider.voices.each do |value, label| %><option value="<%= value %>"><%= label %></option><% end %></datalist>
           <small>เลือกจากรายการหรือพิมพ์ชื่อเสียงอื่นของผู้ให้บริการ<%= " · " + @provider.voices.map { |value, label| "#{value} = #{label}" }.first(3).join(", ") if @provider.voices.any? %></small>
+          <% if @provider.kind == "elevenlabs" %>
+            <% if @provider.persisted? && @provider.api_key? %>
+              <button type="button" class="button-link" data-tts-voices="<%= voices_tts_provider_path(@provider) %>"><span class="material-symbols-outlined">library_music</span>โหลดเสียงจากบัญชี ElevenLabs</button>
+              <select data-tts-voice-select hidden aria-label="เสียงในบัญชี ElevenLabs"></select>
+            <% else %>
+              <small>บันทึก API key ก่อน แล้วกด “โหลดเสียงจากบัญชี” เพื่อเลือกเสียงในบัญชี (รวมเสียงไทยที่เพิ่มจาก Voice Library)</small>
+            <% end %>
+          <% end %>
         </label>
         <label>ความเร็วในการอ่าน (0.5–2.0)<%= form.number_field :speaking_rate, step: 0.05, min: 0.5, max: 2.0 %><small>1.0 = ปกติ · เสียงตามสายแนะนำ 0.9–1.0</small></label>
         <% if @provider.kind == "openai" %><label>โมเดล<%= form.text_field :model, placeholder: "gpt-4o-mini-tts" %></label><% end %>
-        <label>Endpoint (ไม่บังคับ)<%= form.url_field :base_url, placeholder: info[:base_url] %><small>ใช้เมื่อเชื่อมผ่าน proxy หรือบริการที่เข้ากันได้ เช่น Open WebUI: https://โดเมน/api/v1 (ใส่หรือไม่ใส่ /v1 ท้าย URL ก็ได้)</small></label>
+        <% if @provider.models.any? %>
+          <label>โมเดล<%= form.select :model, @provider.models.invert %><small>ภาษาไทยใช้ได้เฉพาะ Eleven v3 / v4 · ความเร็วที่ ElevenLabs รับได้คือ 0.7–1.2</small></label>
+        <% end %>
+        <% if central_scope? %>
+          <label>Endpoint (ไม่บังคับ)<%= form.url_field :base_url, placeholder: info[:base_url] %><small>ใช้เมื่อเชื่อมผ่าน proxy หรือบริการที่เข้ากันได้ เช่น Open WebUI: https://โดเมน/api/v1 (ใส่หรือไม่ใส่ /v1 ท้าย URL ก็ได้)</small></label>
+        <% end %>
         <label class="settings-check"><%= form.check_box :enabled %> เปิดใช้งาน</label>
-        <label class="settings-check"><%= form.check_box :is_default %> ตั้งเป็นค่าเริ่มต้น</label>
+        <label class="settings-check"><%= form.check_box :is_default %> ตั้งเป็นค่าเริ่มต้น<%= " ของ อบต." unless central_scope? %></label>
       </div>
       <% if @provider.persisted? %>
         <div class="settings-actions"><button type="button" class="button-link" data-tts-test="<%= test_tts_provider_path(@provider) %>"><span class="material-symbols-outlined">play_circle</span>ฟังตัวอย่างด้วยเสียงที่เลือก</button><p class="tts-test-status" data-tts-status hidden></p></div>

@@ -150,6 +150,15 @@ class Incident
     response_plan_versions.find { |version| version["version"].to_i == active_plan_version.to_i }
   end
 
+  # When the incident happened: the reported time for back-dated reports, otherwise when it was recorded.
+  def event_time = backdated? && occurred_at.present? ? occurred_at : created_at
+
+  # The assessed impact area (GeoJSON, EPSG:4326) of the active plan, falling back to the latest plan that has one.
+  def assessment_area_geojson
+    active_plan&.dig("area_geojson").presence ||
+      response_plan_versions.select { |version| version["area_geojson"].present? }.max_by { |version| version["version"].to_i }&.dig("area_geojson")
+  end
+
   def category_label
     { "disaster" => "แจ้งเตือนภัยพิบัติ", "activity" => "กิจกรรมในพื้นที่" }.fetch(category, "เหตุการณ์ทั่วไป")
   end

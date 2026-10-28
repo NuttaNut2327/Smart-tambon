@@ -21,6 +21,7 @@
           <%= link_to notification_channels_path, class: ("active" if active == :notification_channels) do %><span class="material-symbols-outlined">group</span>ช่องทางแจ้งเตือน<% end %>
           <%= link_to notification_templates_path, class: ("active" if active == :notification_templates) do %><span class="material-symbols-outlined">edit_note</span>เทมเพลตข้อความ<% end %>
           <%= link_to notification_tests_path, class: ("active" if active == :notification_tests) do %><span class="material-symbols-outlined">send</span>ทดสอบการส่ง<% end %>
+          <%= link_to tts_providers_path, class: ("active" if active == :tts) do %><span class="material-symbols-outlined">record_voice_over</span>เสียงอ่านข่าว (TTS)<% end %>
         </nav>
       <% end %>
       <% if notice.present? %><p class="activity-flash notice"><%= notice %></p><% end %>

@@ -20,7 +20,8 @@
         <%= form.hidden_field :longitude, data: { picker_longitude: true } %>
       </div>
       <label class="wide">ผลกระทบเบื้องต้น<%= form.text_area :initial_impact, rows: 4, placeholder: "ระบุผลกระทบต่อประชาชน บ้านเรือน การเดินทาง หรือทรัพย์สิน" %></label>
-      <label class="wide incident-photo-field">รูปภาพประกอบเหตุการณ์<%= form.file_field :photos, multiple: true, accept: "image/jpeg,image/png,image/webp" %><small>เลือกได้สูงสุด 8 รูป · JPG, PNG หรือ WebP · ไม่เกิน 10 MB ต่อรูป</small></label>
+      <label class="wide incident-photo-field">รูปภาพประกอบเหตุการณ์<%= form.file_field :photos, multiple: true, accept: ImageLibrary::ACCEPT %><small>เลือกได้สูงสุด 8 รูป · JPG, PNG, WebP หรือ HEIC · ไม่เกิน 15 MB ต่อรูป · เก็บในคลังข้อมูลภาพอัตโนมัติ</small></label>
+      <div class="wide"><%= render "library_images/picker", field: "incident[library_image_ids][]", max: IncidentPhotoUploadService::MAX_FILES %></div>
     </div>
     <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "บันทึกเหตุการณ์", class: "incident-primary-action" %></footer>
   <% end %>

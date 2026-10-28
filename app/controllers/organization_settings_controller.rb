@@ -13,6 +13,7 @@ class OrganizationSettingsController < ApplicationController
     # "ใช้ค่าของระบบ" leaves map layers unset so the system default applies.
     @setting.map_layers = params.dig(:organization_setting, :map_layers_mode) == "custom" ? Array(params.dig(:organization_setting, :map_layers)).compact_blank : nil
     @setting.map_zoom = nil if params.dig(:organization_setting, :map_zoom).blank?
+    @setting.assign_gistda_api_key(params.dig(:organization_setting, :gistda_api_key), clear: params.dig(:organization_setting, :clear_gistda_api_key) == "1")
     @setting.updated_by = current_user.username
     replace_logo
     if @setting.save
@@ -63,11 +64,15 @@ class OrganizationSettingsController < ApplicationController
       IncidentPhotoUploadService.delete_photo(@setting.logo) if @setting.logo
       @setting.logo = nil
     end
+    # A new logo is an upload (stored in the image library) or a picture picked from the library.
     upload = params.dig(:organization_setting, :logo_file).presence
-    return unless upload
+    picked = ImageLibrary.pick(current_user, params.dig(:organization_setting, :logo_library_image_id)).first
+    return unless upload || picked
 
     previous = @setting.logo
-    @setting.logo = IncidentPhotoUploadService.store!(prefix: "settings/organizations/#{@setting.id}", upload:)
+    image = picked || ImageLibrary.import!(upload:, owner_user_id: current_user.id, subdistrict_id: current_user.subdistrict_id,
+                                           source: "logo", uploaded_by: current_user.username)
+    @setting.logo = image.attachment
     IncidentPhotoUploadService.delete_photo(previous) if previous
   end
 end

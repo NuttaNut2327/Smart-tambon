@@ -28,7 +28,7 @@
     const place = [project.location_name, project.subdistrict_name && `ต.${project.subdistrict_name}`, project.district_name && `อ.${project.district_name}`].filter(Boolean).join(" ");
     const progress = Math.max(0, Math.min(100, Number(project.progress_percent) || 0));
     const photos = (project.photos || []).filter(photo => photo.url);
-    const gallery = photos.length ? `<div class="project-popup-gallery">${photos.map((photo, index) => `<a href="${escapeHtml(photo.url)}" target="_blank" rel="noopener" title="${escapeHtml(photo.filename)}"><img src="${escapeHtml(photo.url)}" alt="ภาพที่ ${index + 1}" loading="lazy"></a>`).join("")}</div>` : "";
+    const gallery = photos.length ? `<div class="project-popup-gallery">${photos.map((photo, index) => `<a href="${escapeHtml(photo.url)}" target="_blank" rel="noopener" title="${escapeHtml(photo.filename)}"><img src="${escapeHtml(photo.thumb || photo.url)}" alt="ภาพที่ ${index + 1}" loading="lazy"></a>`).join("")}</div>` : "";
     const rows = [
       ["กลุ่ม", project.group_label],
       ["ประเภท", project.project_type],
@@ -41,7 +41,7 @@
     ].filter(([, value]) => value !== null && value !== undefined && value !== "");
     return `<div class="project-popup">
       ${gallery}
-      <strong>${escapeHtml(project.name)}</strong>${project.code ? `<small class="project-popup-code">${escapeHtml(project.code)}</small>` : ""}
+      <strong>${escapeHtml(project.name)}</strong>${project.simulated ? `<span class="demo-badge">ข้อมูลจำลอง</span>` : ""}${project.code ? `<small class="project-popup-code">${escapeHtml(project.code)}</small>` : ""}
       <p><span class="project-status ${escapeHtml(project.status)}">${escapeHtml(project.status_label)}</span> <span class="project-popup-progress"><i style="width:${progress}%"></i></span> ${progress}%</p>
       <dl>${rows.map(([label, value]) => `<dt>${label}</dt><dd>${escapeHtml(value)}</dd>`).join("")}</dl>
       ${project.description ? `<p class="project-popup-description">${escapeHtml(project.description)}</p>` : ""}

@@ -36,7 +36,8 @@ class DashboardController < ApplicationController
       in_progress: all_incidents.count { |incident| %w[assessing in_progress].include?(incident.status) },
       completed: all_incidents.count { |incident| incident.status == "completed" }
     }
-    category_incidents = all_incidents
+    @history_search = IncidentHistorySearch.new(all_incidents, params)
+    category_incidents = @history_search.results
     @incident_status_counts = {
       all: category_incidents.size,
       pending: category_incidents.count { |incident| incident.status == "pending" },
@@ -57,6 +58,11 @@ class DashboardController < ApplicationController
     @incident_usage_options = IncidentUsageCatalog.for(current_user)
     @response_plan_resource_options = IncidentUsageCatalog.summary_for(current_user)
     @selected_incident = @incidents.find { |incident| incident.id.to_s == params[:incident_id] } || @incidents.first
+    if @history_search.active?
+      @history_map_features = @history_search.map_features(@incidents, url_for_incident: ->(incident) {
+        "#{@incidents_path}?#{{ incident_id: incident.id.to_s, **@history_search.to_params }.to_query}"
+      })
+    end
     requested_version = params[:plan_version].to_i
     @selected_plan = if @selected_incident
       @selected_incident.response_plan_versions.find { |version| version["version"].to_i == requested_version } ||
