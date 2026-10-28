@@ -48,6 +48,9 @@
           <% SystemSetting::MAP_LAYERS.each do |key, label| %><label class="settings-check"><%= check_box_tag "system_setting[map_layers][]", key, @setting.map_layers.include?(key), id: "system_layer_#{key}" %> <%= label %></label><% end %>
           <%= hidden_field_tag "system_setting[map_layers][]", "" %>
         </fieldset>
+        <label class="span-2">URL ข้อมูลอาคาร (Vector tiles)<%= form.url_field :building_tiles_url, placeholder: ENV["BUILDING_TILES_URL"].presence || "https://map.example.go.th/data/building-polygon.json" %>
+          <small>TileJSON จาก TileServer GL (<code>/data/&lt;ชื่อชุดข้อมูล&gt;.json</code>) หรือ URL แบบ <code>…/{z}/{x}/{y}.pbf</code> — เบราว์เซอร์ของผู้ใช้โหลด tile จาก URL นี้โดยตรง จึงต้องเข้าถึงได้จากเครื่องผู้ใช้และเปิด CORS<% if @setting.building_tiles_url.blank? && ENV["BUILDING_TILES_URL"].present? %> · ตอนนี้ใช้ค่าจาก .env<% end %></small></label>
+        <label>ชื่อชั้นข้อมูลใน tile (ไม่บังคับ)<%= form.text_field :building_tiles_layer, placeholder: "เช่น building-polygon" %><small>เว้นว่างถ้า tileset มีชั้นเดียว · ใส่เมื่อใช้ tileset รวมหลายชั้น เช่น <code>buildingpolygon</code></small></label>
       </div>
     </section>
 

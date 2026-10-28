@@ -145,6 +145,11 @@ document.addEventListener("DOMContentLoaded", () => {
     zIndex:18,
     style:feature=>window.SmartTambonHotspots?.markerStyle(feature.get("fire_hotspot"))
   });
+  // Building footprints (vector tiles from the tile server set in system settings); drawn only when zoomed in.
+  const buildingTilesConfig=(()=>{ try { return JSON.parse(document.querySelector(".dashboard-shell")?.dataset.buildingTiles || "null"); } catch(_error) { return null; } })();
+  const buildings=window.SmartTambonBuildings?.createLayer(buildingTilesConfig) || { layer:new ol.layer.Vector({ visible:false }), ready:Promise.reject(new Error("ไม่พบโมดูลชั้นอาคาร")), select:()=>{}, minZoom:15 };
+  buildings.ready.catch(()=>{});
+  const buildingLayer=buildings.layer;
   const projectLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
     zIndex:19,
@@ -166,7 +171,7 @@ document.addEventListener("DOMContentLoaded", () => {
     source:new ol.source.Vector(),
     style:new ol.style.Style({image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#438a61"}),stroke:new ol.style.Stroke({color:"white",width:3})})})
   });
-  const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,villageBoundaryLayer,...Object.values(placeLayers),importedPlacesLayer,importedDatasetLayer,waterStationLayer,hotspotLayer,projectLayer,cctvLayer,activityLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5,maxZoom:19,extent:ol.proj.get("EPSG:3857").getExtent()}) });
+  const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,villageBoundaryLayer,...Object.values(placeLayers),importedPlacesLayer,importedDatasetLayer,waterStationLayer,buildingLayer,hotspotLayer,projectLayer,cctvLayer,activityLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5,maxZoom:19,extent:ol.proj.get("EPSG:3857").getExtent()}) });
   window.smartCityMap=map;
   fetch("/api/imported_datasets",{headers:{Accept:"application/json"}}).then(response=>response.ok?response.json():null).then(data=>{
     if(!data)return;
@@ -1202,6 +1207,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
   loadHotspots();
+  const buildingToggle=document.querySelector("[data-building-layer-toggle]");
+  const buildingStatus=document.querySelector("[data-building-layer-status]");
+  const buildingLegend=document.querySelector("[data-building-layer-legend]");
+  let buildingError=null;
+  const updateBuildingStatus=()=>{
+    if(!buildingToggle || !buildingStatus || buildingToggle.disabled) return;
+    if(buildingLegend) buildingLegend.hidden=!buildingToggle.checked || Boolean(buildingError);
+    if(!buildingToggle.checked) buildingStatus.textContent="ปิดอยู่";
+    else if(buildingError) buildingStatus.textContent=buildingError;
+    else if((map.getView().getZoom() || 0) < buildings.minZoom) buildingStatus.textContent=`ซูมเข้าระดับ ${buildings.minZoom} ขึ้นไปเพื่อแสดง`;
+    else buildingStatus.textContent="กำลังแสดง · คลิกอาคารเพื่อดูข้อมูล";
+  };
+  const setBuildingVisible=()=>{
+    buildingLayer.setVisible(Boolean(buildingToggle?.checked) && !buildingError);
+    if(!buildingToggle?.checked) buildings.select(null);
+    updateBuildingStatus();
+  };
+  buildings.ready.then(()=>setBuildingVisible()).catch(error=>{ if(buildingTilesConfig){ buildingError=`โหลดไม่สำเร็จ: ${error.message}`; updateBuildingStatus(); } });
+  buildingToggle?.addEventListener("change",setBuildingVisible);
+  map.getView().on("change:resolution",updateBuildingStatus);
+  updateBuildingStatus();
   const projectToggle=document.querySelector("[data-project-layer-toggle]");
   const projectCount=document.querySelector("[data-project-layer-count]");
   const projectGroupFilter=document.querySelector("[data-project-layer-group]");
@@ -1509,6 +1535,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if(areaSelectionToolActive) return;
     stopCctvPopup();
+    buildings.select(null);
     const feature = map.forEachFeatureAtPixel(event.pixel, item => (item.get("cctv_camera") || item.get("fire_hotspot") || item.get("activity") || item.get("project") || item.get("place") || item.get("water_station") || item.get("data_type")==="agencies") ? item : null);
     const cctvCamera=feature?.get("cctv_camera");
     if(cctvCamera){
@@ -1566,6 +1593,14 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     if (!place) {
+      const building=buildingLayer.getVisible() ? map.forEachFeatureAtPixel(event.pixel,item=>item,{layerFilter:layer=>layer===buildingLayer}) : null;
+      if(building && window.SmartTambonBuildings){
+        buildings.select(building);
+        popupElement.innerHTML=window.SmartTambonBuildings.popupHtml(building);
+        popupElement.hidden=false; popup.setPosition(event.coordinate);
+        panPopupIntoView();
+        return;
+      }
       popupElement.hidden=true; popup.setPosition(undefined);
       if (currentUserRole === "subdistrict_admin") return;
       const subdistrict = map.forEachFeatureAtPixel(event.pixel,item => item,{

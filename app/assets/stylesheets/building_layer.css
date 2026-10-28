@@ -1,0 +1,18 @@
+/* Building footprint vector-tile layer (OSM building polygons) */
+.layer-dot.building{background:#d6a05c;border-radius:2px}
+.building-layer-legend{display:flex;flex-wrap:wrap;gap:3px 8px;padding:0 0 6px 28px;color:#806f5f;font-size:9px;line-height:1.3}
+.building-layer-legend span{display:inline-flex;align-items:center;gap:3px}
+.building-layer-legend i,.building-popup-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;border:1.5px solid #fff;box-shadow:0 0 0 1px rgb(0 0 0 / 15%)}
+.building-layer-legend i.residential,.building-popup-swatch.residential{background:#d6a05c}
+.building-layer-legend i.commercial,.building-popup-swatch.commercial{background:#4285f4}
+.building-layer-legend i.industrial,.building-popup-swatch.industrial{background:#8068a8}
+.building-layer-legend i.public,.building-popup-swatch.public{background:#c6344a}
+.building-layer-legend i.religious,.building-popup-swatch.religious{background:#e6b428}
+.building-layer-legend i.other,.building-popup-swatch.other{background:#788088}
+.building-popup strong{display:flex;align-items:center;gap:6px}
+.building-popup .building-popup-sub{margin-top:2px;color:#806f5f;font-size:11px}
+.building-popup dl{display:grid;gap:3px;margin:6px 0 0}
+.building-popup dl div{display:grid;grid-template-columns:auto 1fr;gap:8px}
+.building-popup dt{color:#806f5f;font-size:11px}
+.building-popup dd{margin:0;font-size:11px;text-align:right;overflow-wrap:anywhere}
+.building-popup .building-popup-meta{margin-top:6px;color:#806f5f;font-size:10px;overflow-wrap:anywhere}
