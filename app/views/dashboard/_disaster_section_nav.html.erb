@@ -1,0 +1,8 @@
+<nav class="disaster-section-nav" aria-label="ส่วนจัดการภัยพิบัติ">
+  <%= link_to disasters_path, class: (view == "incidents" ? "active" : nil) do %>
+    <span class="material-symbols-outlined">warning</span><b>ภัยพิบัติที่เกิดขึ้นจริง</b>
+  <% end %>
+  <%= link_to disasters_path(view: "plans"), class: (view == "plans" ? "active" : nil) do %>
+    <span class="material-symbols-outlined">assignment</span><b>แผนรับมือ</b>
+  <% end %>
+</nav>

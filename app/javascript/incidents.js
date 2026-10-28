@@ -303,6 +303,48 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("dialog.incident-dialog").forEach((dialog) => {
     dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
   });
+  document.querySelectorAll("[data-edit-contingency-resources]").forEach((button) => {
+    const detail = button.closest(".contingency-detail");
+    const form = detail?.querySelector(".contingency-resource-form");
+    const setEditing = (editing) => {
+      detail?.querySelectorAll("[data-contingency-required-value]").forEach((value) => { value.hidden = editing; });
+      detail?.querySelectorAll("[data-contingency-required-editor]").forEach((editor) => { editor.hidden = !editing; });
+      const actions = detail?.querySelector("[data-contingency-edit-actions]");
+      if (actions) actions.hidden = !editing;
+      button.hidden = editing;
+      if (editing) detail?.querySelector("[data-contingency-required-editor] input")?.focus();
+    };
+    button.addEventListener("click", () => setEditing(true));
+    detail?.querySelector("[data-cancel-contingency-resources]")?.addEventListener("click", () => {
+      form?.reset();
+      setEditing(false);
+    });
+  });
+  const contingencySearch = document.querySelector("[data-contingency-search]");
+  const contingencyDisasterFilters = [...document.querySelectorAll("[data-contingency-disaster-filter]")];
+  let selectedContingencyDisaster = "";
+  const filterContingencyPlans = () => {
+    const query = contingencySearch?.value.trim().toLocaleLowerCase("th-TH") || "";
+    let visibleCount = 0;
+    document.querySelectorAll("[data-contingency-plan-row]").forEach((row) => {
+      const matchesName = !query || row.dataset.planName.includes(query);
+      const matchesType = !selectedContingencyDisaster || row.dataset.disasterType === selectedContingencyDisaster;
+      row.hidden = !(matchesName && matchesType);
+      if (!row.hidden) visibleCount += 1;
+    });
+    const empty = document.querySelector("[data-contingency-filter-empty]");
+    if (empty) empty.hidden = visibleCount !== 0;
+  };
+  contingencySearch?.addEventListener("input", filterContingencyPlans);
+  contingencyDisasterFilters.forEach((button) => button.addEventListener("click", () => {
+    selectedContingencyDisaster = button.dataset.contingencyDisasterFilter || "";
+    contingencyDisasterFilters.forEach((item) => {
+      const active = item === button;
+      item.classList.toggle("active", active);
+      item.setAttribute("aria-pressed", String(active));
+    });
+    filterContingencyPlans();
+  }));
   const shareUrlInput = document.querySelector("[data-public-report-share-url]");
   const shareSourceSelect = document.querySelector("[data-public-report-share-source]");
   const shareStatus = document.querySelector("[data-public-share-status]");

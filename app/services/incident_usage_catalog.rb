@@ -3,13 +3,16 @@ require "digest"
 class IncidentUsageCatalog
   def self.rule_options_for(user)
     type_config = {
-      "resources" => { label: "ทรัพยากร", default_unit: "รายการ" },
+      "teams" => { label: "ทีมปฏิบัติงาน", default_unit: "ทีม" },
+      "resources" => { label: "ทรัพยากรและอุปกรณ์", default_unit: "รายการ" },
       "consumables" => { label: "วัสดุสิ้นเปลือง", default_unit: "หน่วย" },
-      "teams" => { label: "ทีมปฏิบัติงาน", default_unit: "ทีม" }
     }
     rows = ImportedDataset.visible_to(user).where(:data_type.in => type_config.keys).flat_map do |dataset|
       Array(dataset.current_version&.records).filter_map do |record|
-        name = dataset.data_type == "teams" ? record["team_name"].presence : record["name"].presence
+        name = case dataset.data_type
+        when "teams" then record["team_name"].presence
+        else record["name"].presence
+        end
         next if name.blank?
 
         config = type_config.fetch(dataset.data_type)
@@ -26,7 +29,7 @@ class IncidentUsageCatalog
     rows.group_by { |item| [item[:source_type], item[:label], item[:unit]] }.map do |(_, label, unit), items|
       { label: label, source_type: items.first[:source_type], source_label: items.first[:source_label], unit: unit,
         available: items.sum { |item| item[:available] }, agency_name: items.filter_map { |item| item[:agency_name] }.uniq.join(", ") }
-    end.sort_by { |item| [%w[resources consumables teams].index(item[:source_type]) || 9, item[:label]] }
+    end.sort_by { |item| [%w[teams resources consumables].index(item[:source_type]) || 9, item[:label]] }
   end
 
   def self.summary_for(user, exclude_incident: nil)

@@ -19,12 +19,33 @@ section.assessment-area-tools .assessment-distance-control output{color:#2C3930}
 .assessment-affected-places>[data-affected-places]{display:grid;gap:8px;border-bottom:0}.affected-place-group{border:0;border-radius:9px;background:#fffefb;overflow:hidden}.affected-place-group>summary{padding:10px 12px}.affected-place-group>summary>span{background:#fff}.affected-place-group>div{display:grid;gap:2px;padding:0 12px 10px 49px}.affected-place-group article,.affected-place-group article:first-child{display:block;padding:8px 0;border:0}.affected-place-group article+article{margin-top:2px}.affected-place-group article b{font-size:12px}.affected-place-group article small{line-height:1.45}
 .assessment-resource-table{overflow:hidden;border:1px solid #f3f1ea;border-radius:9px}.assessment-resource-head,.assessment-resource-table article{display:grid;grid-template-columns:minmax(180px,1.5fr) minmax(120px,.75fr) minmax(120px,.75fr) minmax(150px,.9fr);align-items:center;gap:12px}.assessment-resource-head{padding:8px 12px;background:#fffefb;color:#806f5f;font-size:10px;font-weight:600}.assessment-resource-table article{padding:11px 12px!important;border-top:1px solid #ece6d9!important}.assessment-resource-table article>b{color:#2c3930;font-size:13px}.resource-amount{display:grid;gap:2px}.resource-amount small{margin:0!important;color:#806f5f!important;font-size:9px!important}.resource-amount strong{color:#674427;font-size:15px}.resource-amount strong em{color:#806f5f;font-size:10px;font-style:normal;font-weight:500}.resource-amount.available strong{color:#2C3930}.assessment-resource-result .resource-comparison{display:grid;justify-self:start;gap:2px;min-width:112px;padding:6px 10px;border-radius:8px}.assessment-resource-result .resource-comparison b{font-size:11px}.assessment-resource-result .resource-comparison small{margin:0;font-size:9px}.assessment-resource-result .resource-comparison.enough{background:#fffefb;color:#607466}.assessment-resource-result .resource-comparison.shortage{background:#ffe9eb;color:#b94050}@media(max-width:720px){.assessment-resource-head{display:none}.assessment-resource-table article{grid-template-columns:minmax(0,1fr) 1fr 1fr}.assessment-resource-table article>b{grid-column:1/-1}.assessment-resource-result .resource-comparison{grid-column:1/-1;width:100%;box-sizing:border-box}}
 .assessment-resource-result .resource-comparison b{font-size:13px}
+.assessment-resource-help{margin:4px 0 12px;color:#806f5f;font-size:11px;line-height:1.5}.assessment-entry-group+.assessment-entry-group{margin-top:16px}.assessment-entry-group h4{margin:0 0 8px;color:#2c3930;font-size:13px}.assessment-entry-empty{margin:0;padding:12px;border:1px dashed #d8cfbd;border-radius:8px;color:#806f5f;font-size:11px;text-align:center}.resource-required-editor{display:flex;align-items:center;justify-content:center;gap:5px}.resource-required-editor input{box-sizing:border-box;width:82px;padding:7px 8px;border:1px solid #d8cfbd;border-radius:7px;background:#fff;color:#2c3930;font:inherit;font-size:14px;font-weight:700;text-align:right}.resource-required-editor em{color:#806f5f;font-size:10px;font-style:normal}.incident-assessment-page [data-contingency-plan-save]{display:grid;gap:10px}.incident-assessment-page [data-contingency-plan-save]>h3{margin:0 0 2px;color:#2c3930;font-size:15px}.incident-assessment-page [data-contingency-plan-save]>label:not(.assessment-activate){display:grid;gap:5px;color:#607466;font-size:11px}.incident-assessment-page [data-contingency-plan-save] input[type="text"],.incident-assessment-page [data-contingency-plan-save] textarea{box-sizing:border-box;width:100%;padding:9px 10px;border:1px solid #d8cfbd;border-radius:8px;color:#2c3930;font:inherit;font-size:12px}.incident-assessment-page [data-contingency-plan-save] textarea{resize:vertical}
 .assessment-resource-table{overflow-x:auto}.assessment-resource-head,.assessment-resource-table article{min-width:680px;grid-template-columns:minmax(220px,1.6fr) minmax(120px,.75fr) minmax(120px,.75fr) minmax(180px,1fr)}.assessment-resource-head{padding:11px 14px;color:#674427;font-size:12px;font-weight:700}.assessment-resource-head span:nth-child(n+2){text-align:center}.assessment-resource-table article{min-height:56px;padding:10px 14px!important}.resource-amount{display:flex;align-items:baseline;justify-content:center}.resource-amount strong{font-size:16px;line-height:1.2}.resource-amount strong em{margin-left:3px;font-size:10px}.assessment-resource-result .resource-comparison{justify-self:center;justify-items:center;min-width:128px;box-sizing:border-box;text-align:center}.assessment-resource-result .resource-comparison b{font-size:12px;line-height:1.25;white-space:nowrap}@media(max-width:720px){.assessment-resource-head{display:grid}.assessment-resource-table article{grid-template-columns:minmax(220px,1.6fr) minmax(120px,.75fr) minmax(120px,.75fr) minmax(180px,1fr)}.assessment-resource-table article>b{grid-column:auto}.assessment-resource-result .resource-comparison{grid-column:auto;width:auto}}
 
 /* Readable assessment sidebar: keep the map visible without compressing results. */
 .incident-assessment-page .assessment-workspace {
   grid-template-columns: minmax(0, 1fr) clamp(420px, 27vw, 460px);
   gap: 18px;
+}
+
+.assessment-plan-dialog { width: min(620px, calc(100vw - 32px)); }
+.assessment-plan-dialog header p { margin: 5px 0 0; color: #806f5f; font-size: 12px; }
+.assessment-plan-dialog-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 20px 22px; }
+.assessment-plan-dialog-fields label { display: grid; gap: 6px; color: #607466; font-size: 12px; font-weight: 600; }
+.assessment-plan-dialog-fields label.wide { grid-column: 1 / -1; }
+.assessment-plan-dialog-fields input[type="text"],
+.assessment-plan-dialog-fields textarea { box-sizing: border-box; width: 100%; padding: 10px 12px; border: 1px solid #d8cfbd; border-radius: 8px; background: #fff; color: #2c3930; font: inherit; font-size: 13px; font-weight: 400; }
+.assessment-plan-dialog-fields .assessment-activate { display: flex; align-items: center; gap: 8px; }
+.assessment-plan-dialog footer { display: flex; justify-content: flex-end; gap: 10px; }
+.assessment-plan-dialog footer button,
+.assessment-plan-dialog footer input { min-width: 180px; }
+
+@media (max-width: 620px) {
+  .assessment-plan-dialog-fields { grid-template-columns: 1fr; padding: 16px; }
+  .assessment-plan-dialog-fields label.wide { grid-column: auto; }
+  .assessment-plan-dialog footer { display: grid; grid-template-columns: 1fr; }
+  .assessment-plan-dialog footer button,
+  .assessment-plan-dialog footer input { width: 100%; min-width: 0; }
 }
 
 .incident-assessment-page .assessment-results {

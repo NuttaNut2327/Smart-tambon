@@ -1,0 +1,81 @@
+<section class="contingency-page">
+  <div class="incident-page-heading">
+    <div><p class="page-kicker">เตรียมความพร้อมก่อนเกิดเหตุ</p><h1>แผนรับมือภัยพิบัติ</h1><p>วิเคราะห์พื้นที่และจัดเตรียมทีม ทรัพยากร และวัสดุสิ้นเปลืองจากข้อมูลปัจจุบัน</p></div>
+    <div class="incident-heading-actions"><%= link_to disasters_path, class: "incident-secondary-action" do %><span class="material-symbols-outlined">warning</span>ภัยพิบัติที่เกิดขึ้นจริง<% end %><% if current_user.system_admin? || current_user.subdistrict_admin? %><button type="button" class="incident-primary-action" data-open-incident-dialog="new-contingency-plan-dialog"><span class="material-symbols-outlined">add</span>สร้างแผนรับมือ</button><% end %></div>
+  </div>
+
+  <% if @contingency_plans.empty? %>
+    <section class="incident-empty contingency-empty"><span class="material-symbols-outlined">assignment</span><h2>ยังไม่มีแผนรับมือ</h2><p>สร้างแผนเพื่อวิเคราะห์พื้นที่และเตรียมทรัพยากรไว้ก่อนเกิดภัยพิบัติจริง</p></section>
+  <% else %>
+    <% if @selected_contingency_plan %><%= link_to disasters_path(view: "plans"), class: "contingency-back-link" do %><span class="material-symbols-outlined">arrow_back</span>กลับไปแผนรับมือทั้งหมด<% end %><% end %>
+    <% unless @selected_contingency_plan %>
+    <section class="contingency-list-tools" aria-label="ค้นหาและกรองแผนรับมือ">
+      <label class="contingency-plan-search"><span class="material-symbols-outlined">search</span><input type="search" placeholder="ค้นหาชื่อแผนรับมือ" autocomplete="off" data-contingency-search></label>
+      <div class="contingency-plan-filter" role="group" aria-label="กรองตามประเภทภัย"><button type="button" class="active" data-contingency-disaster-filter="" aria-pressed="true">ทั้งหมด</button><% ContingencyPlan::DISASTER_TYPES.each do |key, label| %><button type="button" data-contingency-disaster-filter="<%= key %>" aria-pressed="false"><%= label %></button><% end %></div>
+    </section>
+    <% end %>
+    <div class="contingency-layout">
+      <% unless @selected_contingency_plan %>
+      <section class="contingency-list">
+        <% @contingency_plans.each do |plan| %>
+          <% version = plan.current_version %>
+          <article class="contingency-row <%= 'selected' if plan == @selected_contingency_plan %>" data-contingency-plan-row data-plan-name="<%= plan.name.downcase %>" data-disaster-type="<%= plan.disaster_type %>">
+            <div class="contingency-row-summary"><span class="contingency-row-icon material-symbols-outlined">assignment</span><div class="contingency-row-title"><small><%= plan.disaster_type_label %></small><h2><%= plan.name %></h2></div><div class="contingency-row-metrics"><span><small>Version ล่าสุด</small><b><%= version ? "v#{version['version']}" : "ยังไม่วิเคราะห์" %></b></span><span><small>พื้นที่</small><b><%= version ? "#{version['area_sq_km']} ตร.กม." : "—" %></b></span><span><small>อัปเดตล่าสุด</small><b><%= thai_short_datetime(plan.updated_at) %></b></span></div><div class="contingency-row-actions"><%= link_to(version ? "วิเคราะห์ใหม่" : "เริ่มวิเคราะห์พื้นที่", situation_assessment_path(plan_id: plan.id), class: "incident-primary-action compact") %><%= link_to "ดูรายละเอียด", disasters_path(view: "plans", plan_id: plan.id), class: "incident-secondary-action compact" %></div><em class="plan-status <%= plan.status %>"><%= plan.status_label %></em></div>
+          </article>
+        <% end %>
+        <div class="contingency-filter-empty" data-contingency-filter-empty hidden><span class="material-symbols-outlined">search_off</span><b>ไม่พบแผนรับมือ</b><p>ลองเปลี่ยนคำค้นหาหรือประเภทภัย</p></div>
+      </section>
+      <% end %>
+
+      <% if @selected_contingency_plan %>
+        <% plan = @selected_contingency_plan; version = @selected_contingency_version; indexed_entries = Array(version&.dig("entries")).each_with_index.to_a; grouped = indexed_entries.group_by { |item, _index| item["category"] } %>
+        <aside class="contingency-detail">
+          <header><div><small><%= plan.disaster_type_label %></small><h2><%= plan.name %></h2><p><%= plan.description %></p></div><div class="contingency-detail-actions"><span class="plan-status <%= plan.status %>"><%= plan.status_label %></span><% if current_user.system_admin? || current_user.subdistrict_admin? %><% if version && indexed_entries.any? %><button type="button" class="contingency-edit-trigger" data-edit-contingency-resources><span class="material-symbols-outlined">edit</span>แก้ไขข้อมูล</button><% end %><button type="button" class="contingency-delete-trigger" data-open-incident-dialog="delete-contingency-plan-dialog"><span class="material-symbols-outlined">delete</span>ลบแผน</button><% end %></div></header>
+          <% if version %>
+            <nav class="contingency-version-tabs" aria-label="ประวัติผลวิเคราะห์">
+              <% plan.versions.sort_by { |item| -item["version"].to_i }.each do |item| %>
+                <%= link_to "v#{item['version']} · #{item['title']}", disasters_path(view: "plans", plan_id: plan.id, plan_version: item["version"]), class: ("active" if item["version"].to_i == version["version"].to_i) %>
+              <% end %>
+            </nav>
+            <% if version["geometry"].present? %>
+              <% managed_boundary = current_user.access_area&.as_geojson || current_user.subdistrict&.as_geojson %>
+              <section class="contingency-map-section">
+                <div class="contingency-map-heading"><div><h3>พื้นที่ประเมินของแผน</h3><p>กรอบสีส้มคือพื้นที่ที่ใช้คำนวณใน Version นี้</p></div><span><i class="managed"></i>ขอบเขตดูแล <i class="assessed"></i>พื้นที่ประเมิน</span></div>
+                <div class="contingency-detail-map" data-contingency-detail-map aria-label="แผนที่พื้นที่ประเมิน"></div>
+                <script type="application/json" data-contingency-geometry><%= raw json_escape(version["geometry"].to_json) %></script>
+                <script type="application/json" data-contingency-boundary><%= raw json_escape(managed_boundary.to_json) %></script>
+              </section>
+            <% end %>
+            <div class="contingency-kpis"><div><small>พื้นที่ได้รับผลกระทบ</small><b><%= version["area_sq_km"] %> ตร.กม.</b></div><div><small>ประชากร</small><b><%= number_with_delimiter(version["affected_people"]) %> คน</b></div><div><small>ครัวเรือน</small><b><%= number_with_delimiter(version["affected_households"]) %> ครัวเรือน</b></div><div><small>หมู่บ้าน</small><b><%= number_with_delimiter(version["affected_villages"]) %> หมู่บ้าน</b></div></div>
+            <%= form_with url: update_version_contingency_plan_path(plan, version: version["version"]), method: :patch, local: true, class: "contingency-resource-form" do %>
+              <% [["teams", "ทีมและหน่วยงาน"], ["resources", "ทรัพยากรที่ต้องใช้"], ["consumables", "วัสดุสิ้นเปลือง"]].each do |key, label| %>
+                <section class="contingency-entry-section"><h3><%= label %></h3><div class="contingency-entry-table"><div><b>รายการ</b><b>ต้องใช้</b><b>มีพร้อมใช้</b><b>ผลประเมิน</b></div><% Array(grouped[key]).each do |entry, index| %><div><strong><%= entry["name"] %></strong><span data-contingency-required-value><%= entry["required"] %> <%= entry["unit"] %></span><label class="contingency-required-input" data-contingency-required-editor hidden><input type="number" min="0" step="any" name="contingency_plan[entries][<%= index %>][required]" value="<%= entry['required'] %>" aria-label="จำนวนที่ต้องใช้ <%= entry['name'] %>"><span><%= entry["unit"] %></span></label><span><%= entry["available"] %> <%= entry["unit"] %></span><em class="<%= entry["sufficient"] ? 'enough' : 'shortage' %>"><%= entry["sufficient"] ? "เพียงพอ" : "ขาด #{entry['required'].to_f - entry['available'].to_f} #{entry['unit']}" %></em><input type="hidden" name="contingency_plan[entries][<%= index %>][category]" value="<%= entry['category'] %>"><input type="hidden" name="contingency_plan[entries][<%= index %>][name]" value="<%= entry['name'] %>"><input type="hidden" name="contingency_plan[entries][<%= index %>][unit]" value="<%= entry['unit'] %>"><input type="hidden" name="contingency_plan[entries][<%= index %>][available]" value="<%= entry['available'] %>"></div><% end %><% if grouped[key].blank? %><p><%= %w[teams consumables].include?(key) ? "ไม่มีรายการที่ต้องใช้" : "ยังไม่มีรายการในหมวดนี้" %></p><% end %></div></section>
+              <% end %>
+              <% if indexed_entries.any? && (current_user.system_admin? || current_user.subdistrict_admin?) %><div class="contingency-resource-actions" data-contingency-edit-actions hidden><button type="button" class="incident-secondary-action compact" data-cancel-contingency-resources>ยกเลิก</button><button type="submit" class="incident-primary-action compact">บันทึกจำนวนที่ต้องใช้</button></div><% end %>
+            <% end %>
+          <% else %><div class="contingency-no-analysis"><span class="material-symbols-outlined">map</span><p>แผนนี้ยังไม่มีผลวิเคราะห์พื้นที่</p><%= link_to "เริ่มวิเคราะห์พื้นที่", situation_assessment_path(plan_id: plan.id), class: "incident-primary-action" %></div><% end %>
+        </aside>
+        <% if current_user.system_admin? || current_user.subdistrict_admin? %>
+          <dialog id="delete-contingency-plan-dialog" class="incident-dialog small contingency-delete-dialog">
+            <%= form_with url: contingency_plan_path(plan), method: :delete, local: true do %>
+              <header><div><small><%= plan.disaster_type_label %></small><h2>ยืนยันการลบแผนรับมือ</h2></div><button type="button" data-close-incident-dialog aria-label="ปิด">×</button></header>
+              <div class="incident-form-grid">
+                <div class="wide contingency-delete-warning"><span class="material-symbols-outlined">warning</span><div><strong>ต้องการลบ “<%= plan.name %>” หรือไม่?</strong><p>แผนและผลวิเคราะห์ทุก Version จะถูกลบและไม่สามารถเรียกคืนได้</p></div></div>
+                <label class="wide">เหตุผลในการลบ *<textarea name="contingency_plan[deletion_reason]" rows="4" maxlength="500" required placeholder="ระบุเหตุผลที่ต้องการลบแผนรับมือนี้"></textarea></label>
+              </div>
+              <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><button type="submit" class="incident-delete-action"><span class="material-symbols-outlined">delete</span>ยืนยันการลบ</button></footer>
+            <% end %>
+          </dialog>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <dialog id="new-contingency-plan-dialog" class="incident-dialog small">
+    <%= form_with model: ContingencyPlan.new, local: true do |form| %>
+      <header><div><small>แผนรับมือ</small><h2>สร้างแผนรับมือใหม่</h2></div><button type="button" data-close-incident-dialog aria-label="ปิด">×</button></header>
+      <div class="incident-form-grid"><label class="wide">ชื่อแผน *<%= form.text_field :name, required: true, placeholder: "เช่น แผนรับมือน้ำท่วมชุมชนริมแม่น้ำ" %></label><label class="wide">ประเภทภัย *<%= form.select :disaster_type, ContingencyPlan::DISASTER_TYPES.map { |key, label| [label, key] } %></label><label class="wide">รายละเอียด<%= form.text_area :description, rows: 4, placeholder: "อธิบายวัตถุประสงค์หรือพื้นที่เป้าหมาย" %></label><p class="wide contingency-draft-note">แผนจะเริ่มเป็นฉบับร่าง และเปลี่ยนเป็นพร้อมใช้งานได้เมื่อบันทึกผลวิเคราะห์พื้นที่</p></div>
+      <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "สร้างและวิเคราะห์พื้นที่", class: "incident-primary-action" %></footer>
+    <% end %>
+  </dialog>
+</section>

@@ -43,6 +43,10 @@ Rails.application.routes.draw do
   post "incidents/:id/calculate_assessment", to: "incidents#calculate_assessment", as: :calculate_incident_assessment
   get "situation_assessment", to: "incidents#standalone_assessment", as: :situation_assessment
   post "situation_assessment/calculate", to: "incidents#calculate_assessment", as: :calculate_situation_assessment
+  resources :contingency_plans, only: %i[create update destroy] do
+    post :versions, action: :add_version, on: :member, as: :versions
+    patch "versions/:version", action: :update_version, on: :member, as: :update_version
+  end
   post "incidents/:id/progress", to: "incidents#add_progress", as: :incident_progress
   post "incidents/:id/assessments", to: "incidents#assess", as: :incident_assessments
   patch "incidents/:id/plans/:version", to: "incidents#update_plan", as: :update_incident_plan

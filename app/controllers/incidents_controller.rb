@@ -22,6 +22,7 @@ class IncidentsController < ApplicationController
     @page_mode = :disasters
     @assigned_subdistrict = current_user.subdistrict unless current_user.system_admin?
     @provinces = current_user.system_admin? ? Province.alphabetical : [@assigned_subdistrict&.province].compact
+    @assessment_boundary_geojson = assessment_boundary_geojson
     load_map_layer_data(include_incidents: false)
     render :assessment
   rescue Mongoid::Errors::DocumentNotFound
@@ -30,12 +31,16 @@ class IncidentsController < ApplicationController
 
   def standalone_assessment
     @incident = nil
-    @assessment_disaster_type = "flood"
+    @contingency_plan = ContingencyPlan.visible_to(current_user).find(params[:plan_id]) if params[:plan_id].present?
+    @assessment_disaster_type = @contingency_plan&.disaster_type || "flood"
     @page_mode = :city_map
     @assigned_subdistrict = current_user.subdistrict unless current_user.system_admin?
     @provinces = current_user.system_admin? ? Province.alphabetical : [@assigned_subdistrict&.province].compact
+    @assessment_boundary_geojson = assessment_boundary_geojson
     load_map_layer_data(include_incidents: true)
     render :assessment
+  rescue Mongoid::Errors::DocumentNotFound
+    redirect_to disasters_path(view: "plans"), alert: "ไม่พบแผนรับมือที่ต้องการ"
   end
 
   def calculate_assessment
@@ -125,10 +130,12 @@ class IncidentsController < ApplicationController
     rules = selected_rule ? [selected_rule] : []
     formulas = rules.flat_map(&:formulas)
     availability_rows = IncidentUsageCatalog.summary_for(current_user, exclude_incident: incident)
+    catalog_options = IncidentUsageCatalog.rule_options_for(current_user)
+    category_by_key = catalog_options.index_by { |item| [item[:label].to_s.strip.downcase, item[:unit].to_s.strip.downcase] }
     availability_by_key = availability_rows.index_by { |item| [item[:name].to_s.strip.downcase, item[:unit].to_s.strip.downcase] }
     availability_by_name = availability_rows.group_by { |item| item[:name].to_s.strip.downcase }
       .transform_values { |items| items.sum { |item| item[:available].to_f } }
-    resources = formulas.group_by { |formula| [formula["resource"], formula["unit"]] }.map do |(name, unit), grouped|
+    resources = formulas.group_by { |formula| [formula["resource"], formula["unit"], formula["source_type"]] }.map do |(name, unit, stored_source_type), grouped|
       required = grouped.sum do |formula|
         basis = case formula["basis"]
         when "population" then affected_people
@@ -142,7 +149,9 @@ class IncidentsController < ApplicationController
       normalized_unit = unit.to_s.strip.downcase
       available = availability_by_key[[normalized_name, normalized_unit]]&.dig(:available)
       available = availability_by_name.fetch(normalized_name, 0) if available.nil?
-      { name: name, unit: unit, required: required, available: available, sufficient: available >= required }
+      source_type = stored_source_type.presence || category_by_key[[normalized_name, normalized_unit]]&.dig(:source_type)
+      category = { "teams" => "teams", "consumables" => "consumables" }.fetch(source_type, "resources")
+      { category: category, name: name, unit: unit, required: required, available: available, sufficient: available >= required }
     end
     render json: {
       area_sq_km: area_sq_km.round(3), coverage_ratio: coverage_ratio.round(4),
@@ -482,6 +491,10 @@ class IncidentsController < ApplicationController
       .to_a
       .reject { |dataset| dataset.data_type == "village_boundaries" }
       .sort_by { |dataset| dataset.name.to_s }
+  end
+
+  def assessment_boundary_geojson
+    current_user.access_area&.as_geojson || current_user.subdistrict&.as_geojson
   end
 
   def find_incident

@@ -20,6 +20,16 @@ class DashboardController < ApplicationController
   end
 
   def disasters
+    @disaster_view = params[:view] == "plans" ? "plans" : "incidents"
+    @contingency_plans = ContingencyPlan.visible_to(current_user).desc(:updated_at).to_a
+    @selected_contingency_plan = @contingency_plans.find { |plan| plan.id.to_s == params[:plan_id].to_s }
+    if @selected_contingency_plan
+      requested_version = params[:plan_version].to_i
+      @selected_contingency_version = @selected_contingency_plan.versions.find do |version|
+        version["version"].to_i == requested_version
+      end
+      @selected_contingency_version ||= @selected_contingency_plan.current_version
+    end
     load_incident_page("disaster", :disasters)
   end
 
