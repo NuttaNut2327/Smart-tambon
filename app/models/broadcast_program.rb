@@ -3,6 +3,7 @@
 class BroadcastProgram
   include Mongoid::Document
   include Mongoid::Timestamps
+  include BroadcastDelivery
 
   DATA_SOURCES = {
     "weather" => "สภาพอากาศ ฝน และอุณหภูมิ",
@@ -58,7 +59,6 @@ class BroadcastProgram
   attr_writer :schedule_times_text
 
   def schedule_times_text = @schedule_times_text || Array(schedule_times).join(", ")
-  def channels = NotificationChannel.for_organization(organization_key).where(:_id.in => Array(channel_ids)).to_a
   def ai_provider = (ai_provider_id && AiProvider.enabled.where(id: ai_provider_id).first) || AiProvider.default_for_chat
   def tts_provider = (tts_provider_id && TtsProvider.enabled.where(id: tts_provider_id).first) || TtsProvider.default
   def data_source_labels = data_sources.map { |key| DATA_SOURCES.fetch(key, key) }

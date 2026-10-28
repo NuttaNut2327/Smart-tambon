@@ -147,6 +147,7 @@ Rails.application.routes.draw do
     end
   end
   resources :announcements, except: :show do
+    get :feed, on: :collection
     member do
       patch :toggle
       post :acknowledge

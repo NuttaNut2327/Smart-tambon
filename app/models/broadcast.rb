@@ -4,6 +4,7 @@
 class Broadcast
   include Mongoid::Document
   include Mongoid::Timestamps
+  include BroadcastDelivery
 
   STATUSES = {
     "queued" => "รอสร้างข่าว",
@@ -61,7 +62,6 @@ class Broadcast
   def bullets_text=(text)
     self.bullets = text.to_s.lines.map { |line| line.strip.sub(/\A[-•*·\d.)\s]+/, "").strip }.compact_blank.first(20)
   end
-  def channels = NotificationChannel.for_organization(organization_key).where(:_id.in => Array(channel_ids)).to_a
   def busy? = pending_tasks.any? || %w[queued generating publishing].include?(status)
 
   # The text read aloud: the script, or the bullets when there is no script.
@@ -77,6 +77,7 @@ class Broadcast
     add_to_set(pending_tasks: tasks.flatten.map(&:to_s) & TASKS)
   end
 
+  # `channel` is a NotificationChannel, or anything with id/name/kind (the internal alert's Announcement target).
   def log_delivery!(channel, status:, error: nil, reference: nil)
     entry = { "channel_id" => channel.id.to_s, "channel_name" => channel.name, "kind" => channel.kind, "status" => status,
               "error" => error, "reference" => reference, "at" => Time.current.utc.iso8601 }.compact

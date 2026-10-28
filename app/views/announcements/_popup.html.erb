@@ -5,8 +5,8 @@
     <% if modals.any? %>
       <div class="announcement-backdrop" data-announcement-backdrop>
         <% modals.each_with_index do |announcement, index| %>
-          <section class="announcement-modal <%= announcement.level %>" role="dialog" aria-modal="true" aria-labelledby="announcement-title-<%= announcement.id %>" data-announcement-modal data-acknowledge-url="<%= acknowledge_announcement_path(announcement) %>" <%= "hidden" unless index.zero? %>>
-            <header><span class="material-symbols-outlined"><%= { "info" => "info", "warning" => "warning", "urgent" => "campaign" }[announcement.level] %></span><div><small>ประกาศจากผู้ดูแลระบบ · <%= announcement.level_label %><% if modals.size > 1 %> · <%= index + 1 %>/<%= modals.size %><% end %></small><h2 id="announcement-title-<%= announcement.id %>"><%= announcement.title %></h2></div></header>
+          <section class="announcement-modal <%= announcement.level %>" role="dialog" aria-modal="true" aria-labelledby="announcement-title-<%= announcement.id %>" data-announcement-modal data-announcement-id="<%= announcement.id %>" data-acknowledge-url="<%= acknowledge_announcement_path(announcement) %>" <%= "hidden" unless index.zero? %>>
+            <header><span class="material-symbols-outlined"><%= { "info" => "info", "warning" => "warning", "urgent" => "campaign" }[announcement.level] %></span><div><small><%= announcement.source_label %> · <%= announcement.level_label %><% if modals.size > 1 %> · <%= index + 1 %>/<%= modals.size %><% end %></small><h2 id="announcement-title-<%= announcement.id %>"><%= announcement.title %></h2></div></header>
             <div class="announcement-body"><%= simple_format(announcement.body) %></div>
             <footer><button type="button" class="button-link primary" data-announcement-ack><span class="material-symbols-outlined">check</span><%= announcement.once? ? "รับทราบ" : "รับทราบ / ปิด" %></button></footer>
           </section>
@@ -14,9 +14,9 @@
       </div>
     <% end %>
     <% if corners.any? %>
-      <aside class="announcement-corners" aria-label="ประกาศจากผู้ดูแลระบบ">
+      <aside class="announcement-corners" aria-label="ประกาศ">
         <% corners.each do |announcement| %>
-          <section class="announcement-corner <%= announcement.level %>" data-announcement-corner>
+          <section class="announcement-corner <%= announcement.level %>" data-announcement-corner data-announcement-id="<%= announcement.id %>">
             <button type="button" class="announcement-corner-toggle" data-announcement-corner-toggle aria-expanded="true" title="ย่อ/ขยาย"><span class="material-symbols-outlined"><%= announcement.level == "info" ? "info" : "campaign" %></span><b><%= announcement.title %></b><span class="material-symbols-outlined chevron">expand_more</span></button>
             <div class="announcement-body"><%= simple_format(announcement.body) %></div>
           </section>

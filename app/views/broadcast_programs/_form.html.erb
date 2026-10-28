@@ -40,15 +40,11 @@
         </section>
 
         <section class="settings-card">
-          <header><span class="material-symbols-outlined">record_voice_over</span><div><h2>เสียงอ่านและช่องทางเผยแพร่</h2><p>ช่องทางเพิ่มได้ที่ ตั้งค่า › ช่องทางแจ้งเตือน (Facebook Page, Instagram, เสียงตามสาย MQTT, LINE, Telegram, Webhook)</p></div></header>
+          <header><span class="material-symbols-outlined">record_voice_over</span><div><h2>เสียงอ่านและรูปแบบการแจ้งเตือน</h2><p>เลือกได้มากกว่า 1 รูปแบบ — ส่งออกเสียงตามสาย, แจ้งเตือนผ่าน LINE/ช่องทางอื่น และแจ้งเตือนภายในระบบให้เจ้าหน้าที่ที่กำลังใช้งาน</p></div></header>
           <div class="settings-grid">
             <label>ผู้ให้บริการเสียง<%= form.select :tts_provider_id, @tts_providers.map { |provider| [provider.label, provider.id] }, { include_blank: "ค่าเริ่มต้นของระบบ" } %><% if @tts_providers.empty? %><small class="broadcast-error">ยังไม่มีผู้ให้บริการเสียง — แจ้งผู้ดูแลระบบให้เพิ่มก่อน</small><% end %></label>
             <label>เสียงผู้อ่าน (ไม่บังคับ)<%= form.text_field :tts_voice, placeholder: "ใช้เสียงที่ตั้งไว้ของผู้ให้บริการ" %></label>
-            <fieldset class="settings-layers span-2"><legend>ส่งไปที่</legend>
-              <% if @channels.empty? %><small>ยังไม่มีช่องทาง — <%= link_to "เพิ่มช่องทาง", notification_channels_path %></small><% end %>
-              <% @channels.each do |channel| %><label class="settings-check"><%= check_box_tag "broadcast_program[channel_ids][]", channel.id, @program.channel_ids.include?(channel.id), id: "program_channel_#{channel.id}" %> <span class="material-symbols-outlined"><%= channel.kind_icon %></span><%= channel.name %> <small>(<%= channel.kind_label %>)</small></label><% end %>
-              <%= hidden_field_tag "broadcast_program[channel_ids][]", "" %>
-            </fieldset>
+            <%= render "broadcasts/delivery_fields", scope: "broadcast_program", record: @program, channels: @channels %>
           </div>
         </section>
 

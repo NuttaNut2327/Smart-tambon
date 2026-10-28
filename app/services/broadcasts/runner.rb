@@ -24,7 +24,8 @@ module Broadcasts
       tasks += %w[synthesize publish] if program.auto_publish? && trigger == "schedule"
       Broadcast.create!(broadcast_program: program, organization_key: program.organization_key, subdistrict_id: program.subdistrict_id,
                         status: "queued", trigger:, slot_key:, pending_tasks: tasks, auto_publish: program.auto_publish?,
-                        channel_ids: program.channel_ids, created_by: user&.username || "ระบบ")
+                        channel_ids: program.channel_ids, delivery_modes: program.delivery_modes, internal_alert_level: program.internal_alert_level,
+                        internal_alert_hours: program.internal_alert_hours, created_by: user&.username || "ระบบ")
     end
 
     def initialize(broadcast, logger)

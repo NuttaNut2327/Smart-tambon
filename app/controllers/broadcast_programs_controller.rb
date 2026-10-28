@@ -5,7 +5,7 @@ class BroadcastProgramsController < ApplicationController
   before_action :set_program, only: %i[edit update destroy run]
 
   def new
-    @program = BroadcastProgram.new(organization_key: current_user.organization_key, name: "ข่าวประจำวัน")
+    @program = BroadcastProgram.new(organization_key: current_user.organization_key, name: "ข่าวประจำวัน", delivery_modes: %w[pa notification])
     load_options
   end
 
@@ -56,7 +56,8 @@ class BroadcastProgramsController < ApplicationController
 
   def program_params
     params.require(:broadcast_program).permit(:name, :prompt, :lookahead_days, :max_words, :schedule_enabled, :auto_publish, :enabled,
-                                              :ai_provider_id, :tts_provider_id, :tts_voice, data_sources: [], schedule_days: [], channel_ids: [])
+                                              :ai_provider_id, :tts_provider_id, :tts_voice, :internal_alert_level, :internal_alert_hours,
+                                              data_sources: [], schedule_days: [], channel_ids: [], delivery_modes: [])
   end
 
   def require_organization_member!

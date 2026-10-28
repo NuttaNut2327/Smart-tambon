@@ -35,10 +35,14 @@ class Announcement
   field :target_roles, type: Array, default: []
   field :target_subdistrict_ids, type: Array, default: []
   field :created_by_id, type: Integer
+  # Internal alerts from a news programme (Broadcasts::Publisher): shown only to staff of that อบต.
+  field :target_organization_key, type: String
+  field :broadcast_id, type: BSON::ObjectId
 
   has_many :receipts, class_name: "AnnouncementReceipt", dependent: :delete_all
 
   index({ active: 1, starts_at: 1, ends_at: 1 })
+  index({ broadcast_id: 1 }, { sparse: true })
 
   # Form helper: subdistrict codes typed by the admin, resolved to ids on save.
   attr_writer :target_subdistrict_codes
@@ -66,7 +70,10 @@ class Announcement
       .sort_by { |announcement| [-LEVELS.keys.index(announcement.level).to_i, -announcement.created_at.to_i] }
   end
 
+  scope :managed_by_admins, -> { where(broadcast_id: nil) }
+
   def targets?(user)
+    return false if target_organization_key.present? && user.organization_key != target_organization_key
     return false if target_roles.any? && !target_roles.include?(user.role)
     return true if target_subdistrict_ids.empty?
 
@@ -77,6 +84,8 @@ class Announcement
   def frequency_label = FREQUENCIES.fetch(frequency, frequency)
   def display_mode_label = DISPLAY_MODES.fetch(display_mode, display_mode)
   def once? = frequency == "once"
+  def from_broadcast? = broadcast_id.present?
+  def source_label = from_broadcast? ? "แจ้งเตือนจาก อบต." : "ประกาศจากผู้ดูแลระบบ"
   def corner? = display_mode == "corner"
 
   def status_label(time = Time.current)

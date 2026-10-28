@@ -1,9 +1,9 @@
 class AnnouncementsController < ApplicationController
-  before_action :require_announcement_admin!, except: :acknowledge
+  before_action :require_announcement_admin!, except: %i[acknowledge feed]
   before_action :set_announcement, only: %i[edit update destroy toggle]
 
   def index
-    @announcements = Announcement.order_by(created_at: :desc).to_a
+    @announcements = Announcement.managed_by_admins.order_by(created_at: :desc).to_a
     @receipt_counts = AnnouncementReceipt.collection.aggregate([
       { "$match" => { "announcement_id" => { "$in" => @announcements.map(&:id) } } },
       { "$group" => { "_id" => "$announcement_id", "seen" => { "$sum" => 1 },
@@ -49,6 +49,15 @@ class AnnouncementsController < ApplicationController
     head :no_content
   rescue Mongoid::Errors::DocumentNotFound
     head :not_found
+  end
+
+  # Polled by the popup script so signed-in users see new alerts (e.g. a broadcast's internal alert) without
+  # reloading; `shown` lists the announcement ids already on the page.
+  def feed
+    feed = AnnouncementFeed.new(current_user, session, except: Array(params[:shown]))
+    return head(:no_content) if feed.visible.empty?
+
+    render partial: "announcements/popup", locals: { feed: }
   end
 
   private

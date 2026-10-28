@@ -20,7 +20,7 @@
               <div><h2><%= program.name %></h2><p><%= program.schedule_label %> · <%= program.auto_publish? ? "เผยแพร่อัตโนมัติ" : "รอตรวจก่อนเผยแพร่" %></p></div>
             </header>
             <p class="broadcast-program-sources"><%= program.data_source_labels.join(" · ").presence || "ไม่ได้เลือกแหล่งข้อมูล" %></p>
-            <p class="broadcast-program-channels"><span class="material-symbols-outlined">share</span><%= program.channels.map(&:name).join(", ").presence || "ยังไม่ได้เลือกช่องทาง" %></p>
+            <p class="broadcast-program-channels"><span class="material-symbols-outlined">share</span><%= program.delivery_summary.presence || "ยังไม่ได้เลือกรูปแบบการแจ้งเตือน" %></p>
             <div class="activity-actions">
               <% unless system_admin? %><%= button_to run_broadcast_program_path(program), method: :post, class: "button-link primary", disabled: !program.enabled? do %><span class="material-symbols-outlined">auto_awesome</span>สร้างข่าวตอนนี้<% end %><% end %>
               <% if current_user.subdistrict_admin? %>

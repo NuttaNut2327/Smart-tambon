@@ -1,0 +1,23 @@
+<%# Delivery modes and their channels for a BroadcastProgram (scope "broadcast_program") or a Broadcast (scope "broadcast"). %>
+<% disabled = local_assigns.fetch(:disabled, false) %>
+<div class="broadcast-delivery-modes span-2">
+  <% BroadcastDelivery::MODES.each do |mode, config| %>
+    <fieldset class="broadcast-delivery-mode" <%= "disabled" if disabled %>>
+      <label class="settings-switch"><%= check_box_tag "#{scope}[delivery_modes][]", mode, record.delivers?(mode), id: "#{scope}_delivery_#{mode}" %><span><span class="material-symbols-outlined"><%= config[:icon] %></span><b><%= config[:label] %></b><small><%= config[:hint] %></small></span></label>
+      <div class="broadcast-delivery-body">
+        <% if mode == "internal" %>
+          <label>ระดับความสำคัญ<%= select_tag "#{scope}[internal_alert_level]", options_for_select(Announcement::LEVELS.invert, record.internal_alert_level), id: "#{scope}_internal_alert_level" %></label>
+          <label>แสดงนาน (ชั่วโมง)<%= number_field_tag "#{scope}[internal_alert_hours]", record.internal_alert_hours, min: 1, max: 168, id: "#{scope}_internal_alert_hours" %><small>เจ้าหน้าที่ทุกคนของ อบต. ต้องกด "รับทราบ" — หลังหมดเวลาจะไม่แสดงอีก</small></label>
+        <% else %>
+          <% mode_channels = channels.select { |channel| config[:kinds].include?(channel.kind) } %>
+          <% if mode_channels.empty? %><small>ยังไม่มีช่องทาง<%= mode == "pa" ? "เสียงตามสาย (MQTT)" : "" %> — <%= current_user.subdistrict_admin? ? link_to("เพิ่มที่ ตั้งค่า › ช่องทางแจ้งเตือน", notification_channels_path) : "ผู้ดูแลประจำ อบต. เพิ่มได้ที่ ตั้งค่า › ช่องทางแจ้งเตือน" %></small><% end %>
+          <% mode_channels.each do |channel| %>
+            <label class="settings-check"><%= check_box_tag "#{scope}[channel_ids][]", channel.id, record.channel_ids.include?(channel.id), id: "#{scope}_channel_#{channel.id}", disabled: !channel.enabled? %> <span class="material-symbols-outlined"><%= channel.kind_icon %></span><%= channel.name %> <small>(<%= channel.kind_label %><%= ", ปิดอยู่" unless channel.enabled? %>)</small></label>
+          <% end %>
+        <% end %>
+      </div>
+    </fieldset>
+  <% end %>
+  <%= hidden_field_tag "#{scope}[delivery_modes][]", "", id: nil %>
+  <%= hidden_field_tag "#{scope}[channel_ids][]", "", id: nil %>
+</div>
