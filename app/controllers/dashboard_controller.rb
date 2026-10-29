@@ -20,6 +20,16 @@ class DashboardController < ApplicationController
   end
 
   def disasters
+    @disaster_view = params[:view] == "plans" ? "plans" : "incidents"
+    @contingency_plans = ContingencyPlan.visible_to(current_user).desc(:updated_at).to_a
+    @selected_contingency_plan = @contingency_plans.find { |plan| plan.id.to_s == params[:plan_id].to_s }
+    if @selected_contingency_plan
+      requested_version = params[:plan_version].to_i
+      @selected_contingency_version = @selected_contingency_plan.versions.find do |version|
+        version["version"].to_i == requested_version
+      end
+      @selected_contingency_version ||= @selected_contingency_plan.current_version
+    end
     load_incident_page("disaster", :disasters)
   end
 
@@ -57,6 +67,7 @@ class DashboardController < ApplicationController
     end
     @incident_usage_options = IncidentUsageCatalog.for(current_user)
     @response_plan_resource_options = IncidentUsageCatalog.summary_for(current_user)
+    @response_plan_category_options = IncidentUsageCatalog.rule_options_for(current_user)
     @selected_incident = @incidents.find { |incident| incident.id.to_s == params[:incident_id] } || @incidents.first
     if @history_search.active?
       @history_map_features = @history_search.map_features(@incidents, url_for_incident: ->(incident) {

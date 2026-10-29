@@ -19,11 +19,13 @@ class DataLayersController < ApplicationController
     all_fixed_records = @selected_datasets.flat_map do |dataset|
       Array(dataset.current_version&.records).each_with_index.map do |source_record, position|
         record = source_record.deep_dup
-        if @selected_type == "resources" && record["code"].present?
-          key = Digest::SHA256.hexdigest(["resource", dataset.id.to_s, record["code"]].join("\0"))[0, 20]
+        if @selected_type == "resources"
+          record_code = record["code"].presence || "#{dataset.id}-#{position}"
+          key = Digest::SHA256.hexdigest(["resource", dataset.id.to_s, record_code].join("\0"))[0, 20]
           record["status"] = "กำลังใช้งาน" if active_assignment_keys.include?(key)
-        elsif @selected_type == "workforce" && record["personnel_code"].present?
-          key = Digest::SHA256.hexdigest(["workforce", dataset.id.to_s, record["personnel_code"]].join("\0"))[0, 20]
+        elsif @selected_type == "workforce"
+          record_code = record["personnel_code"].presence || "#{dataset.id}-#{position}"
+          key = Digest::SHA256.hexdigest(["workforce", dataset.id.to_s, record_code].join("\0"))[0, 20]
           record["availability_status"] = "กำลังปฏิบัติงาน" if active_assignment_keys.include?(key)
         end
         if @selected_type == "village_boundaries" && record["boundary_source"].blank?
@@ -38,6 +40,8 @@ class DataLayersController < ApplicationController
       end
     end
     @fixed_record_count = all_fixed_records.size
+    @team_availability_by_name = IncidentUsageCatalog.team_availability_for(current_user).index_by { |team| team[:name] }
+    @operational_status_summary = operational_status_summary(@selected_type, all_fixed_records.map { |item| item[:record] })
     @record_query = DatasetRecordQuery.new(all_fixed_records, data_type: @selected_type, schema: @selected_schema, params:)
     all_fixed_records = @record_query.results
     @fixed_record_total = all_fixed_records.size
@@ -167,6 +171,48 @@ class DataLayersController < ApplicationController
   end
 
   private
+
+  def operational_status_summary(data_type, records)
+    case data_type
+    when "teams"
+      teams = @team_availability_by_name.values
+      [
+        { label: "พร้อมปฏิบัติงาน", value: teams.sum { |team| team[:ready] }, unit: "คน", tone: "ready" },
+        { label: "กำลังปฏิบัติงาน", value: teams.sum { |team| team[:active] }, unit: "คน", tone: "active" },
+        { label: "ไม่พร้อมปฏิบัติงาน", value: teams.sum { |team| team[:unavailable] }, unit: "คน", tone: "unavailable" }
+      ]
+    when "workforce"
+      counts = records.group_by { |record| record["availability_status"].to_s }.transform_values(&:size)
+      [
+        { label: "พร้อมปฏิบัติงาน", value: counts["พร้อมปฏิบัติงาน"].to_i, unit: "คน", tone: "ready" },
+        { label: "กำลังปฏิบัติงาน", value: counts["กำลังปฏิบัติงาน"].to_i + counts["ติดภารกิจ"].to_i, unit: "คน", tone: "active" },
+        { label: "ไม่พร้อมปฏิบัติงาน", value: counts["ไม่พร้อมปฏิบัติงาน"].to_i, unit: "คน", tone: "unavailable" }
+      ]
+    when "resources"
+      statuses = records.group_by { |record| record["status"].to_s.strip.downcase }.transform_values(&:size)
+      ready = %w[พร้อมใช้ พร้อมใช้งาน available ready].sum { |status| statuses[status].to_i }
+      active = %w[กำลังใช้งาน in_use assigned].sum { |status| statuses[status].to_i }
+      [
+        { label: "พร้อมใช้", value: ready, unit: "รายการ", tone: "ready" },
+        { label: "กำลังใช้งาน", value: active, unit: "รายการ", tone: "active" },
+        { label: "ไม่พร้อมใช้", value: records.size - ready - active, unit: "รายการ", tone: "unavailable" }
+      ]
+    when "consumables"
+      total = records.sum { |record| [record["current_quantity"].to_f, 0].max }
+      empty = records.count { |record| record["current_quantity"].to_f <= 0 }
+      low = records.count do |record|
+        record["current_quantity"].to_f.positive? && record["minimum_quantity"].present? &&
+          record["current_quantity"].to_f <= record["minimum_quantity"].to_f
+      end
+      [
+        { label: "จำนวนคงเหลือรวม", value: total, unit: "หน่วย", tone: "ready" },
+        { label: "ใกล้ถึงจุดแจ้งเตือน", value: low, unit: "รายการ", tone: "active" },
+        { label: "หมด", value: empty, unit: "รายการ", tone: "unavailable" }
+      ]
+    else
+      []
+    end
+  end
 
   def primary_dataset(datasets)
     Array(datasets).max_by do |dataset|

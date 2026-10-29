@@ -38,7 +38,8 @@
         </section>
       <% end %>
       <% end %>
-      <% if %i[general_incidents disasters].include?(page_mode) %><%= render "dashboard/incidents" %><% end %>
+      <% if page_mode == :general_incidents %><%= render "dashboard/incidents" %><% end %>
+      <% if page_mode == :disasters %><%= @disaster_view == "plans" ? render("dashboard/contingency_plans") : render("dashboard/incidents") %><% end %>
       <% if page_mode == :overview %><section class="below-map-grid"><article class="attention-card"><div class="section-card-heading"><div><h2>พื้นที่ต้องให้ความสนใจ</h2><p>เรียงตามระดับความเร่งด่วน</p></div><span>วันนี้</span></div><ol><li><b>1</b><div><strong>พื้นที่ติดตามลำดับแรก</strong><small>ตรวจสอบข้อมูลพื้นที่และสภาพแวดล้อม</small></div><mark>เฝ้าระวัง</mark></li><li><b>2</b><div><strong>พื้นที่เสี่ยงน้ำท่วมผิวจราจร</strong><small>ปริมาณฝนสะสมสูงกว่าค่าเฉลี่ย</small></div><mark>ปานกลาง</mark></li></ol></article><article class="events-card"><div class="section-card-heading"><div><h2>เหตุการณ์วันนี้</h2><p>ข้อมูลสาธิตสำหรับหน้าภาพรวม</p></div><span>ดูทั้งหมด →</span></div><table><tbody><tr><td>09:42</td><td><b>ตรวจสอบสถานการณ์พื้นที่</b><small><%= initial_area %></small></td><td><mark>เฝ้าระวัง</mark></td></tr><tr><td>08:15</td><td><b>อัปเดตข้อมูลแผนที่</b><small>ระบบแผนที่</small></td><td><mark>ปกติ</mark></td></tr></tbody></table></article></section><% end %>
       <% if page_mode == :overview %>
         <section class="overview-operational-grid" aria-label="สถานะเมืองเพิ่มเติม">

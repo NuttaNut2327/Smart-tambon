@@ -1,0 +1,49 @@
+<%= render layout: "admin/frame", locals: { title: "LINE Webhook Log", description: "ตรวจสอบ event ที่ระบบได้รับจาก LINE Messaging API — เก็บข้อมูลย้อนหลัง 30 วัน และเปิดดูได้เฉพาะ Super admin", active: :webhook } do %>
+  <%= form_with url: admin_webhook_path, method: :get, class: "admin-search webhook-search" do %>
+    <input type="search" name="q" value="<%= @query %>" placeholder="ค้นหา Group ID, Destination หรือ Request ID">
+    <select name="event_type" aria-label="ประเภท event">
+      <option value="">ทุก event</option>
+      <% %w[join message leave memberJoined memberLeft postback follow unfollow].each do |type| %>
+        <option value="<%= type %>" <%= "selected" if @event_type == type %>><%= type %></option>
+      <% end %>
+    </select>
+    <button type="submit" class="button-link"><span class="material-symbols-outlined">search</span>ค้นหา</button>
+  <% end %>
+
+  <section class="users-card users-list-card webhook-log-card">
+    <div class="users-toolbar"><div><h2>รายการล่าสุด</h2><p>Payload แสดงเพื่อวิเคราะห์ปัญหา โปรดใช้งานตามสิทธิ์ที่ได้รับ</p></div><span><%= number_with_delimiter(@total) %> รายการ</span></div>
+    <% if @logs.empty? %>
+      <div class="cctv-empty"><span class="material-symbols-outlined">webhook</span><b>ยังไม่มี Webhook log</b><small>เมื่อ LINE ส่ง event มาที่ /webhooks/line รายการจะปรากฏที่นี่</small></div>
+    <% else %>
+      <div class="webhook-log-list">
+        <% @logs.each do |log| %>
+          <details class="webhook-log-entry">
+            <summary>
+              <span class="webhook-status <%= log.status %>"><%= log.status %></span>
+              <strong><%= log.event_types.join(", ").presence || "ไม่มี event" %></strong>
+              <code><%= log.group_ids.join(", ").presence || log.destination.presence || "—" %></code>
+              <time><%= thai_short_datetime(log.received_at) %></time>
+              <span class="material-symbols-outlined">expand_more</span>
+            </summary>
+            <div class="webhook-log-detail">
+              <dl>
+                <div><dt>Request ID</dt><dd><code><%= log.request_id.presence || "—" %></code></dd></div>
+                <div><dt>ขนาดข้อมูล</dt><dd><%= number_to_human_size(log.body_size) %></dd></div>
+                <div><dt>Signature</dt><dd><%= log.signature_valid? ? "ถูกต้อง" : "ไม่ถูกต้อง/ไม่ได้ตรวจ" %></dd></div>
+                <% if log.error_message.present? %><div><dt>ข้อผิดพลาด</dt><dd><%= log.error_message %></dd></div><% end %>
+              </dl>
+              <pre><code><%= JSON.pretty_generate(log.payload || {}) %></code></pre>
+            </div>
+          </details>
+        <% end %>
+      </div>
+      <% if @total_pages > 1 %>
+        <nav class="webhook-pagination" aria-label="แบ่งหน้า">
+          <%= link_to "← ก่อนหน้า", admin_webhook_path(q: @query, event_type: @event_type, page: @page - 1), class: "button-link", aria: { disabled: @page <= 1 } unless @page <= 1 %>
+          <span>หน้า <%= @page %> / <%= @total_pages %></span>
+          <%= link_to "ถัดไป →", admin_webhook_path(q: @query, event_type: @event_type, page: @page + 1), class: "button-link" unless @page >= @total_pages %>
+        </nav>
+      <% end %>
+    <% end %>
+  </section>
+<% end %>

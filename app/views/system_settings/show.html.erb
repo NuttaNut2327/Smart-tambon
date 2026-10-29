@@ -64,10 +64,9 @@
       </div>
     </section>
 
-    <% demo_counts = DemoData.counts %>
     <section class="settings-card" id="settings-demo">
       <header><span class="material-symbols-outlined">science</span><div><h2>ข้อมูลสาธิต (Demo)</h2><p>ข้อมูลจำลองสำหรับนำเสนอ — มีป้าย "ข้อมูลจำลอง" กำกับ ปิดเพื่อซ่อนจากทุกรายการ แผนที่ แผนภูมิ และสถิติ โดยข้อมูลยังอยู่ในระบบ</p></div></header>
-      <div class="settings-toggles"><label class="settings-switch"><%= form.check_box :demo_data_visible %><span><b>แสดงข้อมูลสาธิต</b><small>ตอนนี้มี <%= DemoData::KINDS.map { |key, kind| "#{kind[:label]} #{demo_counts[key]} รายการ" }.join(" · ") %> — ปิดก่อนใช้งานจริงเพื่อไม่ให้ปนกับสถิติจริง</small></span></label></div>
+      <div class="settings-toggles"><label class="settings-switch"><%= form.check_box :demo_data_visible %><span><b>แสดงข้อมูลสาธิต</b><small>ตอนนี้มี <%= DemoData::KINDS.map { |key, kind| "#{kind[:label]} #{@demo_counts[key]} รายการ" }.join(" · ") %> — ปิดก่อนใช้งานจริงเพื่อไม่ให้ปนกับสถิติจริง</small></span></label></div>
     </section>
 
     <div class="settings-actions"><%= form.submit "บันทึกการตั้งค่าระบบ", class: "button-link primary" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %></div>
@@ -77,9 +76,9 @@
     <header><span class="material-symbols-outlined">delete_sweep</span><div><h2>ลบข้อมูลสาธิตออกจากระบบ</h2><p>ลบถาวรเฉพาะรายการที่ทำเครื่องหมายเป็นข้อมูลสาธิต ข้อมูลจริงไม่ถูกแตะ สร้างใหม่ได้ด้วยคำสั่ง rake ที่ระบุ</p></div></header>
     <div class="settings-demo-actions">
       <% DemoData::KINDS.each do |key, kind| %>
-        <div><b><%= kind[:label] %></b><small><%= demo_counts[key] %> รายการ · สร้างใหม่: <code>bin/rails <%= kind[:task] %></code></small>
-          <%= button_to "ลบ#{kind[:label]}สาธิต", purge_demo_data_system_settings_path(kind: key), class: "button-link danger", disabled: demo_counts[key].zero?,
-                form: { data: { purge_confirm: "ลบ#{kind[:label]}ที่เป็นข้อมูลสาธิตทั้งหมด #{demo_counts[key]} รายการ? ลบแล้วกู้คืนไม่ได้" }, onsubmit: "return confirm(this.dataset.purgeConfirm)" } %>
+        <div><b><%= kind[:label] %></b><small><%= @demo_counts[key] %> รายการ · สร้างใหม่: <code>bin/rails <%= kind[:task] %></code></small>
+          <%= button_to "ลบ#{kind[:label]}สาธิต", purge_demo_data_system_settings_path(kind: key), class: "button-link danger", disabled: @demo_counts[key].zero?,
+                form: { data: { purge_confirm: "ลบ#{kind[:label]}ที่เป็นข้อมูลสาธิตทั้งหมด #{@demo_counts[key]} รายการ? ลบแล้วกู้คืนไม่ได้" }, onsubmit: "return confirm(this.dataset.purgeConfirm)" } %>
         </div>
       <% end %>
     </div>

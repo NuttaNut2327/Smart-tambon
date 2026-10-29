@@ -1,4 +1,4 @@
-<%# Page frame for system-admin organisation pages. locals: title, description, active (:organizations, :registrations) %>
+<%# Page frame for system-admin pages. The webhook log intentionally has no navigation link and is URL-only. %>
 <% pending = OrganizationRegistration.pending.count %>
 <div class="shell dashboard-shell gis-dashboard users-shell admin-shell">
   <%= render "dashboard/sidebar", active_nav: :admin_organizations, initial_area: "ประเทศไทย" %>

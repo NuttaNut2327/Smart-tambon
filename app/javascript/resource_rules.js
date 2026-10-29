@@ -16,22 +16,29 @@ document.addEventListener("DOMContentLoaded", () => {
   let draft;
   let editingId = null;
 
-  const blankDraft = () => ({ name: "", disaster_type: "flood", severity: "watch", description: "", active: true, conditions: [{ variable: "population", comparator: "gte", value: "" }], formulas: [{ resource: resourceOptions[0]?.label || "", amount: "1", unit: resourceOptions[0]?.unit || "หน่วย", basis: "population", per_value: "1", basis_unit: "person" }] });
+  const blankDraft = () => ({ name: "", disaster_type: "flood", severity: "watch", description: "", active: true, conditions: [{ variable: "population", comparator: "gte", value: "" }], formulas: [{ resource: resourceOptions[0]?.label || "", source_type: resourceOptions[0]?.source_type || "resources", amount: "1", unit: resourceOptions[0]?.unit || "หน่วย", basis: "population", per_value: "1", basis_unit: "person" }] });
   const options = (items, selected) => Object.entries(items).map(([value, label]) => `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
   const formatAvailable = value => Number(value || 0).toLocaleString("th-TH", { maximumFractionDigits: 2 });
-  const formulaUnitOptions = item => [...new Set([...unitOptions, item.unit, resourceOptions.find(option => option.label === item.resource)?.unit].filter(Boolean))].map(unit => `<option ${unit === item.unit ? "selected" : ""}>${escapeHtml(unit)}</option>`).join("");
+  const formulaUnitOptions = item => [...new Set([...unitOptions, item.unit, resourceOptions.find(option => option.label === item.resource && (!item.source_type || option.source_type === item.source_type))?.unit].filter(Boolean))].map(unit => `<option ${unit === item.unit ? "selected" : ""}>${escapeHtml(unit)}</option>`).join("");
   const resourcePicker = item => {
-    const selected = resourceOptions.find(option => option.label === item.resource) || resourceOptions[0];
+    const selected = resourceOptions.find(option => option.label === item.resource && (!item.source_type || option.source_type === item.source_type)) || resourceOptions.find(option => option.label === item.resource) || resourceOptions[0];
     if (!selected) return '<div class="rule-resource-picker empty"><input type="hidden" data-formula-resource value=""><button type="button" disabled>ยังไม่มีข้อมูลรายการ</button></div>';
-    const rows = resourceOptions.map(option => `<button type="button" data-rule-resource-option data-value="${escapeHtml(option.label)}" data-unit="${escapeHtml(option.unit)}"><span>${escapeHtml(option.label)}</span><small>พร้อมใช้ <b>${formatAvailable(option.available)}</b> ${escapeHtml(option.unit)}</small></button>`).join("");
-    return `<div class="rule-resource-picker" data-rule-resource-picker><input type="hidden" data-formula-resource value="${escapeHtml(selected.label)}"><button type="button" data-toggle-rule-resource aria-expanded="false"><span>${escapeHtml(selected.label)}</span><i class="material-symbols-outlined">expand_more</i></button><div data-rule-resource-menu hidden>${rows}</div></div>`;
+    const categoryOrder = ["teams", "resources", "consumables"];
+    const categoryLabels = { teams: "ทีมปฏิบัติงาน", resources: "ทรัพยากรและอุปกรณ์", consumables: "วัสดุสิ้นเปลือง" };
+    const rows = categoryOrder.map(category => {
+      const categoryOptions = resourceOptions.filter(option => option.source_type === category);
+      if (!categoryOptions.length) return "";
+      return `<section class="rule-resource-category"><h4>${categoryLabels[category]}</h4>${categoryOptions.map(option => `<button type="button" data-rule-resource-option data-value="${escapeHtml(option.label)}" data-unit="${escapeHtml(option.unit)}" data-source-type="${category}"><span>${escapeHtml(option.label)}</span><small>พร้อมใช้ <b>${formatAvailable(option.available)}</b> ${escapeHtml(option.unit)}</small></button>`).join("")}</section>`;
+    }).join("");
+    return `<div class="rule-resource-picker" data-rule-resource-picker><input type="hidden" data-formula-resource value="${escapeHtml(selected.label)}"><input type="hidden" data-formula-source-type value="${escapeHtml(selected.source_type)}"><button type="button" data-toggle-rule-resource aria-expanded="false"><span><small>${escapeHtml(categoryLabels[selected.source_type] || selected.source_label || "รายการ")}</small>${escapeHtml(selected.label)}</span><i class="material-symbols-outlined">expand_more</i></button><div data-rule-resource-menu hidden><label class="rule-resource-search"><span class="material-symbols-outlined">search</span><input type="search" data-rule-resource-search placeholder="ค้นหารายการ..." autocomplete="off" aria-label="ค้นหารายการในพื้นที่"></label>${rows}<p class="rule-resource-no-results" data-rule-resource-no-results hidden>ไม่พบรายการที่ค้นหา</p></div></div>`;
   };
   const closeResourceMenus = () => document.querySelectorAll("[data-rule-resource-menu]").forEach(menu => { menu.hidden = true; menu._picker?.querySelector("[data-toggle-rule-resource]")?.setAttribute("aria-expanded", "false"); });
   const chooseResourceOption = resourceOption => {
     const menu = resourceOption.closest("[data-rule-resource-menu]"); const picker = menu?._picker || resourceOption.closest("[data-rule-resource-picker]");
     if (!picker) return;
     picker.querySelector("[data-formula-resource]").value = resourceOption.dataset.value;
-    picker.querySelector("[data-toggle-rule-resource] span").textContent = resourceOption.dataset.value;
+    picker.querySelector("[data-formula-source-type]").value = resourceOption.dataset.sourceType;
+    picker.querySelector("[data-toggle-rule-resource] span").innerHTML = `<small>${escapeHtml({ teams: "ทีมปฏิบัติงาน", resources: "ทรัพยากรและอุปกรณ์", consumables: "วัสดุสิ้นเปลือง" }[resourceOption.dataset.sourceType] || "รายการ")}</small>${escapeHtml(resourceOption.dataset.value)}`;
     picker.closest("[data-formula-row]").querySelector("[data-formula-unit]").value = resourceOption.dataset.unit;
     closeResourceMenus();
   };
@@ -53,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return condition;
       });
     } else if (step === 3) {
-      draft.formulas = [...dialog.querySelectorAll("[data-formula-row]")].map(row => ({ resource: row.querySelector("[data-formula-resource]").value, amount: row.querySelector("[data-formula-amount]").value, unit: row.querySelector("[data-formula-unit]").value, basis: row.querySelector("[data-formula-basis]").value, per_value: row.querySelector("[data-formula-per]").value, basis_unit: row.querySelector("[data-formula-basis-unit]")?.value || row.querySelector("[data-formula-basis-unit-label]")?.dataset.unit || "" }));
+      draft.formulas = [...dialog.querySelectorAll("[data-formula-row]")].map(row => ({ resource: row.querySelector("[data-formula-resource]").value, source_type: row.querySelector("[data-formula-source-type]")?.value || "resources", amount: row.querySelector("[data-formula-amount]").value, unit: row.querySelector("[data-formula-unit]").value, basis: row.querySelector("[data-formula-basis]").value, per_value: row.querySelector("[data-formula-per]").value, basis_unit: row.querySelector("[data-formula-basis-unit]")?.value || row.querySelector("[data-formula-basis-unit-label]")?.dataset.unit || "" }));
     } else if (step === 4) {
       draft.active = dialog.querySelector("[data-rule-active]")?.checked ?? true;
     }
@@ -134,14 +141,32 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   dialog.addEventListener("click", event => {
     const pickerToggle = event.target.closest("[data-toggle-rule-resource]");
-    if (pickerToggle) { const picker = pickerToggle.closest("[data-rule-resource-picker]"); let menu = picker.querySelector("[data-rule-resource-menu]") || [...document.querySelectorAll(".rule-resource-floating-menu")].find(item => item._picker === picker); const willOpen = menu.hidden; closeResourceMenus(); if (willOpen) { const rect = pickerToggle.getBoundingClientRect(); menu._picker = picker; menu.classList.add("rule-resource-floating-menu"); dialog.appendChild(menu); const width = Math.max(rect.width, 360); menu.style.width = `${Math.min(width, window.innerWidth - 24)}px`; menu.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - Math.min(width, window.innerWidth - 24) - 12))}px`; menu.style.top = `${Math.min(rect.bottom + 5, window.innerHeight - Math.min(260, menu.scrollHeight || 260) - 12)}px`; menu.hidden = false; pickerToggle.setAttribute("aria-expanded", "true"); } return; }
+    if (pickerToggle) { const picker = pickerToggle.closest("[data-rule-resource-picker]"); let menu = picker.querySelector("[data-rule-resource-menu]") || [...document.querySelectorAll(".rule-resource-floating-menu")].find(item => item._picker === picker); const willOpen = menu.hidden; closeResourceMenus(); if (willOpen) { const rect = pickerToggle.getBoundingClientRect(); menu._picker = picker; menu.classList.add("rule-resource-floating-menu"); dialog.appendChild(menu); const width = Math.max(rect.width, 360); menu.style.width = `${Math.min(width, window.innerWidth - 24)}px`; menu.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - Math.min(width, window.innerWidth - 24) - 12))}px`; menu.style.top = `${Math.min(rect.bottom + 5, window.innerHeight - Math.min(320, menu.scrollHeight || 320) - 12)}px`; menu.hidden = false; pickerToggle.setAttribute("aria-expanded", "true"); window.setTimeout(() => menu.querySelector("[data-rule-resource-search]")?.focus(), 0); } return; }
+    if (event.target.closest("[data-rule-resource-search]")) return;
     const resourceOption = event.target.closest("[data-rule-resource-option]");
     if (resourceOption) { chooseResourceOption(resourceOption); return; }
     closeResourceMenus();
     if (event.target.closest("[data-add-condition]")) { collectCurrentStep(); draft.conditions.push({ variable: "population", comparator: "gte", value: "" }); render(); }
-    if (event.target.closest("[data-add-formula]")) { collectCurrentStep(); draft.formulas.push({ resource: resourceOptions[0]?.label || "", amount: "1", unit: resourceOptions[0]?.unit || "หน่วย", basis: "population", per_value: "1", basis_unit: "person" }); render(); }
+    if (event.target.closest("[data-add-formula]")) { collectCurrentStep(); draft.formulas.push({ resource: resourceOptions[0]?.label || "", source_type: resourceOptions[0]?.source_type || "resources", amount: "1", unit: resourceOptions[0]?.unit || "หน่วย", basis: "population", per_value: "1", basis_unit: "person" }); render(); }
     const remove = event.target.closest("[data-remove-row]");
     if (remove) { collectCurrentStep(); const collection = remove.dataset.removeRow === "condition" ? draft.conditions : draft.formulas; if (collection.length > 1) collection.splice(Number(remove.dataset.index), 1); render(); }
+  });
+  dialog.addEventListener("input", event => {
+    const search = event.target.closest("[data-rule-resource-search]");
+    if (!search) return;
+    const menu = search.closest("[data-rule-resource-menu]");
+    const query = search.value.trim().toLocaleLowerCase("th-TH");
+    let visibleCount = 0;
+    menu.querySelectorAll(".rule-resource-category").forEach(category => {
+      let categoryCount = 0;
+      category.querySelectorAll("[data-rule-resource-option]").forEach(option => {
+        const matches = !query || option.textContent.toLocaleLowerCase("th-TH").includes(query);
+        option.hidden = !matches;
+        if (matches) { categoryCount += 1; visibleCount += 1; }
+      });
+      category.hidden = categoryCount === 0;
+    });
+    menu.querySelector("[data-rule-resource-no-results]").hidden = visibleCount !== 0;
   });
   document.addEventListener("click", event => { const option = event.target.closest(".rule-resource-floating-menu [data-rule-resource-option]"); if (option) { chooseResourceOption(option); return; } if (!event.target.closest("[data-rule-resource-picker],.rule-resource-floating-menu")) closeResourceMenus(); });
   dialog.querySelector("[data-rule-wizard-body]").addEventListener("scroll", closeResourceMenus);
