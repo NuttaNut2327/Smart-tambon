@@ -41,6 +41,10 @@ class IncidentHistorySearchTest < ActionDispatch::IntegrationTest
     get disasters_path
 
     assert_response :success
+    assert_select ".incident-heading-side .disaster-future-plan-link", text: /แผนรับมือในอนาคต/
+    assert_select ".incident-heading-side form.incident-history-form[action='#{disasters_path}']"
+    assert_select "input[name=from][type=date]"
+    assert_select "input[name=to][type=date]"
     assert_select "[data-incident-history-map]", count: 0
     assert_select ".incident-list-card", minimum: 2
   end
