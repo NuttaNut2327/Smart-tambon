@@ -86,7 +86,7 @@
             <% if incident.category == "general" && %w[assessing in_progress].include?(incident.status) && (current_user.system_admin? || current_user.subdistrict_admin?) %><div class="incident-card-heading incident-promotion-heading"><div><h3>การยกระดับเหตุการณ์</h3><p>ยกระดับเหตุการณ์เป็นภัยพิบัติเพื่อประเมินพื้นที่ผลกระทบและทรัพยากรที่ต้องใช้</p></div><button type="button" class="incident-secondary-action compact incident-disaster-action" data-open-incident-dialog="promote-disaster-dialog"><span class="material-symbols-outlined">warning</span>แจ้งเหตุภัยพิบัติ</button></div><% end %>
           </section>
           <section class="incident-card incident-location-card">
-            <h3>ตำแหน่งเหตุการณ์</h3>
+            <div class="incident-location-heading"><h3>ตำแหน่งเหตุการณ์</h3><% if incident.category == "general" && incident.longitude.present? && incident.latitude.present? %><%= link_to situation_assessment_path(incident_id: incident.id.to_s), class: "incident-open-city-map", data: { turbo: false } do %><span class="material-symbols-outlined">map</span>ดูบนแผนที่เมือง<% end %><% end %></div>
             <% if incident.longitude.present? && incident.latitude.present? %>
               <div class="incident-mini-map" data-incident-map data-longitude="<%= incident.longitude %>" data-latitude="<%= incident.latitude %>" aria-label="แผนที่ตำแหน่งเหตุการณ์"></div>
               <% has_resolved_address = incident.location_name.present? && !incident.location_name.match?(/\A(ตำแหน่งที่|ไม่ระบุ)/) %>

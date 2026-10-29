@@ -13,12 +13,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const simulationPointSource = new ol.source.Vector();
   const simulationGridSource = new ol.source.Vector();
   const isCityMap = page.dataset.cityMap === "true";
-  const cityIncidents = (() => {
+  let cityIncidents = (() => {
     try { return JSON.parse(page.querySelector("[data-city-incidents]")?.textContent || "[]"); }
     catch (_error) { return []; }
   })();
   const incidentSourceNames = [...new Set(cityIncidents.map((incident) => incident.source || "ไม่ระบุแหล่งที่มา"))];
-  const visibleIncidentSources = new Set(incidentSourceNames);
+  const hiddenIncidentSources = new Set();
   const placeConfig = {
     government: { color: "#527f9d", icon: "account_balance" }, education: { color: "#a97924", icon: "school" },
     health: { color: "#b94755", icon: "heart_plus" }, culture: { color: "#795f94", icon: "folded_hands" },
@@ -83,26 +83,57 @@ document.addEventListener("DOMContentLoaded", () => {
     return new ol.style.Style({ stroke: new ol.style.Stroke({ color: colors[0], width: 1 }), fill: new ol.style.Fill({ color: colors[1] }) });
   } });
   const simulationPointLayer = new ol.layer.Vector({ source: simulationPointSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 7, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) }) }) });
-  const longitude = Number(mapElement.dataset.incidentLongitude);
-  const latitude = Number(mapElement.dataset.incidentLatitude);
+  const longitude = parseFloat(mapElement.dataset.incidentLongitude);
+  const latitude = parseFloat(mapElement.dataset.incidentLatitude);
+  const initialExtent = (mapElement.dataset.initialExtent || "").split(",").map(parseFloat);
   const incidentMarkerSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="56" height="70" viewBox="-7 -7 56 70"><defs><filter id="shadow" x="-60%" y="-50%" width="220%" height="230%"><feDropShadow dx="0" dy="4" stdDeviation="3.5" flood-color="#923a4d" flood-opacity=".5"/></filter></defs><circle cx="21" cy="21" r="25" fill="#a97924" opacity=".24"/><path fill="#b94050" stroke="#fff" stroke-width="6" stroke-linejoin="round" filter="url(#shadow)" d="M21 1.5C10.2 1.5 1.5 10.2 1.5 21c0 15.2 19.5 31.5 19.5 31.5S40.5 36.2 40.5 21C40.5 10.2 31.8 1.5 21 1.5z"/><path fill="#b94050" stroke="#a97924" stroke-width="2.5" stroke-linejoin="round" d="M21 1.5C10.2 1.5 1.5 10.2 1.5 21c0 15.2 19.5 31.5 19.5 31.5S40.5 36.2 40.5 21C40.5 10.2 31.8 1.5 21 1.5z"/><path fill="#ffffff" stroke="#ffffff" stroke-width="18" stroke-linejoin="round" transform="translate(10 33) scale(.023)" d="M720-440v-80h160v80H720Zm48 280-128-96 48-64 128 96-48 64Zm-80-480-48-64 128-96 48 64-128 96ZM200-200v-160h-40q-33 0-56.5-23.5T80-440v-80q0-33 23.5-56.5T160-600h160l200-120v480L320-360h-40v160h-80Zm240-182v-196l-98 58H160v80h182l98 58Zm120 36v-268q27 24 43.5 58.5T620-480q0 41-16.5 75.5T560-346ZM300-480Z"/></svg>';
   const incidentMarkerUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(incidentMarkerSvg)}`;
   const incidentSource = new ol.source.Vector();
   if (Number.isFinite(longitude) && Number.isFinite(latitude)) incidentSource.addFeature(new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([longitude, latitude]))));
   const incidentLayer = new ol.layer.Vector({ source: incidentSource, zIndex: 30, style: new ol.style.Style({ image: new ol.style.Icon({ src: incidentMarkerUrl, anchor: [0.5, 1], scale: 1 }) }) });
-  const cityIncidentLayers = new Map(incidentSourceNames.map((sourceName, index) => {
-    const source = new ol.source.Vector();
-    cityIncidents.filter((incident) => (incident.source || "ไม่ระบุแหล่งที่มา") === sourceName).forEach((incident) => {
-      const feature = new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([Number(incident.longitude), Number(incident.latitude)])));
-      feature.set("cityIncident", incident);
-      source.addFeature(feature);
-    });
-    const layer = new ol.layer.Vector({ source, zIndex: 19, style: new ol.style.Style({
-      image: new ol.style.Icon({ src: reportedIncidentMarkerIcon(), anchor: [0.5, 1], scale: 0.9 }),
-      text: new ol.style.Text({ text: "campaign", font: '18px "Material Symbols Outlined"', fill: new ol.style.Fill({ color: "#fff" }), offsetY: -23 })
-    }) });
-    return [sourceName, layer];
-  }));
+  // Reported incidents: one layer coloured by status. New reports (pending, last 24 h, or arrived while the page is
+  // open) get a halo and a "ใหม่" badge; the incident opened from the incidents page is always shown and enlarged.
+  const incidentStatusConfig = {
+    pending: { label: "รอรับเรื่อง", color: "#c0392b", icon: "campaign" },
+    in_progress: { label: "กำลังดำเนินการ", color: "#d08a1f", icon: "construction" },
+    completed: { label: "เสร็จสิ้น", color: "#4f8a63", icon: "check_circle" }
+  };
+  const incidentStatusKey = (status) => (status === "assessing" ? "in_progress" : (incidentStatusConfig[status] ? status : "pending"));
+  const statusInputs = [...page.querySelectorAll("[data-city-incident-status]")];
+  const visibleIncidentStatuses = new Set(statusInputs.length ? statusInputs.filter((input) => input.checked).map((input) => input.dataset.cityIncidentStatus) : Object.keys(incidentStatusConfig));
+  const freshIncidentIds = new Set();
+  let focusedIncidentId = "";
+  const isIncidentNew = (incident) => freshIncidentIds.has(incident.id) ||
+    (incidentStatusKey(incident.status) === "pending" && incident.created_at && Date.now() - Date.parse(incident.created_at) < 24 * 3600 * 1000);
+  const isIncidentShown = (incident) => incident.id === focusedIncidentId ||
+    (visibleIncidentStatuses.has(incidentStatusKey(incident.status)) && !hiddenIncidentSources.has(incident.source || "ไม่ระบุแหล่งที่มา"));
+  const incidentPinIcon = (color) => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 42 52"><path d="M21 1C10 1 2 9.5 2 20c0 14.2 19 30.4 19 30.4S40 34.2 40 20C40 9.5 32 1 21 1z" fill="${color}" stroke="#fff" stroke-width="3"/></svg>`;
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  };
+  const incidentStyleCache = {};
+  const cityIncidentStyle = (feature) => {
+    const incident = feature.get("cityIncident");
+    if (!incident || !isIncidentShown(incident)) return null;
+    const status = incidentStatusKey(incident.status);
+    const fresh = isIncidentNew(incident);
+    const focused = incident.id === focusedIncidentId;
+    const key = `${status}:${fresh}:${focused}`;
+    if (incidentStyleCache[key]) return incidentStyleCache[key];
+    const { color, icon } = incidentStatusConfig[status];
+    const scale = focused ? 1.15 : 0.9;
+    const styles = [];
+    if (fresh || focused) styles.push(new ol.style.Style({ image: new ol.style.Circle({ radius: focused ? 24 : 18, displacement: [0, 22 * scale], fill: new ol.style.Fill({ color: `${color}33` }), stroke: new ol.style.Stroke({ color, width: 2 }) }) }));
+    styles.push(new ol.style.Style({
+      image: new ol.style.Icon({ src: incidentPinIcon(color), anchor: [0.5, 1], scale }),
+      text: new ol.style.Text({ text: icon, font: `${Math.round(18 * scale / 0.9)}px "Material Symbols Outlined"`, fill: new ol.style.Fill({ color: "#fff" }), offsetY: -25 * scale })
+    }));
+    if (fresh) styles.push(new ol.style.Style({ text: new ol.style.Text({ text: "ใหม่", font: '700 10px "Google Sans", sans-serif', fill: new ol.style.Fill({ color: "#fff" }), backgroundFill: new ol.style.Fill({ color: "#c0392b" }), padding: [1, 4, 1, 4], offsetX: 16, offsetY: -44 * scale }) }));
+    styles.forEach((style) => style.setZIndex(focused ? 3 : fresh ? 2 : 1));
+    return (incidentStyleCache[key] = styles);
+  };
+  const cityIncidentSource = new ol.source.Vector();
+  const cityIncidentLayer = new ol.layer.Vector({ source: cityIncidentSource, zIndex: 27, style: cityIncidentStyle });
   const cctvSource = new ol.source.Vector();
   const activitySource = new ol.source.Vector();
   const activityLayer = new ol.layer.Vector({ source: activitySource, zIndex: 26, style: (feature) => window.SmartTambonActivities?.markerStyle(feature.get("activity"), () => activityLayer.changed()) });
@@ -111,8 +142,22 @@ document.addEventListener("DOMContentLoaded", () => {
   const cctvLayer = new ol.layer.Vector({ source: cctvSource, zIndex: 25, style: (feature) => window.SmartTambonCctv?.markerStyle(feature.get("cctvCamera")?.status) });
   const roadLayer = new ol.layer.Tile({ source: new ol.source.OSM() });
   const satelliteLayer = new ol.layer.Tile({ source: new ol.source.XYZ({ url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attributions: "Tiles © Esri", maxZoom: 18, wrapX: false }), visible: false });
-  const map = new ol.Map({ target: mapElement, layers: [roadLayer, satelliteLayer, maskLayer, boundaryLayer, villageBoundaryLayer, placesLayer, waterLayer, hotspotLayer, cctvLayer, activityLayer, ...importedDatasetLayers.values()].map((entry) => entry.layer || entry).concat([...cityIncidentLayers.values(), selectionLayer, simulationGridLayer, simulationPointLayer, incidentLayer]), view: new ol.View({ center: ol.proj.fromLonLat([Number.isFinite(longitude) ? longitude : 100.5, Number.isFinite(latitude) ? latitude : 13.7]), zoom: 13, minZoom: 5, maxZoom: 18, extent: ol.proj.get("EPSG:3857").getExtent() }), controls: [] });
+  const map = new ol.Map({ target: mapElement, layers: [roadLayer, satelliteLayer, maskLayer, boundaryLayer, villageBoundaryLayer, placesLayer, waterLayer, hotspotLayer, cctvLayer, activityLayer, ...importedDatasetLayers.values()].map((entry) => entry.layer || entry).concat([cityIncidentLayer, selectionLayer, simulationGridLayer, simulationPointLayer, incidentLayer]), view: new ol.View({ center: ol.proj.fromLonLat([Number.isFinite(longitude) ? longitude : 100.5, Number.isFinite(latitude) ? latitude : 13.7]), zoom: 13, minZoom: 5, maxZoom: 18, extent: ol.proj.get("EPSG:3857").getExtent() }), controls: [] });
   window.smartCityAssessmentMap = map;
+  // Open on the user's area straight away (the server sends its extent) instead of waiting for /api/access_area.
+  if (!Number.isFinite(longitude) && initialExtent.length === 4 && initialExtent.every(Number.isFinite)) {
+    map.getView().fit(ol.proj.transformExtent(initialExtent, "EPSG:4326", "EPSG:3857"), { size: [mapElement.clientWidth || 800, mapElement.clientHeight || 600], padding: [30, 30, 30, 30], maxZoom: 15 });
+  }
+  // The base map and area boundary load first. Other data waits until the map has drawn, and layers that are
+  // switched off (water stations, CCTV, activities, hotspots) are only fetched the first time they are turned on.
+  const lazyLayerLoaders = {};
+  const loadedLayers = new Set();
+  const ensureLayerData = (key) => {
+    if (loadedLayers.has(key) || !lazyLayerLoaders[key]) return;
+    loadedLayers.add(key);
+    lazyLayerLoaders[key]();
+  };
+  const layerToggledOn = (key) => page.querySelector(`[data-layer-toggle="${key}"]`)?.checked !== false;
   let accessBoundary;
   let accessAreaSqKm = 0;
   let draw;
@@ -137,6 +182,24 @@ document.addEventListener("DOMContentLoaded", () => {
   let cesiumPlaces = null;
   let cesiumWater = null;
   let cesiumIncidentDataSource = null;
+  function syncCesiumIncidents() {
+    if (!cesiumViewer || !window.Cesium) return;
+    const Cesium = window.Cesium;
+    if (!cesiumIncidentDataSource) {
+      cesiumIncidentDataSource = new Cesium.CustomDataSource("reported-incidents");
+      cesiumViewer.dataSources.add(cesiumIncidentDataSource);
+    }
+    cesiumIncidentDataSource.entities.removeAll();
+    cityIncidents.forEach((reportedIncident) => {
+      const entity = cesiumIncidentDataSource.entities.add({
+        properties: { source: reportedIncident.source || "ไม่ระบุแหล่งที่มา" },
+        position: Cesium.Cartesian3.fromDegrees(Number(reportedIncident.longitude), Number(reportedIncident.latitude), 4),
+        billboard: { image: incidentPinIcon(incidentStatusConfig[incidentStatusKey(reportedIncident.status)].color), width: 36, height: 44, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY }
+      });
+      entity.cityIncident = reportedIncident;
+      entity.show = isIncidentShown(reportedIncident);
+    });
+  }
   let placesPayload = [];
   let importedAgencyPlaces = [];
   let waterPayload = [];
@@ -187,9 +250,10 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   const showIncidentDetail = (incident) => {
     if (!placeDetail || !incident) return;
-    placeDetail.querySelector("[data-place-detail-icon]").textContent = "campaign";
-    placeDetail.querySelector("[data-place-detail-icon]").style.backgroundColor = "#b94050";
-    placeDetail.querySelector("[data-place-detail-category]").textContent = `แจ้งเหตุโดย ${incident.source || "ไม่ระบุแหล่งที่มา"}`;
+    const statusInfo = incidentStatusConfig[incidentStatusKey(incident.status)];
+    placeDetail.querySelector("[data-place-detail-icon]").textContent = statusInfo.icon;
+    placeDetail.querySelector("[data-place-detail-icon]").style.backgroundColor = statusInfo.color;
+    placeDetail.querySelector("[data-place-detail-category]").textContent = [incident.reference_code, statusInfo.label, `แจ้งเหตุโดย ${incident.source || "ไม่ระบุแหล่งที่มา"}`].filter(Boolean).join(" · ");
     placeDetail.querySelector("[data-place-detail-name]").textContent = incident.title || "เหตุการณ์";
     const severityLabels = { critical: "วิกฤต", very_urgent: "เร่งด่วนมาก", urgent: "เร่งด่วน", non_urgent: "ไม่เร่งด่วน", general: "ทั่วไป", waiting: "ไม่เร่งด่วน", watch: "เร่งด่วน" };
     const address = placeDetail.querySelector("[data-place-detail-address]");
@@ -197,7 +261,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const contact = placeDetail.querySelector("[data-place-detail-contact]");
     contact.textContent = incident.description || "ไม่มีรายละเอียดเพิ่มเติม"; contact.hidden = false;
     const link = placeDetail.querySelector("[data-place-detail-link]");
-    link.removeAttribute("href"); link.textContent = ""; link.hidden = true;
+    if (incident.url) { link.href = incident.url; link.textContent = "เปิดรายการแจ้งเหตุ"; link.removeAttribute("target"); link.hidden = false; }
+    else { link.removeAttribute("href"); link.textContent = ""; link.hidden = true; }
     placeDetail.hidden = false;
   };
   const showImportedDatasetDetail = (properties) => {
@@ -220,20 +285,36 @@ document.addEventListener("DOMContentLoaded", () => {
     link.removeAttribute("href"); link.textContent = ""; link.hidden = true;
     placeDetail.hidden = false;
   };
-  page.querySelectorAll("[data-city-incident-toggle]").forEach((button) => {
-    button.addEventListener("change", () => {
-      const sourceName = button.dataset.cityIncidentToggle;
-      const visible = button.checked;
-      cityIncidentLayers.get(sourceName)?.setVisible(visible);
-      if (visible) visibleIncidentSources.add(sourceName); else visibleIncidentSources.delete(sourceName);
-      if (cesiumIncidentDataSource) {
-        const now = window.Cesium.JulianDate.now();
-        cesiumIncidentDataSource.entities.values.forEach((entity) => {
-          entity.show = visibleIncidentSources.has(entity.properties?.source?.getValue(now));
-        });
-      }
+  function updateIncidentStatusCounts() {
+    const counts = {};
+    cityIncidents.forEach((incident) => { const status = incidentStatusKey(incident.status); counts[status] = (counts[status] || 0) + 1; });
+    page.querySelectorAll("[data-city-incident-status-count]").forEach((element) => { element.textContent = `(${counts[element.dataset.cityIncidentStatusCount] || 0})`; });
+  }
+  function renderCityIncidents() {
+    cityIncidentSource.clear();
+    cityIncidents.forEach((incident) => {
+      const lon = Number(incident.longitude), lat = Number(incident.latitude);
+      if (!Number.isFinite(lon) || !Number.isFinite(lat)) return;
+      const feature = new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([lon, lat])));
+      feature.set("cityIncident", incident);
+      cityIncidentSource.addFeature(feature);
     });
-  });
+    updateIncidentStatusCounts();
+    syncCesiumIncidents();
+  }
+  function refreshIncidentVisibility() {
+    cityIncidentLayer.changed();
+    cesiumIncidentDataSource?.entities.values.forEach((entity) => { entity.show = isIncidentShown(entity.cityIncident); });
+  }
+  page.querySelectorAll("[data-city-incident-toggle]").forEach((input) => input.addEventListener("change", () => {
+    if (input.checked) hiddenIncidentSources.delete(input.dataset.cityIncidentToggle); else hiddenIncidentSources.add(input.dataset.cityIncidentToggle);
+    refreshIncidentVisibility();
+  }));
+  statusInputs.forEach((input) => input.addEventListener("change", () => {
+    if (input.checked) visibleIncidentStatuses.add(input.dataset.cityIncidentStatus); else visibleIncidentStatuses.delete(input.dataset.cityIncidentStatus);
+    refreshIncidentVisibility();
+  }));
+  renderCityIncidents();
   page.querySelectorAll("[data-city-dataset-toggle]").forEach((input) => input.addEventListener("change", () => {
     importedDatasetLayers.get(input.dataset.cityDatasetToggle)?.layer.setVisible(input.checked);
   }));
@@ -271,6 +352,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   const initializeCesium = async () => {
     if (cesiumViewer) return cesiumViewer;
+    await window.loadCesium?.();
     if (!window.Cesium) throw new Error("ไม่สามารถโหลดแผนที่ 3D ได้");
     const Cesium = window.Cesium;
     cesiumViewer = new Cesium.Viewer(cesiumElement, {
@@ -310,18 +392,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (Number.isFinite(longitude) && Number.isFinite(latitude)) {
       cesiumViewer.entities.add({ name: "ตำแหน่งเกิดเหตุ", position: Cesium.Cartesian3.fromDegrees(longitude, latitude, 4), billboard: { image: incidentMarkerUrl, width: 56, height: 70, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY } });
     }
-    if (cityIncidents.length) {
-      cesiumIncidentDataSource = new Cesium.CustomDataSource("reported-incidents");
-      cityIncidents.forEach((reportedIncident) => {
-        const entity = cesiumIncidentDataSource.entities.add({
-          properties: { source: reportedIncident.source || "ไม่ระบุแหล่งที่มา" },
-          position: Cesium.Cartesian3.fromDegrees(Number(reportedIncident.longitude), Number(reportedIncident.latitude), 4),
-          billboard: { image: reportedIncidentMarkerIcon(), width: 36, height: 44, verticalOrigin: Cesium.VerticalOrigin.BOTTOM, heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY }
-        });
-        entity.cityIncident = reportedIncident;
-      });
-      cesiumViewer.dataSources.add(cesiumIncidentDataSource);
-    }
+    syncCesiumIncidents();
     syncCesiumPointLayers();
     return cesiumViewer;
   };
@@ -695,6 +766,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (window.SMART_TAMBON_MAP_DEFAULTS?.basemap === "satellite") setTimeout(() => page.querySelector('[data-basemap="satellite"]')?.click());
   page.querySelectorAll("[data-layer-toggle]").forEach((input) => input.addEventListener("change", () => {
     ({ boundary: boundaryLayer, "village-boundaries": villageBoundaryLayer, places: placesLayer, water: waterLayer, hotspots: hotspotLayer, cctv: cctvLayer, activities: activityLayer }[input.dataset.layerToggle]).setVisible(input.checked);
+    if (input.checked) ensureLayerData(input.dataset.layerToggle);
     if (input.dataset.layerToggle === "hotspots" && !input.checked) hotspotPopup.setPosition(undefined);
     if (input.dataset.layerToggle === "boundary" && cesiumBoundary) cesiumBoundary.show = input.checked;
     if (input.dataset.layerToggle === "village-boundaries" && cesiumVillageBoundaries) cesiumVillageBoundaries.show = input.checked;
@@ -762,12 +834,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (detailImage) { detailImage.hidden = !activity.cover_url; if (activity.cover_url) detailImage.src = activity.cover_url; }
     placeDetail.hidden = false;
   };
-  window.SmartTambonActivities?.load().then((activities) => activities.forEach((activity) => {
+  lazyLayerLoaders.activities = () => window.SmartTambonActivities?.load().then((activities) => activities.forEach((activity) => {
     const feature = new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([Number(activity.longitude), Number(activity.latitude)])));
     feature.set("activity", activity);
     activitySource.addFeature(feature);
   })).catch((error) => console.warn("Unable to load activities", error));
-  fetch("/api/cctv_cameras", { headers: { Accept: "application/json" } }).then((response) => response.ok ? response.json() : []).then((cameras) => {
+  lazyLayerLoaders.cctv = () => fetch("/api/cctv_cameras", { headers: { Accept: "application/json" } }).then((response) => response.ok ? response.json() : []).then((cameras) => {
     cameras.filter((camera) => Number.isFinite(Number(camera.longitude)) && Number.isFinite(Number(camera.latitude))).forEach((camera) => {
       const feature = new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([Number(camera.longitude), Number(camera.latitude)])));
       feature.set("cctvCamera", camera);
@@ -806,8 +878,9 @@ document.addEventListener("DOMContentLoaded", () => {
       console.warn("Unable to load fire hotspots", error);
     }
   };
-  hotspotHours?.addEventListener("change", loadHotspots);
-  loadHotspots();
+  hotspotHours?.addEventListener("change", () => { if (loadedLayers.has("hotspots")) loadHotspots(); });
+  lazyLayerLoaders.hotspots = loadHotspots;
+  if (hotspotCount) hotspotCount.textContent = "เปิดชั้นข้อมูลเพื่อโหลด";
   map.on("singleclick", (event) => {
     if (!isCityMap) return;
     stopCctvDetail();
@@ -833,17 +906,20 @@ document.addEventListener("DOMContentLoaded", () => {
     showPlaceDetail(placeFeature.get("place"));
   });
 
-  fetch("/api/access_area", { headers: { Accept: "application/json" } }).then((response) => response.json()).then((data) => {
+  fetch("/api/access_area", { headers: { Accept: "application/json" } }).then((response) => response.ok ? response.json() : null).then((data) => {
+    if (!data?.type) return; // users without an area get an error payload, not GeoJSON
     accessBoundaryGeoJSON = data;
     const feature = new ol.format.GeoJSON().readFeature(data, { featureProjection: "EPSG:3857" });
     accessBoundary = feature.getGeometry(); boundarySource.addFeature(feature); accessAreaSqKm = geometryArea(accessBoundary);
     const world = ol.geom.Polygon.fromExtent(ol.proj.get("EPSG:3857").getExtent());
     const polygons = accessBoundary.getType() === "Polygon" ? [accessBoundary] : accessBoundary.getPolygons();
     polygons.forEach((polygon) => world.appendLinearRing(new ol.geom.LinearRing(polygon.getCoordinates()[0])));
-    maskSource.addFeature(new ol.Feature(world)); map.getView().fit(accessBoundary.getExtent(), { padding: [30, 30, 30, 30], maxZoom: 15 });
+    maskSource.addFeature(new ol.Feature(world));
+    if (focusedIncidentId) return; // opened on a specific incident: keep the view on it
+    map.getView().fit(accessBoundary.getExtent(), { padding: [30, 30, 30, 30], maxZoom: 15 });
     if (window.SMART_TAMBON_MAP_DEFAULTS?.area_zoom) map.getView().setZoom(window.SMART_TAMBON_MAP_DEFAULTS.area_zoom);
   });
-  fetch("/api/imported_datasets", { headers: { Accept: "application/json" } }).then((response) => response.ok ? response.json() : null).then((data) => {
+  const loadImportedDatasets = () => fetch("/api/imported_datasets", { headers: { Accept: "application/json" } }).then((response) => response.ok ? response.json() : null).then((data) => {
     if (!data) return;
     const features = new ol.format.GeoJSON().readFeatures(data, { featureProjection: "EPSG:3857" });
     villageBoundarySource.addFeatures(features.filter((feature) => feature.get("data_type") === "village_boundaries"));
@@ -902,6 +978,62 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (_) { /* Keep the places already loaded from other categories. */ }
   };
-  ["government", "education", "health", "culture", "tourism", "transport", "service", "emergency"].forEach((category, index) => window.setTimeout(() => loadAssessmentPlaces(category), index * 180));
-  fetch("/api/water_stations", { headers: { Accept: "application/json" } }).then((response) => response.ok ? response.json() : []).then((stations) => { waterPayload = stations; stations.forEach((station) => waterSource.addFeature(new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([Number(station.lon), Number(station.lat)]))))); syncCesiumPointLayers(); }).catch(() => {});
+  lazyLayerLoaders.water = () => fetch("/api/water_stations", { headers: { Accept: "application/json" } }).then((response) => response.ok ? response.json() : []).then((stations) => { waterPayload = stations; stations.forEach((station) => waterSource.addFeature(new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([Number(station.lon), Number(station.lat)]))))); syncCesiumPointLayers(); }).catch(() => {});
+  let deferredStarted = false;
+  const startDeferredLoads = () => {
+    if (deferredStarted) return;
+    deferredStarted = true;
+    loadImportedDatasets();
+    // Places feed the affected-places analysis, so they load even when the layer is hidden.
+    ["government", "education", "health", "culture", "tourism", "transport", "service", "emergency"].forEach((category, index) => window.setTimeout(() => loadAssessmentPlaces(category), 150 + index * 180));
+    ["activities", "cctv", "hotspots", "water"].forEach((key) => { if (layerToggledOn(key)) ensureLayerData(key); });
+  };
+  map.once("rendercomplete", startDeferredLoads);
+  window.setTimeout(startDeferredLoads, 2000);
+
+  // Opening a reported incident from the incidents page (?incident_id=…) centres the map on it, and new reports or
+  // status changes are picked up every 30 seconds.
+  const incidentToast = page.querySelector("[data-city-incident-toast]");
+  const focusIncident = (incident) => {
+    focusedIncidentId = incident.id;
+    refreshIncidentVisibility();
+    map.getView().animate({ center: ol.proj.fromLonLat([Number(incident.longitude), Number(incident.latitude)]), zoom: Math.max(map.getView().getZoom() || 0, 17), duration: 450 });
+    showIncidentDetail(incident);
+  };
+  const showIncidentToast = (html, incident) => {
+    if (!incidentToast) return;
+    incidentToast.innerHTML = `${html}${incident ? '<button type="button" data-toast-open>ดูตำแหน่ง</button>' : ""}<button type="button" class="close" data-toast-close aria-label="ปิด">×</button>`;
+    incidentToast.hidden = false;
+    incidentToast.querySelector("[data-toast-open]")?.addEventListener("click", () => { focusIncident(incident); incidentToast.hidden = true; });
+    incidentToast.querySelector("[data-toast-close]").addEventListener("click", () => { incidentToast.hidden = true; });
+  };
+  const requestedIncidentId = page.dataset.focusIncidentId;
+  if (isCityMap && requestedIncidentId) {
+    const target = cityIncidents.find((incident) => incident.id === requestedIncidentId);
+    if (target) focusIncident(target);
+    else showIncidentToast('<span class="material-symbols-outlined">location_off</span><div><b>ไม่พบตำแหน่งของเหตุการณ์นี้</b><small>เหตุการณ์ยังไม่มีพิกัด หรืออยู่นอกพื้นที่ที่คุณดูได้</small></div>');
+  }
+  const pointsUrl = page.dataset.incidentPointsUrl;
+  let knownIncidentIds = new Set(cityIncidents.map((incident) => incident.id));
+  const refreshIncidentPoints = async () => {
+    if (!pointsUrl || document.hidden) return;
+    try {
+      const response = await fetch(pointsUrl, { headers: { Accept: "application/json" } });
+      const data = response.ok ? await response.json() : null;
+      if (!Array.isArray(data)) return;
+      const added = data.filter((incident) => !knownIncidentIds.has(incident.id));
+      added.forEach((incident) => freshIncidentIds.add(incident.id));
+      knownIncidentIds = new Set(data.map((incident) => incident.id));
+      cityIncidents = data;
+      renderCityIncidents();
+      if (added.length) {
+        const first = added[0];
+        showIncidentToast(`<span class="material-symbols-outlined">campaign</span><div><b>แจ้งเหตุใหม่${added.length > 1 ? ` ${added.length} รายการ` : ""}</b><small>${escapeHtml(first.title || first.reference_code || "")}</small></div>`, first);
+      }
+    } catch (_error) { /* keep the incidents already on the map */ }
+  };
+  if (pointsUrl) {
+    window.setInterval(refreshIncidentPoints, 30000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshIncidentPoints(); });
+  }
 });

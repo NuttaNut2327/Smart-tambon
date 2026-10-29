@@ -359,7 +359,9 @@ document.addEventListener("DOMContentLoaded", () => {
   if (window.ol) {
     const importantPlaceCategories = ["government", "education", "health", "culture", "tourism", "transport", "service", "emergency"];
     const importantPlaceColors = { government: "#527f9d", education: "#a97924", health: "#b94755", culture: "#795f94", tourism: "#b96132", transport: "#438f86", service: "#985675", emergency: "#b7474d", imported: "#438a61" };
-    const importantPlacesPromise = Promise.all([
+    // Only fetched when a page actually has a location picker (it used to run on every map page).
+    let importantPlacesRequest = null;
+    const importantPlacesPromise = () => importantPlacesRequest ||= Promise.all([
       ...importantPlaceCategories.map((category) => fetch(`/api/places?category=${category}`, { headers: { Accept: "application/json" } })
         .then((response) => response.ok ? response.json() : { data: [] })
         .then((payload) => (payload.data || []).map((place) => ({ ...place, category })))
@@ -488,7 +490,7 @@ document.addEventListener("DOMContentLoaded", () => {
           polygons.forEach((polygon) => world.appendLinearRing(new ol.geom.LinearRing(polygon.getCoordinates()[0])));
           maskSource.addFeature(new ol.Feature(world));
 
-          importantPlacesPromise.then((places) => {
+          importantPlacesPromise().then((places) => {
             places.filter((place) => accessBoundary.intersectsCoordinate(ol.proj.fromLonLat([Number(place.lon), Number(place.lat)]))).forEach((place) => {
               placesSource.addFeature(new ol.Feature({ geometry: new ol.geom.Point(ol.proj.fromLonLat([Number(place.lon), Number(place.lat)])), place }));
             });

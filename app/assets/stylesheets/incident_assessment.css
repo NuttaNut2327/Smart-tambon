@@ -195,3 +195,19 @@ section.assessment-area-tools .assessment-distance-control output{color:#2C3930}
     padding: 12px 14px 14px;
   }
 }
+
+/* Reported incidents on the city map: status filter in the layer menu and the new-report / not-found toast. */
+.city-incident-status-filter{display:grid;gap:4px;margin:6px 0;padding:8px 0;border-top:1px solid #eee7d8;border-bottom:1px solid #eee7d8}
+.city-incident-status-filter b{font-size:11px;color:#806f5f}
+.city-incident-status-filter label{display:flex;align-items:center;gap:6px}
+.city-incident-status-filter small{color:#806f5f}
+.city-incident-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#c0392b}
+.city-incident-dot.in_progress{background:#d08a1f}
+.city-incident-dot.completed{background:#4f8a63}
+.city-incident-toast{position:absolute;top:12px;left:50%;z-index:40;display:flex;align-items:center;gap:10px;max-width:min(92%,460px);padding:10px 12px;border-radius:10px;background:#fff;box-shadow:0 6px 24px #2c393033;transform:translateX(-50%)}
+.city-incident-toast[hidden]{display:none}
+.city-incident-toast>.material-symbols-outlined{color:#c0392b;font-size:24px}
+.city-incident-toast div{display:grid;min-width:0}
+.city-incident-toast small{overflow:hidden;color:#806f5f;white-space:nowrap;text-overflow:ellipsis}
+.city-incident-toast button{border:0;border-radius:6px;padding:6px 10px;background:#2c3930;color:#fff;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+.city-incident-toast button.close{padding:4px 8px;background:none;color:#806f5f;font-size:18px}

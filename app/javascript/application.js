@@ -679,7 +679,7 @@ document.addEventListener("DOMContentLoaded", () => {
       Math.max(...coordinates.map(position=>position[0])),Math.max(...coordinates.map(position=>position[1]))
     ];
   }
-  function setMapMode(is3d) {
+  async function setMapMode(is3d) {
     if(is3d && typeof setAreaSelectionTool === "function") setAreaSelectionTool(false);
     cesiumMode=is3d;
     const cesiumContainer=document.querySelector("#cesium-map"), mapContainer=document.querySelector("#map");
@@ -689,7 +689,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-map-mode]").forEach(button=>button.classList.toggle("active",is3d && button.dataset.mapMode==="3d"));
     updateFloodControls();
     if(!is3d){requestAnimationFrame(()=>map.updateSize());return;}
-    try{initializeCesium();updateFloodControls();cesiumViewer.resize();syncCesiumPlaces();syncCesiumBoundary();syncCesiumVillageBoundaries();if(selectedAreaCenter){focusCesiumArea();}else{placeSearchLocation().then(focusCesiumCurrentLocation);}}catch(error){setMapMode(false);document.querySelector("#map-message").textContent=error.message;document.querySelector("#map-message").classList.add("error");}
+    try{await window.loadCesium?.();initializeCesium();updateFloodControls();cesiumViewer.resize();syncCesiumPlaces();syncCesiumBoundary();syncCesiumVillageBoundaries();if(selectedAreaCenter){focusCesiumArea();}else{placeSearchLocation().then(focusCesiumCurrentLocation);}}catch(error){setMapMode(false);document.querySelector("#map-message").textContent=error.message;document.querySelector("#map-message").classList.add("error");}
   }
   function setTerrainColorVisible(visible) {
     terrainColorEnabled=visible;

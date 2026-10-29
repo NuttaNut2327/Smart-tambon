@@ -37,3 +37,10 @@
 .incident-history-legend i.selected{border:3px solid #1f2a24;border-radius:50%;background:#c98a1b}
 @media(max-width:1280px){.incident-history-label .incident-history-label-text{display:none}}
 @media(max-width:900px){.incident-heading-side{flex-wrap:wrap;align-items:stretch;margin-left:0}.incident-history-form{display:block}.incident-history-range{flex-wrap:wrap}.incident-history-label{width:100%}.incident-history-range input[type=date]{flex:1;min-width:0}}
+
+/* "Open on the city map" link in the incident location card. */
+.incident-location-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.incident-location-heading h3{margin:0}
+.incident-open-city-map{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border:1px solid #d8cfbd;border-radius:7px;background:#fff;color:#2c3930;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap}
+.incident-open-city-map:hover{background:#edf2ee}
+.incident-open-city-map .material-symbols-outlined{font-size:16px}
