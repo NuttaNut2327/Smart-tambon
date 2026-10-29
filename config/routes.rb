@@ -38,6 +38,7 @@ Rails.application.routes.draw do
   post "report/:token", to: "public_incident_reports#create"
   get "report/:token/reverse_geocode", to: "public_incident_reports#reverse_geocode", as: :reverse_geocode_public_incident_report
   get "incidents/notification", to: "incidents#notification", as: :incident_notification
+  get "incidents/map_points", to: "incidents#map_points", as: :incident_map_points
   post "incidents", to: "incidents#create", as: :incidents
   patch "incidents/:id", to: "incidents#update", as: :incident
   delete "incidents/:id", to: "incidents#destroy"

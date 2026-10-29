@@ -15,6 +15,11 @@ class IncidentsController < ApplicationController
     }
   end
 
+  # Located general incidents for the city map; polled so new reports and status changes appear without a reload.
+  def map_points
+    render json: map_incident_points
+  end
+
   def assessment
     @incident = find_incident
     @assessment_disaster_type = incident_disaster_type(@incident)
@@ -38,6 +43,7 @@ class IncidentsController < ApplicationController
     @provinces = current_user.system_admin? ? Province.alphabetical : [@assigned_subdistrict&.province].compact
     @assessment_boundary_geojson = assessment_boundary_geojson
     load_map_layer_data(include_incidents: true)
+    @initial_map_extent = initial_map_extent
     render :assessment
   rescue Mongoid::Errors::DocumentNotFound
     redirect_to disasters_path(view: "plans"), alert: "ไม่พบแผนรับมือที่ต้องการ"
@@ -492,21 +498,7 @@ class IncidentsController < ApplicationController
   end
 
   def load_map_layer_data(include_incidents:)
-    @map_incidents =
-      if include_incidents
-        Incident.visible_to(current_user).where(category: "general").to_a.filter_map do |incident|
-          next unless incident.longitude.present? && incident.latitude.present?
-
-          {
-            id: incident.id.to_s, reference_code: incident.reference_code, title: incident.title,
-            source: incident.report_source_label, longitude: incident.longitude, latitude: incident.latitude,
-            severity: incident.severity, description: incident.description.to_s.truncate(180),
-            status: incident.status, url: general_incidents_path(incident_id: incident.id)
-          }
-        end
-      else
-        []
-      end
+    @map_incidents = include_incidents ? map_incident_points : []
     @map_incident_sources = @map_incidents.group_by { |incident| incident[:source] }
     @map_datasets = ImportedDataset.visible_to(current_user)
       .where(map_enabled: true)
@@ -521,6 +513,32 @@ class IncidentsController < ApplicationController
 
   def find_incident
     Incident.visible_to(current_user).find(params[:id])
+  end
+
+  def map_incident_points
+    Incident.visible_to(current_user).where(category: "general").to_a.filter_map do |incident|
+      next unless incident.longitude.present? && incident.latitude.present?
+
+      {
+        id: incident.id.to_s, reference_code: incident.reference_code, title: incident.title,
+        source: incident.report_source_label, longitude: incident.longitude, latitude: incident.latitude,
+        severity: incident.severity, description: incident.description.to_s.truncate(180),
+        status: incident.status, location_name: incident.location_name, created_at: incident.created_at&.iso8601,
+        url: general_incidents_path(incident_id: incident.id)
+      }
+    end
+  end
+
+  # [min_lon, min_lat, max_lon, max_lat] of the user's area, so the map opens in the right place before
+  # /api/access_area returns; the whole of Thailand when the user has no area.
+  def initial_map_extent
+    boundary = current_user.access_boundary
+    return [97.34, 5.61, 105.64, 20.46] unless boundary
+
+    box = RGeo::Cartesian::BoundingBox.create_from_geometry(boundary)
+    [box.min_x, box.min_y, box.max_x, box.max_y].map { |value| value.round(5) }
+  rescue StandardError
+    [97.34, 5.61, 105.64, 20.46]
   end
 
   def team_name_for(team_code)
