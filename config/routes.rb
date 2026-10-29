@@ -10,6 +10,7 @@ Rails.application.routes.draw do
   get "register/lookup", to: "organization_registrations#lookup", as: :organization_registration_lookup
   get "register/check", to: "organization_registrations#check", as: :organization_registration_check
   namespace :admin do
+    get "webhook", to: "webhooks#index", as: :webhook
     resources :organizations, only: %i[index show], constraints: { id: %r{[^/]+} } do
       post :switch, on: :member
     end

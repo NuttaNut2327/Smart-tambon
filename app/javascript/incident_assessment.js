@@ -60,6 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   let latestAssessmentEntries = [];
   let latestGeometryJSON = null;
+  let assessmentCalculationId = 0;
   let cityIncidents = (() => {
     try { return JSON.parse(page.querySelector("[data-city-incidents]")?.textContent || "[]"); }
     catch (_error) { return []; }
@@ -67,10 +68,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const incidentSourceNames = [...new Set(cityIncidents.map((incident) => incident.source || "ไม่ระบุแหล่งที่มา"))];
   const hiddenIncidentSources = new Set();
   const placeConfig = {
-    government: { color: "#527f9d", icon: "account_balance" }, education: { color: "#a97924", icon: "school" },
-    health: { color: "#b94755", icon: "heart_plus" }, culture: { color: "#795f94", icon: "folded_hands" },
-    tourism: { color: "#b96132", icon: "star" }, transport: { color: "#438f86", icon: "directions_car" },
-    service: { color: "#985675", icon: "local_mall" }, emergency: { color: "#b7474d", icon: "emergency_home" }
+    government: { color: "#2563a6", icon: "account_balance" }, education: { color: "#d49a18", icon: "school" },
+    health: { color: "#d6455d", icon: "heart_plus" }, culture: { color: "#7b57a6", icon: "folded_hands" },
+    tourism: { color: "#e06b2d", icon: "star" }, transport: { color: "#168b8b", icon: "directions_car" },
+    service: { color: "#a34f85", icon: "local_mall" }, emergency: { color: "#b4232f", icon: "emergency_home" }
   };
   const placeMarkerIcon = (color) => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 42 52"><path d="M21 1C10 1 2 9.5 2 20c0 14.2 19 30.4 19 30.4S40 34.2 40 20C40 9.5 32 1 21 1z" fill="${color}" stroke="#fff" stroke-width="3"/></svg>`;
@@ -105,8 +106,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const config = placeConfig[category] || placeConfig.service;
     const key = `${category}:${highlighted}`;
     if (!placeStyleCache[key]) placeStyleCache[key] = new ol.style.Style({
-      image: new ol.style.Icon({ src: placeMarkerIcon(highlighted ? config.color : "#89796a"), anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
-      text: new ol.style.Text({ text: config.icon, font: '20px "Material Symbols Outlined"', fill: new ol.style.Fill({ color: "#fff" }), offsetY: -25 })
+      image: new ol.style.Icon({ src: placeMarkerIcon(config.color), opacity: highlighted ? 1 : 0.58, anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
+      text: new ol.style.Text({ text: config.icon, font: '20px "Material Symbols Outlined"', fill: new ol.style.Fill({ color: highlighted ? "#fff" : "rgba(255,255,255,.72)" }), offsetY: -25 })
     });
     return placeStyleCache[key];
   };
@@ -529,7 +530,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const highlighted = !lastAssessmentGeometry || lastAssessmentGeometry.intersectsCoordinate(ol.proj.fromLonLat([lon, lat]));
       if (entity.billboard) {
         const category = entity.properties?.category?.getValue(now);
-        entity.billboard.image = placeMarkerIcon(highlighted ? (placeConfig[category] || placeConfig.service).color : "#89796a");
+        const config = placeConfig[category] || placeConfig.service;
+        entity.billboard.image = placeMarkerIcon(config.color);
+        entity.billboard.color = Cesium.Color.WHITE.withAlpha(highlighted ? 1 : 0.58);
         return;
       }
       entity.point.color = window.Cesium.Color.fromCssColorString(highlighted ? "#567f6d" : "#89796a");
@@ -578,6 +581,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   const updateSimulationAvailability = () => {
     const button = page.querySelector('[data-assessment-mode="simulation"]');
+    if (!button) return;
     const available = isCityMap || disasterType() === "flood";
     button.disabled = !available;
     button.setAttribute("aria-disabled", String(!available));
@@ -726,6 +730,8 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const calculate = async (geometry, ruleId = "", calculationMode = assessmentMode) => {
+    const calculationId = ++assessmentCalculationId;
+    const requestedDisasterType = disasterTypeSelect?.value || page.dataset.disasterType || "other";
     lastAssessmentGeometry = geometry;
     if (calculationMode === "simulation") lastSimulationGeometry = geometry; else lastAnalysisGeometry = geometry;
     refreshPlaceLayerStyles();
@@ -741,12 +747,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const hint = page.querySelector("[data-assessment-hint]");
     hint.textContent = "กำลังคำนวณเฉพาะพื้นที่ภายในขอบเขตดูแล…";
     try {
-      const response = await fetch(page.dataset.calculateUrl, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content }, body: JSON.stringify({ geometry: geometryGeoJSON, area_sq_km: area, coverage_ratio: ratio, rule_id: ruleId, disaster_type: disasterTypeSelect?.value, simulation_metrics: calculationMode === "simulation" ? simulationMetrics() : {} }) });
+      const response = await fetch(page.dataset.calculateUrl, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content }, body: JSON.stringify({ geometry: geometryGeoJSON, area_sq_km: area, coverage_ratio: ratio, rule_id: ruleId, disaster_type: requestedDisasterType, simulation_metrics: calculationMode === "simulation" ? simulationMetrics() : {} }) });
       const responseType = response.headers.get("content-type") || "";
       if (!responseType.includes("application/json")) throw new Error("ระบบประเมินผลขัดข้อง กรุณาลองใหม่อีกครั้ง");
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "คำนวณไม่สำเร็จ");
-      if (assessmentMode !== calculationMode) return;
+      if (calculationId !== assessmentCalculationId || assessmentMode !== calculationMode) return;
+      if (disasterTypeSelect && disasterTypeSelect.value !== result.disaster_type) return;
       selectedAreaSqKm = Number(result.area_sq_km);
       formatArea();
       const areaStatus = page.querySelector("[data-area-status]");
@@ -755,7 +762,9 @@ document.addEventListener("DOMContentLoaded", () => {
       page.querySelector("[data-result-households]").textContent = `${result.affected_households.toLocaleString()} ครัวเรือน`;
       page.querySelector("[data-result-villages]").textContent = `${result.affected_villages.toLocaleString()} หมู่บ้าน`;
       rulePicker.hidden = false;
-      ruleSelect.innerHTML = result.available_rules.length ? result.available_rules.map((rule) => `<option value="${escapeHtml(rule.id)}" ${rule.id === result.selected_rule_id ? "selected" : ""}>${escapeHtml(rule.name)}</option>`).join("") : '<option value="">ยังไม่มีกฎที่ผ่านเงื่อนไข</option>';
+      ruleSelect.innerHTML = result.available_rules.length
+        ? `${result.selected_rule_id ? "" : '<option value="" selected>ไม่มีกฎผ่านเงื่อนไข — เลือกกฎเพื่อประเมินเอง</option>'}${result.available_rules.map((rule) => `<option value="${escapeHtml(rule.id)}" ${rule.id === result.selected_rule_id ? "selected" : ""}>${escapeHtml(rule.name)}${rule.matched ? "" : " (เงื่อนไขไม่ผ่าน)"}</option>`).join("")}`
+        : '<option value="">ยังไม่มีกฎสำหรับประเภทภัยนี้</option>';
       ruleSelect.disabled = result.available_rules.length === 0;
       const resourceContainer = page.querySelector("[data-resource-results]");
       latestAssessmentEntries = result.resources.map((resource) => ({ ...resource, required: Number(resource.required), available: Number(resource.available) }));
@@ -807,11 +816,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (saveHouseholds) saveHouseholds.value = result.affected_households;
       if (saveVillages) saveVillages.value = result.affected_villages;
       if (saveGeometry) saveGeometry.value = JSON.stringify(geometryGeoJSON);
-      if (saveResources) saveResources.value = result.resources.map((resource) => `${resource.name} | ${resource.required} | ${resource.available} | ${resource.unit}`).join("\n");
+      if (saveResources) saveResources.value = result.resources.map((resource) => `${resource.name} | ${resource.required} | ${resource.available} | ${resource.unit} | ${resource.category || "resources"}`).join("\n");
       if (saveButton) saveButton.disabled = false;
       if (planSaveTrigger) planSaveTrigger.disabled = false;
       hint.textContent = result.rule_names.length ? `คำนวณด้วยกฎที่ผ่านเงื่อนไข: ${result.rule_names.join(", ")}` : result.evaluated_rule_count > 0 ? `ตรวจสอบ ${result.evaluated_rule_count} กฎแล้ว แต่ยังไม่มีเงื่อนไขใดผ่าน` : "ไม่พบกฎที่เปิดใช้งานสำหรับประเภทเหตุการณ์นี้";
-    } catch (error) { hint.textContent = error.message; }
+    } catch (error) { if (calculationId === assessmentCalculationId) hint.textContent = error.message; }
   };
 
   page.querySelectorAll("[data-assessment-mode]").forEach((button) => button.addEventListener("click", () => {
@@ -879,8 +888,41 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   page.querySelector("[data-area-distance]").addEventListener("change", () => { if (areaMode === "point" && areaAnchor) useSelectedGeometry(new ol.geom.Circle(areaAnchor, areaDistance())); if (areaMode === "line" && areaLine) useSelectedGeometry(bufferedLineGeometry(areaLine, areaDistance())); if (areaMode === "polygon" && areaPolygon) useSelectedGeometry(bufferedPolygonGeometry(areaPolygon, areaDistance())); });
   areaUnit.addEventListener("change", formatArea);
-  ruleSelect.addEventListener("change", () => { if (lastAssessmentGeometry && ruleSelect.value) calculate(lastAssessmentGeometry, ruleSelect.value, assessmentMode); });
-  disasterTypeSelect?.addEventListener("change", () => { if (assessmentMode !== "simulation") analysisDisasterType = disasterTypeSelect.value; const saveDisasterType = page.querySelector("[data-save-disaster-type]"); if (saveDisasterType) saveDisasterType.value = disasterTypeSelect.value; updateSimulationFields(); updateSimulationAvailability(); simulationGridSource.clear(); lastSimulationGeometry = null; if (assessmentMode === "analysis" && lastAnalysisGeometry) calculate(lastAnalysisGeometry, "", "analysis"); });
+  ruleSelect.addEventListener("change", () => {
+    const geometry = assessmentMode === "analysis" ? (lastAnalysisGeometry || lastAssessmentGeometry) : lastAssessmentGeometry;
+    if (!geometry || !ruleSelect.value) return;
+    assessmentCalculationId += 1;
+    latestAssessmentEntries = [];
+    const saveEntries = page.querySelector("[data-save-entries]");
+    if (saveEntries) saveEntries.value = "[]";
+    page.querySelector("[data-resource-results]").innerHTML = "<p>กำลังคำนวณทรัพยากรตามกฎที่เลือก…</p>";
+    page.querySelector("[data-assessment-hint]").textContent = "กำลังประเมินพื้นที่เดิมด้วยกฎที่เลือก…";
+    const saveButton = page.querySelector("[data-save-button]");
+    if (saveButton) saveButton.disabled = true;
+    calculate(geometry, ruleSelect.value, assessmentMode);
+  });
+  disasterTypeSelect?.addEventListener("change", () => {
+    assessmentCalculationId += 1;
+    if (assessmentMode !== "simulation") analysisDisasterType = disasterTypeSelect.value;
+    const saveDisasterType = page.querySelector("[data-save-disaster-type]");
+    if (saveDisasterType) saveDisasterType.value = disasterTypeSelect.value;
+    rulePicker.hidden = false;
+    ruleSelect.innerHTML = '<option value="">กำลังค้นหากฎสำหรับประเภทภัยที่เลือก…</option>';
+    ruleSelect.disabled = true;
+    latestAssessmentEntries = [];
+    const saveEntries = page.querySelector("[data-save-entries]");
+    if (saveEntries) saveEntries.value = "[]";
+    page.querySelector("[data-assessment-hint]").textContent = "กำลังค้นหากฎและคำนวณทรัพยากรใหม่…";
+    updateSimulationFields();
+    updateSimulationAvailability();
+    simulationGridSource.clear();
+    lastSimulationGeometry = null;
+    if (assessmentMode === "analysis" && lastAnalysisGeometry) calculate(lastAnalysisGeometry, "", "analysis");
+    else {
+      rulePicker.hidden = true;
+      page.querySelector("[data-assessment-hint]").textContent = "เลือกพื้นที่เพื่อค้นหากฎสำหรับประเภทภัยที่เลือก";
+    }
+  });
   page.querySelectorAll("[data-basemap]").forEach((button) => button.addEventListener("click", async () => { const mode = button.dataset.basemap; const is3d = mode === "3d"; mapWrap.classList.toggle("is-3d", is3d); roadLayer.setVisible(mode === "road"); satelliteLayer.setVisible(mode === "satellite"); page.querySelectorAll("[data-basemap]").forEach((item) => item.classList.toggle("active", item === button)); if (is3d) { try { await initializeCesium(); if (lastAssessmentGeometry) { const geometry = lastAssessmentGeometry.getType() === "Circle" ? ol.geom.Polygon.fromCircle(lastAssessmentGeometry, 96) : lastAssessmentGeometry; const geojson = new ol.format.GeoJSON().writeGeometryObject(geometry, { featureProjection: "EPSG:3857", dataProjection: "EPSG:4326" }); await syncCesiumSelection(geojson); } cesiumViewer.resize(); await focusCesiumOnManagedArea(); } catch (error) { page.querySelector("[data-assessment-hint]").textContent = error.message; } } else { window.setTimeout(() => map.updateSize(), 0); } }));
   const clearDisplayedResults = () => { if (cesiumViewer && cesiumSelection) { cesiumViewer.dataSources.remove(cesiumSelection, true); cesiumSelection = null; } selectedAreaSqKm = null; lastAssessmentGeometry = null; refreshPlaceLayerStyles(); renderAffectedPlaces(null); rulePicker.hidden = true; ruleSelect.innerHTML = '<option value="">ยังไม่มีกฎที่ผ่านเงื่อนไข</option>'; ruleSelect.disabled = true; page.querySelectorAll("[data-result-area],[data-result-population],[data-result-households],[data-result-villages]").forEach((element) => { element.textContent = "—"; }); page.querySelector("[data-resource-results]").innerHTML = "<p>ยังไม่มีผลการคำนวณ</p>"; const saveButton = page.querySelector("[data-save-button]"); const planSaveTrigger = page.querySelector("[data-open-plan-save]"); if (saveButton) saveButton.disabled = true; if (planSaveTrigger) planSaveTrigger.disabled = true; };
   page.querySelector("[data-clear-area]").addEventListener("click", () => { selectionSource.clear(); lastAnalysisGeometry = null; areaAnchor = null; areaLine = null; page.querySelector("[data-area-status]").textContent = ""; page.querySelector("[data-clear-area]").disabled = true; clearDisplayedResults(); });

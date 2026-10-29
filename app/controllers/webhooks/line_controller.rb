@@ -9,13 +9,25 @@ module Webhooks
       setting = NotificationSetting.current
       secret = setting.secret("line_channel_secret")
       body = request.raw_post
-      return head :service_unavailable if secret.blank?
-      return head :unauthorized unless valid_signature?(body, secret)
+      if secret.blank?
+        record_log(body:, status: "configuration_error", error_message: "LINE channel secret is not configured")
+        return head :service_unavailable
+      end
+      unless valid_signature?(body, secret)
+        record_log(body:, status: "invalid_signature")
+        return head :unauthorized
+      end
 
-      Array(JSON.parse(body)["events"]).each { |event| handle(event, setting) }
+      payload = JSON.parse(body)
+      Array(payload["events"]).each { |event| handle(event, setting) }
+      record_log(body:, payload:, status: "accepted", signature_valid: true)
       head :ok
     rescue JSON::ParserError
+      record_log(body: request.raw_post, status: "invalid_json", signature_valid: true, error_message: "Invalid JSON payload")
       head :bad_request
+    rescue StandardError => error
+      record_log(body: request.raw_post, status: "processing_error", signature_valid: true, error_message: error.message)
+      raise
     end
 
     private
@@ -61,6 +73,25 @@ module Webhooks
       line.reply(event["replyToken"], "สวัสดีครับ บอทแจ้งเตือนของ #{SystemSetting.current.system_short_name} พร้อมใช้งาน\n\n" \
                                       "Group ID ของกลุ่มนี้คือ:\n#{group_id}\n\n" \
                                       "คัดลอกไปใส่ที่ ตั้งค่า อบต. → ช่องทางแจ้งเตือน → เพิ่มช่องทาง LINE OA")
+    end
+
+    def record_log(body:, status:, signature_valid: false, payload: nil, error_message: nil)
+      parsed = payload || (JSON.parse(body) if signature_valid)
+      events = Array(parsed&.fetch("events", nil))
+      LineWebhookLog.create!(
+        received_at: Time.current,
+        status:,
+        signature_valid:,
+        event_types: events.filter_map { |event| event["type"].presence }.uniq,
+        group_ids: events.filter_map { |event| event.dig("source", "groupId") || event.dig("source", "roomId") }.uniq,
+        destination: parsed&.fetch("destination", nil),
+        payload: parsed || {},
+        body_size: body.to_s.bytesize,
+        request_id: request.request_id,
+        error_message: error_message.to_s.truncate(500).presence
+      )
+    rescue JSON::ParserError, Mongo::Error, Mongoid::Errors::MongoidError => error
+      Rails.logger.warn("LINE webhook log could not be saved: #{error.message}")
     end
   end
 end

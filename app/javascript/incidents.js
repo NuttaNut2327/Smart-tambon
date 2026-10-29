@@ -593,7 +593,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let options = [];
     try { options = JSON.parse(form.querySelector("[data-plan-resource-options]")?.textContent || "[]"); } catch (_error) { options = []; }
     const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]);
-    const rowMarkup = () => `<div class="response-plan-resource-row"><div class="response-plan-resource-picker"><input name="plan[resources][][name]" required autocomplete="off" data-plan-resource-name placeholder="เลือกหรือพิมพ์ชื่อทรัพยากร"><div class="response-plan-resource-menu" data-plan-resource-menu popover="manual"></div></div><input name="plan[resources][][required]" type="number" min="0.01" step="any" required value="1"><input name="plan[resources][][unit]" required data-plan-resource-unit value="รายการ"><output data-plan-resource-available>0 รายการ</output><button type="button" data-remove-plan-resource aria-label="ลบรายการ">×</button></div>`;
+    const rowMarkup = () => `<div class="response-plan-resource-row"><input type="hidden" name="plan[resources][][category]" value="resources" data-plan-resource-category><div class="response-plan-resource-picker"><input name="plan[resources][][name]" required autocomplete="off" data-plan-resource-name placeholder="เลือกหรือพิมพ์ชื่อทรัพยากร"><div class="response-plan-resource-menu" data-plan-resource-menu popover="manual"></div></div><input name="plan[resources][][required]" type="number" min="0.01" step="any" required value="1"><input name="plan[resources][][unit]" required data-plan-resource-unit value="รายการ"><output data-plan-resource-available>0 รายการ</output><button type="button" data-remove-plan-resource aria-label="ลบรายการ">×</button></div>`;
     const hideMenu = menu => {
       if (menu?.matches(":popover-open")) menu.hidePopover();
     };
@@ -618,6 +618,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const name = row.querySelector("[data-plan-resource-name]").value.trim();
       const match = options.find(option => String(option.name).trim().toLowerCase() === name.toLowerCase());
       if (match) row.querySelector("[data-plan-resource-unit]").value = match.unit || "รายการ";
+      if (match) row.querySelector("[data-plan-resource-category]").value = match.category || "resources";
       const unit = row.querySelector("[data-plan-resource-unit]").value || "รายการ";
       row.querySelector("[data-plan-resource-available]").textContent = `${Number(match?.available || 0).toLocaleString("th-TH")} ${unit}`;
     };
@@ -632,6 +633,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const selected = options[Number(optionButton.dataset.planResourceOption)];
         row.querySelector("[data-plan-resource-name]").value = selected.name;
         row.querySelector("[data-plan-resource-unit]").value = selected.unit || "รายการ";
+        row.querySelector("[data-plan-resource-category]").value = selected.category || "resources";
         row.querySelector("[data-plan-resource-available]").textContent = `${Number(selected.available || 0).toLocaleString("th-TH")} ${selected.unit || "รายการ"}`;
         hideMenu(row.querySelector("[data-plan-resource-menu]"));
         return;

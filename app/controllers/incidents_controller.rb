@@ -129,7 +129,7 @@ class IncidentsController < ApplicationController
     )
     matched_rules = candidate_rules.select { |rule| rule.matches_metrics?(metrics) }
     selected_rule = if params[:rule_id].present?
-      matched_rules.find { |rule| rule.id.to_s == params[:rule_id].to_s } || matched_rules.first
+      candidate_rules.find { |rule| rule.id.to_s == params[:rule_id].to_s } || matched_rules.first
     else
       matched_rules.first
     end
@@ -164,7 +164,7 @@ class IncidentsController < ApplicationController
       affected_people: affected_people, affected_households: affected_households,
       affected_villages: affected_villages, disaster_type: disaster_type,
       rule_names: rules.map(&:name), resources: resources,
-      available_rules: matched_rules.map { |rule| { id: rule.id.to_s, name: rule.name } },
+      available_rules: candidate_rules.map { |rule| { id: rule.id.to_s, name: rule.name, matched: rule.in?(matched_rules) } },
       selected_rule_id: selected_rule&.id&.to_s,
       evaluated_rule_count: candidate_rules.size, matched_rule_count: matched_rules.size
     }
@@ -332,10 +332,11 @@ class IncidentsController < ApplicationController
     assessment = params.require(:assessment).permit(:title, :area_sq_km, :area_geojson, :affected_people, :affected_households, :budget, :resource_lines, :activate)
     next_version = incident.response_plan_versions.map { |item| item["version"].to_i }.max.to_i + 1
     resources = assessment[:resource_lines].to_s.lines.filter_map do |line|
-      name, required, available, unit = line.strip.split("|").map(&:strip)
+      name, required, available, unit, category = line.strip.split("|").map(&:strip)
       next if name.blank?
 
-      { "name" => name, "required" => required.to_f, "available" => available.to_f, "unit" => unit.presence || "รายการ" }
+      { "name" => name, "required" => required.to_f, "available" => available.to_f, "unit" => unit.presence || "รายการ",
+        "category" => %w[teams resources consumables].include?(category) ? category : nil }.compact
     end
     assessed_at = Time.current.utc.iso8601
     assessment_title = assessment[:title].presence || "ประเมินสถานการณ์ครั้งที่ #{next_version}"
@@ -376,7 +377,7 @@ class IncidentsController < ApplicationController
     plan = versions.find { |item| item["version"].to_i == version_number }
     raise ArgumentError, "ไม่พบ Version แผนรับมือที่เลือก" unless plan
 
-    submitted = params.require(:plan).permit(resources: %i[name required unit]).fetch(:resources, [])
+    submitted = params.require(:plan).permit(resources: %i[name required unit category]).fetch(:resources, [])
     availability = IncidentUsageCatalog.summary_for(current_user).index_by { |item| [item[:name].to_s.strip.downcase, item[:unit].to_s.strip.downcase] }
     existing = Array(plan["resources"]).index_by { |item| [item["name"].to_s.strip.downcase, item["unit"].to_s.strip.downcase] }
     resources = submitted.filter_map do |item|
@@ -388,8 +389,11 @@ class IncidentsController < ApplicationController
 
       unit = item[:unit].presence || "รายการ"
       key = [name.downcase, unit.to_s.strip.downcase]
-      available = availability[key]&.dig(:available) || existing[key]&.dig("available") || 0
-      { "name" => name, "required" => required, "available" => available.to_f, "unit" => unit }
+      catalog_item = availability[key]
+      available = catalog_item&.dig(:available) || existing[key]&.dig("available") || 0
+      category = item[:category].presence || catalog_item&.dig(:category) || existing[key]&.dig("category") || "resources"
+      category = "resources" unless %w[teams resources consumables].include?(category)
+      { "category" => category, "name" => name, "required" => required, "available" => available.to_f, "unit" => unit }
     end
     raise ArgumentError, "กรุณาระบุทรัพยากรอย่างน้อย 1 รายการ" if resources.empty?
 

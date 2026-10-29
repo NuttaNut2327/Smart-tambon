@@ -140,6 +140,30 @@ class DatasetImportDraftsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes draft.fetch("schema").map { |field| field.fetch("key") }, "agency_name"
   end
 
+  test "team data page shows member readiness counts" do
+    team_dataset = ImportedDataset.create!(user: @user, name: "ทีมแสดงสถานะ", data_type: "teams", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("teams"), shared_with_all: true)
+    DatasetVersionImportService.new(dataset: team_dataset, user: @user, manual_records: [{
+      team_code: "TEAM-UI", team_name: "ทีมกู้ภัยทดสอบ", agency_code: "AG-001", agency_name: "อบต.ทดสอบ",
+      team_type: "กู้ภัย", status: "พร้อมปฏิบัติงาน"
+    }]).import!
+    workforce_dataset = ImportedDataset.create!(user: @user, name: "บุคลากรแสดงสถานะ", data_type: "workforce", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("workforce"), shared_with_all: true)
+    DatasetVersionImportService.new(dataset: workforce_dataset, user: @user, manual_records: [
+      { personnel_code: "P-UI-1", full_name: "คนพร้อม", position: "เจ้าหน้าที่", agency_code: "AG-001", agency_name: "อบต.ทดสอบ",
+        team_code: "TEAM-UI", team_name: "ทีมกู้ภัยทดสอบ", employment_status: "ปฏิบัติงาน", availability_status: "พร้อมปฏิบัติงาน" },
+      { personnel_code: "P-UI-2", full_name: "คนไม่พร้อม", position: "เจ้าหน้าที่", agency_code: "AG-001", agency_name: "อบต.ทดสอบ",
+        team_code: "TEAM-UI", team_name: "ทีมกู้ภัยทดสอบ", employment_status: "ปฏิบัติงาน", availability_status: "ไม่พร้อมปฏิบัติงาน" }
+    ]).import!
+
+    get data_layers_path(data_type: "teams")
+
+    assert_response :success
+    assert_select ".team-readiness-breakdown", text: /ทีมกู้ภัยทดสอบ/
+    assert_select ".team-readiness-table .ready", text: /1 คน/
+    assert_select ".team-readiness-table .unavailable", text: /1 คน/
+  end
+
   test "agency replace mode displays the stronger relationship warning" do
     get data_layers_path(data_type: "agencies")
 

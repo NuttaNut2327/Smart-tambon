@@ -44,3 +44,8 @@
 .incident-open-city-map{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border:1px solid #d8cfbd;border-radius:7px;background:#fff;color:#2c3930;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap}
 .incident-open-city-map:hover{background:#edf2ee}
 .incident-open-city-map .material-symbols-outlined{font-size:16px}
+
+.incident-plan-resource-sections{display:grid;gap:14px;margin-top:14px}
+.incident-plan-resource-section h4{margin:0 0 7px;color:#2c3930;font-size:13px}
+.incident-plan-resource-section .incident-plan-resources{margin-top:0}
+.incident-plan-resource-empty{margin:0;padding:13px;border:1px dashed #e2dac8;border-radius:8px;color:#806f5f;font-size:11px;text-align:center}

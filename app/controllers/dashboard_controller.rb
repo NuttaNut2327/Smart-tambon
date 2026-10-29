@@ -67,6 +67,7 @@ class DashboardController < ApplicationController
     end
     @incident_usage_options = IncidentUsageCatalog.for(current_user)
     @response_plan_resource_options = IncidentUsageCatalog.summary_for(current_user)
+    @response_plan_category_options = IncidentUsageCatalog.rule_options_for(current_user)
     @selected_incident = @incidents.find { |incident| incident.id.to_s == params[:incident_id] } || @incidents.first
     if @history_search.active?
       @history_map_features = @history_search.map_features(@incidents, url_for_incident: ->(incident) {

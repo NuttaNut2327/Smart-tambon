@@ -4,6 +4,7 @@ class SystemSettingsController < ApplicationController
   skip_before_action :require_access_configuration!, only: :logo
   before_action :require_settings_admin!, except: :logo
   before_action :set_setting
+  before_action :set_demo_counts, only: %i[show update]
 
   def show; end
 
@@ -50,6 +51,8 @@ class SystemSettingsController < ApplicationController
   private
 
   def set_setting = @setting = SystemSetting.current
+
+  def set_demo_counts = @demo_counts = DemoData.counts
 
   def require_settings_admin!
     return if system_admin?

@@ -3,6 +3,7 @@ require "test_helper"
 class IncidentHistorySearchTest < ActionDispatch::IntegrationTest
   setup do
     Incident.where(title: /\Aประวัติทดสอบ/).delete_all
+    ImportedDataset.where(name: "ทีมจำแนกหมวดทดสอบ").destroy_all
     @admin = User.create!(username: "history_admin", email: "history_admin@example.test", password: "Password123!", role: :system_admin)
     @old = Incident.create!(title: "ประวัติทดสอบ น้ำท่วมปีก่อน", category: "disaster", status: "completed", severity: "critical",
       longitude: 100.5, latitude: 14.0, backdated: true, occurred_at: Time.zone.local(2025, 10, 5, 9))
@@ -13,6 +14,7 @@ class IncidentHistorySearchTest < ActionDispatch::IntegrationTest
 
   teardown do
     Incident.where(title: /\Aประวัติทดสอบ/).delete_all
+    ImportedDataset.where(name: "ทีมจำแนกหมวดทดสอบ").destroy_all
     @admin&.destroy
   end
 
@@ -56,5 +58,37 @@ class IncidentHistorySearchTest < ActionDispatch::IntegrationTest
     get disasters_path(from: "2025-10-01", to: "2025-10-31")
     features = JSON.parse(css_select("[data-incident-history-map]").first["data-features"])
     assert_equal "Polygon", features.first.dig("area", "type")
+  end
+
+  test "response plan separates personnel resources and consumables" do
+    team_dataset = ImportedDataset.create!(user: @admin, name: "ทีมจำแนกหมวดทดสอบ", data_type: "teams", geometry_type: "none",
+      schema_definition: ImportedDataset.schema_for("teams"), shared_with_all: true)
+    DatasetVersionImportService.new(dataset: team_dataset, user: @admin, manual_records: [{
+      team_name: "ทีมกู้ภัย", agency_code: "AG-001", agency_name: "อบต.ทดสอบ", team_type: "กู้ภัย", status: "กำลังปฏิบัติงาน"
+    }]).import!
+    @recent.update!(response_plan_versions: [{
+      "version" => 1,
+      "title" => "แผนแยกหมวด",
+      "resources" => [
+        { "category" => "resources", "name" => "ทีมกู้ภัย", "required" => 2, "available" => 0, "unit" => "คน" },
+        { "category" => "resources", "name" => "เรือท้องแบน", "required" => 1, "available" => 1, "unit" => "ลำ" },
+        { "category" => "consumables", "name" => "น้ำดื่ม", "required" => 100, "available" => 80, "unit" => "ขวด" }
+      ]
+    }])
+
+    get disasters_path(incident_id: @recent.id, plan_version: 1)
+
+    assert_response :success
+    assert_select ".incident-plan-resource-section", count: 3
+    assert_select ".incident-plan-resource-section h4", text: "บุคลากรที่ใช้"
+    assert_select ".incident-plan-resource-section h4", text: "ทรัพยากรและอุปกรณ์ที่ใช้"
+    assert_select ".incident-plan-resource-section h4", text: "วัสดุสิ้นเปลืองที่ใช้"
+    assert_select ".incident-plan-resources td", text: "ทีมกู้ภัย"
+    assert_select ".incident-plan-resources td", text: "เรือท้องแบน"
+    assert_select ".incident-plan-resources td", text: "น้ำดื่ม"
+    personnel_section = css_select(".incident-plan-resource-section").find { |section| section.at_css("h4")&.text == "บุคลากรที่ใช้" }
+    resource_section = css_select(".incident-plan-resource-section").find { |section| section.at_css("h4")&.text == "ทรัพยากรและอุปกรณ์ที่ใช้" }
+    assert_includes personnel_section.text, "ทีมกู้ภัย"
+    refute_includes resource_section.text, "ทีมกู้ภัย"
   end
 end

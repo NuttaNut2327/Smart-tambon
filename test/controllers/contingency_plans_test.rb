@@ -9,8 +9,79 @@ class ContingencyPlansTest < ActionDispatch::IntegrationTest
 
   teardown do
     ContingencyPlan.delete_all
+    ResourceRule.delete_all
     AdminAuditLog.where(action: "delete_contingency_plan").delete_all
     @user&.destroy
+  end
+
+  test "changing the assessment disaster type replaces a rule from the previous type" do
+    flood_rule = ResourceRule.create!(user_id: @user.id, name: "กฎน้ำท่วม", disaster_type: "flood",
+      conditions: [{ "variable" => "area", "comparator" => "gte", "value" => "0" }],
+      formulas: [{ "resource" => "เรือ", "source_type" => "resources", "amount" => "1",
+        "unit" => "ลำ", "basis" => "area", "per_value" => "1" }])
+    fire_rule = ResourceRule.create!(user_id: @user.id, name: "กฎไฟป่า", disaster_type: "fire",
+      conditions: [{ "variable" => "area", "comparator" => "gte", "value" => "0" }],
+      formulas: [{ "resource" => "รถดับเพลิง", "source_type" => "resources", "amount" => "1",
+        "unit" => "คัน", "basis" => "area", "per_value" => "1" }])
+
+    post calculate_situation_assessment_path, params: {
+      area_sq_km: 2, coverage_ratio: 1, disaster_type: "fire", rule_id: flood_rule.id.to_s
+    }, as: :json
+
+    assert_response :success
+    payload = response.parsed_body
+    assert_equal "fire", payload["disaster_type"]
+    assert_equal fire_rule.id.to_s, payload["selected_rule_id"]
+    assert_equal [fire_rule.id.to_s], payload["available_rules"].pluck("id")
+    assert_equal ["รถดับเพลิง"], payload["resources"].pluck("name")
+  end
+
+  test "changing the selected rule recalculates the same area with that rule" do
+    first_rule = ResourceRule.create!(user_id: @user.id, name: "กฎไฟป่าทั่วไป", disaster_type: "fire",
+      conditions: [{ "variable" => "area", "comparator" => "gte", "value" => "0" }],
+      formulas: [{ "resource" => "รถดับเพลิง", "source_type" => "resources", "amount" => "1",
+        "unit" => "คัน", "basis" => "area", "per_value" => "1" }])
+    selected_rule = ResourceRule.create!(user_id: @user.id, name: "กฎไฟป่าพื้นที่สูง", disaster_type: "fire",
+      conditions: [{ "variable" => "area", "comparator" => "gte", "value" => "0" }],
+      formulas: [{ "resource" => "ชุดดับไฟป่า", "source_type" => "resources", "amount" => "2",
+        "unit" => "ชุด", "basis" => "area", "per_value" => "1" }])
+
+    post calculate_situation_assessment_path, params: {
+      area_sq_km: 2, coverage_ratio: 1, disaster_type: "fire", rule_id: selected_rule.id.to_s
+    }, as: :json
+
+    assert_response :success
+    payload = response.parsed_body
+    assert_equal selected_rule.id.to_s, payload["selected_rule_id"]
+    assert_includes payload["available_rules"].pluck("id"), first_rule.id.to_s
+    assert_includes payload["available_rules"].pluck("id"), selected_rule.id.to_s
+    assert_equal ["ชุดดับไฟป่า"], payload["resources"].pluck("name")
+    assert_equal [4], payload["resources"].pluck("required")
+  end
+
+  test "rules for the selected disaster type remain available when their conditions do not match" do
+    rule = ResourceRule.create!(user_id: @user.id, name: "กฎไฟป่าพื้นที่ขนาดใหญ่", disaster_type: "fire",
+      conditions: [{ "variable" => "area", "comparator" => "gte", "value" => "100" }],
+      formulas: [{ "resource" => "รถดับเพลิง", "source_type" => "resources", "amount" => "1",
+        "unit" => "คัน", "basis" => "area", "per_value" => "1" }])
+
+    post calculate_situation_assessment_path, params: {
+      area_sq_km: 2, coverage_ratio: 1, disaster_type: "fire"
+    }, as: :json
+
+    assert_response :success
+    payload = response.parsed_body
+    assert_nil payload["selected_rule_id"]
+    assert_equal [{ "id" => rule.id.to_s, "name" => rule.name, "matched" => false }], payload["available_rules"]
+    assert_empty payload["resources"]
+
+    post calculate_situation_assessment_path, params: {
+      area_sq_km: 2, coverage_ratio: 1, disaster_type: "fire", rule_id: rule.id.to_s
+    }, as: :json
+
+    assert_response :success
+    assert_equal rule.id.to_s, response.parsed_body["selected_rule_id"]
+    assert_equal ["รถดับเพลิง"], response.parsed_body["resources"].pluck("name")
   end
 
   test "system admin creates a draft plan and opens area analysis" do

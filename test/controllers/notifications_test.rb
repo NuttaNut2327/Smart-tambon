@@ -42,7 +42,7 @@ class NotificationsTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    [NotificationDelivery, NotificationChannel, NotificationTemplate, LineGroup, NotificationSetting].each(&:delete_all)
+    [NotificationDelivery, NotificationChannel, NotificationTemplate, LineGroup, LineWebhookLog, NotificationSetting].each(&:delete_all)
     Incident.where(:owner_user_id.in => [@admin&.id, @other&.id].compact).delete_all
     [@admin, @staff, @other].compact.each(&:destroy)
     @province&.subdistricts&.destroy_all
@@ -144,6 +144,9 @@ class NotificationsTest < ActionDispatch::IntegrationTest
 
     post line_webhook_path, params: body, headers: { "Content-Type" => "application/json", "X-Line-Signature" => "bad" }
     assert_response :unauthorized
+    rejected = LineWebhookLog.newest_first.first
+    assert_equal "invalid_signature", rejected.status
+    assert_not rejected.signature_valid?
 
     replies = []
     client = Object.new
@@ -159,6 +162,27 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     assert_equal "เวร อบต.", group.group_name
     assert_equal "reply-1", replies.first.first
     assert_includes replies.first.last, LINE_GROUP
+    log = LineWebhookLog.where(status: "accepted").first
+    assert_equal ["join"], log.event_types
+    assert_equal [LINE_GROUP], log.group_ids
+    assert_equal "join", log.payload.dig("events", 0, "type")
+  end
+
+  test "LINE webhook log page is restricted to system admins" do
+    LineWebhookLog.create!(received_at: Time.current, status: "accepted", signature_valid: true,
+      event_types: ["join"], group_ids: [LINE_GROUP], payload: { "events" => [{ "type" => "join" }] })
+
+    get admin_webhook_path
+    assert_redirected_to root_path
+
+    admin = User.create!(username: "webhook_system_admin", password: "Password123!", role: :system_admin)
+    sign_in admin
+    get admin_webhook_path
+    assert_response :success
+    assert_includes response.body, LINE_GROUP
+    assert_includes response.body, "LINE Webhook Log"
+  ensure
+    admin&.destroy
   end
 
   test "central settings are system-admin only and never render saved tokens" do

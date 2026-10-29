@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // intentionally separate from the selected province/district/subdistrict.
   let areaSelectionFilterGeometry=null;
   const placeConfig = {
-    government:{color:"#527f9d",glyph:"building",icon:"account_balance"}, education:{color:"#a97924",glyph:"ส",icon:"school"}, health:{color:"#b94755",glyph:"+",icon:"heart_plus"}, culture:{color:"#795f94",glyph:"♜",icon:"folded_hands"}, tourism:{color:"#b96132",glyph:"★",icon:"star"}, transport:{color:"#438f86",glyph:"↔",icon:"directions_car"}, service:{color:"#985675",glyph:"●",icon:"local_mall"}, emergency:{color:"#b7474d",glyph:"!",icon:"emergency_home"}
+    government:{color:"#2563a6",glyph:"building",icon:"account_balance"}, education:{color:"#d49a18",glyph:"ส",icon:"school"}, health:{color:"#d6455d",glyph:"+",icon:"heart_plus"}, culture:{color:"#7b57a6",glyph:"♜",icon:"folded_hands"}, tourism:{color:"#e06b2d",glyph:"★",icon:"star"}, transport:{color:"#168b8b",glyph:"↔",icon:"directions_car"}, service:{color:"#a34f85",glyph:"●",icon:"local_mall"}, emergency:{color:"#b4232f",glyph:"!",icon:"emergency_home"}
   };
   const placeCategoryTags={government:["government","municipality"],education:["school","university","library"],health:["hospital","clinic","pharmacy"],culture:["temple","mosque","church","museum"],tourism:["tourist attraction","hotel","park","viewpoint"],transport:["bus station","train station","pier","parking"],service:["restaurant","cafe","shopping","convenience"],emergency:["police","fire_station","rescue"]};
   const placeMarkerIcon = (color, glyph) => {
@@ -94,7 +94,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const isPlaceInsideManualSelection = feature => !areaSelectionFilterGeometry || areaSelectionFilterGeometry.intersectsCoordinate(feature.getGeometry().getCoordinates());
   const placeMarkerStyle = config => {
     const selectedStyle=new ol.style.Style({image:new ol.style.Icon({src:placeMarkerIcon(config.color,""),anchor:[0.5,1],anchorXUnits:"fraction",anchorYUnits:"fraction"}),text:new ol.style.Text({text:config.icon,font:'20px "Material Symbols Outlined"',fill:new ol.style.Fill({color:"#fff"}),offsetY:-25})});
-    const mutedStyle=new ol.style.Style({image:new ol.style.Icon({src:placeMarkerIcon("#89796a",""),anchor:[0.5,1],anchorXUnits:"fraction",anchorYUnits:"fraction"}),text:new ol.style.Text({text:config.icon,font:'20px "Material Symbols Outlined"',fill:new ol.style.Fill({color:"#fff"}),offsetY:-25})});
+    const mutedStyle=new ol.style.Style({image:new ol.style.Icon({src:placeMarkerIcon(config.color,""),opacity:.58,anchor:[0.5,1],anchorXUnits:"fraction",anchorYUnits:"fraction"}),text:new ol.style.Text({text:config.icon,font:'20px "Material Symbols Outlined"',fill:new ol.style.Fill({color:"rgba(255,255,255,.72)"}),offsetY:-25})});
     return feature=>isPlaceInsideManualSelection(feature) ? selectedStyle : mutedStyle;
   };
   const placeLayers = {};
