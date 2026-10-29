@@ -127,7 +127,7 @@ Rails.application.routes.draw do
   resources :notification_templates, except: :show
   get "notification_tests", to: "notification_tests#show", as: :notification_tests
   post "notification_tests", to: "notification_tests#create"
-  post "webhooks/line", to: "webhooks/line#create", as: :line_webhook
+  post "line/webhooks", to: "webhooks/line#create", as: :line_webhook
   resources :ai_providers, except: :show do
     member do
       post :test

@@ -28,7 +28,12 @@ module Broadcasts
     private
 
     def deliver(channel)
-      reference = Notifications::Senders.for(channel).deliver(@broadcast.post_text, tag: "broadcast", data: payload_for(channel))
+      reference = Notifications::Service.publish(
+        channel: channel,
+        text: @broadcast.post_text,
+        event: "broadcast",
+        data: payload_for(channel)
+      )
       channel.set(last_sent_at: Time.current, last_error: nil)
       @broadcast.log_delivery!(channel, status: "sent", reference: reference.to_s.presence)
       true

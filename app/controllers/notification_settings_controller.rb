@@ -23,7 +23,7 @@ class NotificationSettingsController < ApplicationController
   end
 
   def test_line
-    info = Notifications::Senders::Line.client(@setting).bot_info
+    info = Notifications::Service.line_client(setting: @setting).bot_info
     @setting.set(line_bot_name: info["displayName"]) if info["displayName"].present?
     redirect_to notification_settings_path, notice: "เชื่อมต่อ LINE OA สำเร็จ: #{info['displayName']} (#{info['basicId']}) · โหมดตอบกลับ #{info['chatMode']}"
   rescue Notifications::Senders::DeliveryError => error

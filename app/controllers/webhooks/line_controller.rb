@@ -1,5 +1,5 @@
 module Webhooks
-  # LINE Messaging API webhook (set it in the LINE Developers console as https://<host>/webhooks/line).
+  # LINE Messaging API webhook (set it in the LINE Developers console as https://<host>/line/webhooks).
   # Verifies X-Line-Signature with the channel secret, records groups the bot joins or leaves, and replies with the
   # group ID when invited or when someone types "groupid" so อบต. staff can paste it into their channel settings.
   class LineController < ActionController::API
@@ -42,7 +42,7 @@ module Webhooks
       group_id = source["groupId"] || source["roomId"]
       return unless group_id
 
-      line = Notifications::Senders::Line.client(setting)
+      line = Notifications::Service.line_client(setting: setting)
       group = LineGroup.find_or_initialize_by(group_id: group_id)
       group.source_type = source["groupId"] ? "group" : "room"
       group.last_event_at = Time.current

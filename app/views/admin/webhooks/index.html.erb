@@ -13,7 +13,7 @@
   <section class="users-card users-list-card webhook-log-card">
     <div class="users-toolbar"><div><h2>รายการล่าสุด</h2><p>Payload แสดงเพื่อวิเคราะห์ปัญหา โปรดใช้งานตามสิทธิ์ที่ได้รับ</p></div><span><%= number_with_delimiter(@total) %> รายการ</span></div>
     <% if @logs.empty? %>
-      <div class="cctv-empty"><span class="material-symbols-outlined">webhook</span><b>ยังไม่มี Webhook log</b><small>เมื่อ LINE ส่ง event มาที่ /webhooks/line รายการจะปรากฏที่นี่</small></div>
+      <div class="cctv-empty"><span class="material-symbols-outlined">webhook</span><b>ยังไม่มี Webhook log</b><small>เมื่อ LINE ส่ง event มาที่ /line/webhooks รายการจะปรากฏที่นี่</small></div>
     <% else %>
       <div class="webhook-log-list">
         <% @logs.each do |log| %>
