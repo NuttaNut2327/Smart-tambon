@@ -32,8 +32,15 @@ class NotificationChannelsController < ApplicationController
 
   def test
     text = "✅ ทดสอบการแจ้งเตือนจาก #{SystemSetting.current.system_short_name}\nช่องทาง: #{@channel.name}\nเวลา: #{Notifications::Dispatcher.thai_time(Time.current)}\nโดย: #{current_user.username}"
-    delivery = Notifications::Dispatcher.new(organization_key: organization_key, sent_by: current_user.username, source: "test")
-                                        .deliver(@channel, text, tag: "announcement", variables: { "message" => text })
+    delivery = Notifications::Service.deliver(
+      organization_key: organization_key,
+      channel: @channel,
+      text: text,
+      event: "announcement",
+      variables: { "message" => text },
+      sent_by: current_user.username,
+      source: "test"
+    )
     if delivery.sent?
       redirect_to notification_channels_path, notice: "ส่งข้อความทดสอบไปยัง #{@channel.name} สำเร็จ"
     else

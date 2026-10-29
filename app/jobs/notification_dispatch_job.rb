@@ -8,8 +8,12 @@ class NotificationDispatchJob < ActiveJob::Base
 
     tag = Notifications::Dispatcher.tag_for(incident)
     Notifications::Dispatcher.organization_keys_for(incident).each do |key|
-      Notifications::Dispatcher.new(organization_key: key)
-                               .dispatch(tag: tag, variables: Notifications::Dispatcher.incident_variables(incident, key), incident_id: incident.id)
+      Notifications::Service.call(
+        organization_key: key,
+        event: tag,
+        variables: Notifications::Dispatcher.incident_variables(incident, key),
+        resource_id: incident.id
+      )
     end
   end
 end

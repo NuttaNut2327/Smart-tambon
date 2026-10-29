@@ -137,6 +137,8 @@ class NotificationsTest < ActionDispatch::IntegrationTest
   end
 
   test "LINE webhook checks the signature, records the group and replies with its ID" do
+    assert_equal "/line/webhooks", line_webhook_path
+
     setting = NotificationSetting.current
     setting.assign_line_channel_secret("line-secret")
     setting.save!
@@ -197,7 +199,7 @@ class NotificationsTest < ActionDispatch::IntegrationTest
 
     get notification_settings_path
     assert_not_includes response.body, "line-token-abcd1234"
-    assert_includes response.body, "https://tambon.test/webhooks/line"
+    assert_includes response.body, "https://tambon.test/line/webhooks"
   ensure
     admin&.destroy
   end

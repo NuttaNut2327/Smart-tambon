@@ -26,10 +26,17 @@ class NotificationTestsController < ApplicationController
       return render(:show, status: :unprocessable_entity)
     end
 
-    dispatcher = Notifications::Dispatcher.new(organization_key: organization_key, sent_by: current_user.username,
-                                               source: @form["mode"] == "simulate" ? "simulation" : "test")
     deliveries = targets.map do |channel|
-      dispatcher.deliver(channel, @preview[:text], tag: @form["tag"], variables: @preview[:variables], incident_id: @preview[:incident]&.id)
+      Notifications::Service.deliver(
+        organization_key: organization_key,
+        channel: channel,
+        text: @preview[:text],
+        event: @form["tag"],
+        variables: @preview[:variables],
+        resource_id: @preview[:incident]&.id,
+        sent_by: current_user.username,
+        source: @form["mode"] == "simulate" ? "simulation" : "test"
+      )
     end
     sent, failed = deliveries.partition(&:sent?)
     message = "ส่งสำเร็จ #{sent.size} ช่องทาง#{failed.any? ? " · ไม่สำเร็จ #{failed.size} (#{failed.map { |delivery| "#{delivery.channel_name}: #{delivery.error}" }.join(' | ')})" : ''}"

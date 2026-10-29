@@ -6,7 +6,17 @@
 <section class="incident-page" data-incident-page data-incident-category="<%= @incident_category %>" data-history-active="<%= @history_search.active? %>">
   <div class="incident-page-heading">
     <div><p class="page-kicker"><%= @incident_category == "disaster" ? "ศูนย์บริหารจัดการภัยพิบัติ" : "ศูนย์รับแจ้งเหตุประชาชน" %></p><h1><%= @incident_category == "disaster" ? "ภัยพิบัติ" : "เหตุการณ์ทั่วไป" %></h1><p>ดูรายละเอียด ตำแหน่ง การดำเนินงาน แผนรับมือ และทรัพยากรของแต่ละเหตุ</p></div>
-    <% if @incident_category == "disaster" || @allow_incident_creation %><div class="incident-heading-actions"><% if @incident_category == "disaster" %><%= link_to disasters_path(view: "plans"), class: "incident-secondary-action disaster-future-plan-link" do %><span class="material-symbols-outlined">assignment</span>แผนรับมือในอนาคต<% end %><% end %><% if @allow_incident_creation %><% if current_user.subdistrict_id.present? || current_user.access_area.present? %><button type="button" class="incident-secondary-action" data-open-incident-dialog="share-incident-form-dialog"><span class="material-symbols-outlined">share</span>แชร์แบบฟอร์ม</button><% end %><button type="button" class="incident-primary-action" data-open-incident-dialog="new-incident-dialog"><span class="material-symbols-outlined">add</span>บันทึกเหตุการณ์ใหม่</button><% end %></div><% end %>
+    <div class="incident-heading-side">
+      <%= render "dashboard/incident_history_search", part: :form %>
+      <div class="incident-heading-actions">
+        <% if @incident_category == "disaster" %>
+          <%= link_to disasters_path(view: "plans"), class: "incident-secondary-action disaster-future-plan-link" do %><span class="material-symbols-outlined">assignment</span>แผนรับมือในอนาคต<% end %>
+        <% elsif @allow_incident_creation %>
+          <% if current_user.subdistrict_id.present? || current_user.access_area.present? %><button type="button" class="incident-secondary-action" data-open-incident-dialog="share-incident-form-dialog"><span class="material-symbols-outlined">share</span>แชร์แบบฟอร์ม</button><% end %>
+          <button type="button" class="incident-primary-action" data-open-incident-dialog="new-incident-dialog"><span class="material-symbols-outlined">add</span>บันทึกเหตุการณ์ใหม่</button>
+        <% end %>
+      </div>
+    </div>
   </div>
 
   <% if notice %><div class="incident-flash success"><%= notice %></div><% end %>
