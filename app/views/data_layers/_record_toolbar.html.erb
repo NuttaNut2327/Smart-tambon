@@ -1,0 +1,17 @@
+<%= form_with url: data_layers_path, method: :get, local: true, class: "catalog-toolbar record-toolbar", data: { record_filter_form: true } do %>
+  <%= hidden_field_tag :data_type, @selected_type %>
+  <%= hidden_field_tag :sort, query.sort if query.sort %>
+  <%= hidden_field_tag :dir, query.direction if query.sort %>
+  <label class="record-search"><span class="material-symbols-outlined" aria-hidden="true">search</span><%= search_field_tag :q, query.query, placeholder: "ค้นหา ชื่อ รหัส ทะเบียน สถานที่ ฯลฯ", aria: { label: "ค้นหาข้อมูล" }, maxlength: 100, autocomplete: "off" %></label>
+  <% query.filter_fields.each do |field| %>
+    <%= select_tag "f[#{field['key']}]",
+          options_for_select(query.filter_options[field["key"]].map { |value, count| ["#{value} (#{count})", value] }, query.filters[field["key"]]),
+          include_blank: "#{field['label']}: ทั้งหมด", aria: { label: field["label"] }, class: ("filtered" if query.filters[field["key"]]), data: { record_filter: true } %>
+  <% end %>
+  <% if @selected_type == "consumables" %>
+    <%= select_tag :stock, options_for_select(DatasetRecordQuery::STOCK_FILTERS.invert, query.stock), include_blank: "ยอดคงเหลือ: ทั้งหมด", aria: { label: "ยอดคงเหลือ" }, class: ("filtered" if query.stock), data: { record_filter: true } %>
+  <% end %>
+  <button type="submit" class="record-search-submit">ค้นหา</button>
+  <% if query.active? %><%= link_to "ล้างตัวกรอง", data_layers_path(data_type: @selected_type, sort: query.sort, dir: (query.direction if query.sort)), class: "record-filter-clear" %><% end %>
+  <span class="record-toolbar-count"><% if query.active? %>พบ <b><%= @fixed_record_total %></b> จาก <%= @fixed_record_count %> รายการ<% else %><%= @selected_datasets.size %> ชุดข้อมูล · <%= @fixed_record_count %> รายการ<% end %></span>
+<% end %>

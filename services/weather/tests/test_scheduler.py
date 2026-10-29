@@ -16,7 +16,7 @@ from tests.conftest import FakeProvider
 def test_jobs_registered_in_bangkok_time():
     s = sched.build_scheduler()
     jobs = {j.id: j for j in s.get_jobs()}
-    assert set(jobs) == {"current", "forecast", "observation"}
+    assert set(jobs) == {"current", "forecast", "observation", "gistda-prune"}
     assert str(s.timezone) == "Asia/Bangkok"
 
     cur = jobs["current"].trigger

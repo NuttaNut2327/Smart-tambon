@@ -28,6 +28,7 @@
               <label>ปีงบประมาณ (พ.ศ.)<%= form.number_field :fiscal_year, required: true, min: 2500, max: 2700, step: 1 %></label>
               <label>งบประมาณ (บาท)<%= form.number_field :budget, min: 0, step: "0.01", placeholder: "0.00" %></label>
             </div>
+            <% if current_user.system_admin? %><label class="project-demo-flag"><%= form.check_box :simulated %> ข้อมูลสาธิต (ไม่นับรวมในสถิติจริง ซ่อนเมื่อปิดโหมดสาธิต)</label><% end %>
             <label>ผลการอนุมัติงบประมาณ<%= form.select :approval_status, Project::APPROVAL_STATUSES.map { |value, label| [label, value] } %></label>
             <label>แหล่งงบประมาณ<%= form.text_field :budget_source, list: "project-budget-sources", placeholder: "เช่น ข้อบัญญัติงบประมาณ, เงินอุดหนุน" %>
               <datalist id="project-budget-sources"><option value="ข้อบัญญัติงบประมาณรายจ่ายประจำปี"><option value="เงินอุดหนุนเฉพาะกิจ"><option value="เงินอุดหนุนทั่วไป"><option value="เงินสะสม"><option value="เงินทุนสำรองเงินสะสม"><option value="งบกลาง"></datalist></label>
@@ -35,12 +36,13 @@
               <label>สถานะการดำเนินการ<%= form.select :status, Project::STATUSES.map { |value, label| [label, value] } %></label>
               <label>ความคืบหน้า (%)<%= form.number_field :progress_percent, min: 0, max: 100, step: 1 %></label>
             </div>
-            <label>ภาพประกอบ<%= form.file_field :photos, multiple: true, accept: "image/jpeg,image/png,image/webp", data: { project_photos: true } %><small>เลือกได้หลายภาพ (JPG, PNG, WebP ไม่เกิน 10 MB/ภาพ สูงสุด <%= ProjectPhotoUploadService::MAX_FILES %> ภาพ)</small></label>
+            <label>ภาพประกอบ<%= form.file_field :photos, multiple: true, accept: ImageLibrary::ACCEPT, data: { project_photos: true } %><small>เลือกได้หลายภาพ สูงสุด <%= ProjectPhotoUploadService::MAX_FILES %> ภาพ (JPG, PNG, WebP หรือ HEIC ไม่เกิน 15 MB/ภาพ · ระบบแปลงเป็น WebP และเก็บในคลังข้อมูลภาพให้อัตโนมัติ)</small></label>
+            <%= render "library_images/picker", field: "project[library_image_ids][]", max: ProjectPhotoUploadService::MAX_FILES, selected: ImageLibrary.pick(current_user, params.dig(:project, :library_image_ids)) %>
             <div class="project-photo-grid" data-project-photo-preview></div>
             <% if project.persisted? && project.photos.any? %>
               <div class="project-existing-photos"><small>ภาพที่แนบแล้ว — ติ๊กเพื่อลบ</small><div class="project-photo-grid">
                 <% project.photos.each do |photo| %>
-                  <label class="project-photo-thumb"><%= image_tag photo_project_path(project, photo["id"]), alt: photo["filename"], loading: "lazy" %><span><input type="checkbox" name="project[remove_photo_ids][]" value="<%= photo["id"] %>"> ลบ</span></label>
+                  <label class="project-photo-thumb"><%= image_tag photo_project_path(project, photo["id"], variant: "thumb"), alt: photo["filename"], loading: "lazy" %><span><input type="checkbox" name="project[remove_photo_ids][]" value="<%= photo["id"] %>"> ลบ</span></label>
                 <% end %>
               </div></div>
             <% end %>

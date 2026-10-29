@@ -1,0 +1,44 @@
+/* Image library (คลังข้อมูลภาพ): library page grid, preview dialog and the picker used by attachment forms. */
+.image-library-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--theme-border)}
+.image-library-search{display:flex;flex:1;min-width:240px;gap:8px}
+.image-library-search input,.image-library-search select,.image-library-picker-search input,.image-library-rename input{padding:9px 12px;border:1px solid var(--theme-border);border-radius:8px;background:#fff;font:inherit;font-size:13px}
+.image-library-search input{flex:1;min-width:0}
+.image-library-upload{display:flex;align-items:center;gap:10px}
+.image-library-upload label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.image-library-upload label.busy{opacity:.6;pointer-events:none}
+.image-library-upload small{color:var(--theme-muted);font-size:11px}
+.image-library-grid,.image-library-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;padding:16px}
+.image-library-card{display:flex;flex-direction:column;padding:0;overflow:hidden;border:1px solid var(--theme-border);border-radius:10px;background:#fff;text-align:left;cursor:pointer;font:inherit;transition:box-shadow .15s,border-color .15s}
+.image-library-card:hover,.image-library-card:focus-visible{border-color:var(--theme-secondary);box-shadow:0 4px 14px #2c39301f}
+.image-library-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--theme-surface-soft)}
+.image-library-caption{display:grid;gap:2px;padding:8px 10px}
+.image-library-caption b{overflow:hidden;color:var(--theme-primary);font-size:12px;white-space:nowrap;text-overflow:ellipsis}
+.image-library-caption small{color:var(--theme-muted);font-size:11px}
+.image-library-card.selected{border-color:var(--theme-primary);box-shadow:0 0 0 3px var(--theme-primary)}
+.image-library-empty{display:grid;justify-items:center;gap:6px;padding:48px 16px;color:var(--theme-muted);text-align:center}
+.image-library-empty .material-symbols-outlined{font-size:40px}
+.image-library-empty b{color:var(--theme-primary)}
+.image-library-preview,.image-library-picker{width:min(920px,calc(100vw - 32px))}
+.image-library-preview-image{display:grid;place-items:center;min-height:240px;max-height:60vh;margin:16px 22px 0;overflow:hidden;border-radius:10px;background:#1f2a22}
+.image-library-preview-image img{max-width:100%;max-height:60vh;object-fit:contain}
+.image-library-meta{margin:12px 22px 6px;color:var(--theme-muted);font-size:12px}
+.image-library-usages{margin:0 22px}
+.image-library-usages b{font-size:13px}
+.image-library-usages ul{margin:6px 0 12px;padding-left:18px;font-size:12px}
+.image-library-usages li.muted{color:var(--theme-muted);list-style:none;margin-left:-18px}
+.image-library-preview footer,.image-library-picker footer{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:15px 22px;border-top:1px solid var(--theme-border)}
+.image-library-preview footer[hidden]{display:none}
+.image-library-rename{display:flex;flex:1;gap:8px}
+.image-library-rename input{flex:1;min-width:0}
+.image-library-picker-search{display:flex;gap:8px;margin:16px 22px 4px}
+.image-library-picker-search input{flex:1}
+.image-library-picker-grid{max-height:55vh;overflow:auto;padding:12px 22px;grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
+.image-library-picker footer .modal-status{flex:1;margin:0}
+.image-library-pick{display:inline-flex;align-items:center;gap:6px;width:max-content}
+.image-library-selection{display:flex;flex-wrap:wrap;gap:8px}
+.image-library-selection:empty,.image-library-picker [hidden]{display:none!important}
+.image-library-chip{display:inline-flex;align-items:center;gap:6px;max-width:220px;padding:4px 6px 4px 4px;border:1px solid var(--theme-border);border-radius:8px;background:#fff;font-size:12px}
+.image-library-chip img{width:36px;height:36px;border-radius:6px;object-fit:cover}
+.image-library-chip b{overflow:hidden;font-weight:600;white-space:nowrap;text-overflow:ellipsis}
+.image-library-chip button{border:0;background:none;color:#b94050;font-size:16px;cursor:pointer}
+@media(max-width:640px){.image-library-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px}.image-library-upload{width:100%;justify-content:space-between}}

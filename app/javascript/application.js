@@ -114,6 +114,8 @@ document.addEventListener("DOMContentLoaded", () => {
     source:new ol.source.Vector(),
     style:feature=>feature.get("data_type")==="agencies"
       ? placeMarkerStyle(placeConfig.government)(feature)
+      : feature.get("data_type")==="location_trackers"
+      ? new ol.style.Style({image:new ol.style.Circle({radius:9,fill:new ol.style.Fill({color:"#2f7fb8"}),stroke:new ol.style.Stroke({color:"#fff",width:3})}),text:new ol.style.Text({text:feature.get("name") || feature.get("sensor_id") || "",offsetY:-18,font:"600 11px sans-serif",fill:new ol.style.Fill({color:"#1f4f73"}),stroke:new ol.style.Stroke({color:"#fff",width:3})})})
       : new ol.style.Style({image:new ol.style.Circle({radius:8,fill:new ol.style.Fill({color:"#795f94"}),stroke:new ol.style.Stroke({color:"#fff",width:2})})})
   });
   const villageBoundaryLayer = new ol.layer.Vector({
@@ -145,6 +147,25 @@ document.addEventListener("DOMContentLoaded", () => {
     zIndex:18,
     style:feature=>window.SmartTambonHotspots?.markerStyle(feature.get("fire_hotspot"))
   });
+  // GISTDA disaster layers: drought (DRI+) and flood map tiles, flood polygons and VIIRS hotspots.
+  const gistdaDroughtLayer = new ol.layer.Tile({ visible:false, opacity:.7, zIndex:12, source:window.SmartTambonGistda?.tileSource("drought") });
+  const gistdaFloodTileLayer = new ol.layer.Tile({ visible:false, opacity:.75, zIndex:13 });
+  const gistdaFloodLayer = new ol.layer.Vector({ source:new ol.source.Vector(), visible:false, zIndex:14, style:()=>window.SmartTambonGistda?.floodStyle });
+  const gistdaHotspotLayer = new ol.layer.Vector({ source:new ol.source.Vector(), visible:false, zIndex:17, style:()=>window.SmartTambonGistda?.hotspotStyle });
+  // Building footprints (vector tiles from the tile server set in system settings); drawn only when zoomed in.
+  const buildingTilesConfig=(()=>{ try { return JSON.parse(document.querySelector(".dashboard-shell")?.dataset.buildingTiles || "null"); } catch(_error) { return null; } })();
+  const buildings=window.SmartTambonBuildings?.createLayer(buildingTilesConfig) || { layer:new ol.layer.Vector({ visible:false }), ready:Promise.reject(new Error("ไม่พบโมดูลชั้นอาคาร")), select:()=>{}, minZoom:15 };
+  buildings.ready.catch(()=>{});
+  const buildingLayer=buildings.layer;
+  const disasterEventColors=JSON.parse(document.querySelector("[data-disaster-event-toggle]")?.dataset.colors || "{}");
+  const disasterEventLayer = new ol.layer.Vector({
+    source:new ol.source.Vector(),
+    visible:false,
+    zIndex:15,
+    // Draw large footprints first so small ones on top stay visible and clickable.
+    renderOrder:(a,b)=>ol.extent.getArea(b.getGeometry().getExtent())-ol.extent.getArea(a.getGeometry().getExtent()),
+    style:feature=>window.SmartTambonDisasterEvents?.style(feature.get("disaster_event"),disasterEventColors)
+  });
   const projectLayer = new ol.layer.Vector({
     source:new ol.source.Vector(),
     zIndex:19,
@@ -166,7 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
     source:new ol.source.Vector(),
     style:new ol.style.Style({image:new ol.style.Circle({radius:7,fill:new ol.style.Fill({color:"#438a61"}),stroke:new ol.style.Stroke({color:"white",width:3})})})
   });
-  const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,villageBoundaryLayer,...Object.values(placeLayers),importedPlacesLayer,importedDatasetLayer,waterStationLayer,hotspotLayer,projectLayer,cctvLayer,activityLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5,maxZoom:19,extent:ol.proj.get("EPSG:3857").getExtent()}) });
+  const map = new ol.Map({ target:"map", layers:[street,satellite,overviewBoundaries,districtBoundaries,siblingBoundaries,highlight,villageBoundaryLayer,...Object.values(placeLayers),importedPlacesLayer,importedDatasetLayer,waterStationLayer,buildingLayer,gistdaDroughtLayer,gistdaFloodTileLayer,gistdaFloodLayer,disasterEventLayer,gistdaHotspotLayer,hotspotLayer,projectLayer,cctvLayer,activityLayer,areaSelectionDimLayer,areaSelectionLayer,areaSelectionEndpointsLayer], view:new ol.View({center:ol.proj.fromLonLat([100.5018,13.7563]),zoom:6,minZoom:5,maxZoom:19,extent:ol.proj.get("EPSG:3857").getExtent()}) });
   window.smartCityMap=map;
   fetch("/api/imported_datasets",{headers:{Accept:"application/json"}}).then(response=>response.ok?response.json():null).then(data=>{
     if(!data)return;
@@ -177,7 +198,28 @@ document.addEventListener("DOMContentLoaded", () => {
     villageBoundaryLayer.getSource().addFeatures(villageBoundaries);
     importedDatasetLayer.getSource().addFeatures(features.filter(feature=>feature.get("data_type")!=="village_boundaries"));
     if(cesiumMode) syncCesiumVillageBoundaries();
+    const trackerDatasetIds=new Set((data.datasets || []).filter(dataset=>dataset.data_type==="location_trackers").map(dataset=>dataset.id));
+    if(trackerDatasetIds.size) startLocationTrackerRefresh(trackerDatasetIds);
   }).catch(error=>console.warn("Unable to load imported dataset layers",error));
+  // ข้อมูลตำแหน่งเป็นชั้นข้อมูลแบบ Realtime: ดึงตำแหน่งล่าสุดของอุปกรณ์มาขยับหมุดบนแผนที่เป็นระยะ
+  function startLocationTrackerRefresh(datasetIds){
+    const refresh=()=>fetch("/api/sensors?type=location",{headers:{Accept:"application/json"}}).then(response=>response.ok?response.json():[]).then(trackers=>{
+      const source=importedDatasetLayer.getSource();
+      trackers.forEach(tracker=>{
+        if(!datasetIds.has(tracker.dataset_id) || tracker.latitude==null || tracker.longitude==null) return;
+        const coordinate=ol.proj.fromLonLat([Number(tracker.longitude),Number(tracker.latitude)]);
+        const feature=source.getFeatures().find(item=>item.get("data_type")==="location_trackers" && item.get("dataset_id")===tracker.dataset_id && String(item.get("sensor_id"))===tracker.sensor_id);
+        if(feature){
+          feature.getGeometry().setCoordinates(coordinate);
+          feature.set("observed_at",tracker.latest?.observed_at);
+          feature.set("speed_kmh",tracker.latest?.speed_kmh);
+        }else{
+          source.addFeature(new ol.Feature({geometry:new ol.geom.Point(coordinate),data_type:"location_trackers",dataset_id:tracker.dataset_id,sensor_id:tracker.sensor_id,observed_at:tracker.latest?.observed_at,speed_kmh:tracker.latest?.speed_kmh}));
+        }
+      });
+    }).catch(error=>console.warn("Unable to refresh location trackers",error));
+    setInterval(()=>{ if(!document.hidden) refresh(); },15000);
+  }
   const mapLayerList=document.querySelector(".layer-list");
   if(mapLayerList && !mapLayerList.querySelector("[data-village-boundary-toggle]")){
     const label=document.createElement("label");
@@ -1202,6 +1244,120 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
   loadHotspots();
+  const gistdaToggles={flood:document.querySelector('[data-gistda-toggle="flood"]'),hotspots:document.querySelector('[data-gistda-toggle="hotspots"]'),drought:document.querySelector('[data-gistda-toggle="drought"]')};
+  const gistdaVectorLayers={flood:gistdaFloodLayer,hotspots:gistdaHotspotLayer};
+  const gistdaRequests={flood:0,hotspots:0};
+  const gistdaText=(dataset,selector,text)=>{const element=document.querySelector(`[${selector}="${dataset}"]`); if(element) element.textContent=text;};
+  const gistdaPeriod=dataset=>document.querySelector(`[data-gistda-period="${dataset}"]`)?.value || (dataset==="flood" ? 7 : 1);
+  // Only the selected area's extent is sent (not the map view) so the weather service can reuse its cached query.
+  const gistdaAreaBbox=()=>selectedAreaGeometry ? ol.proj.transformExtent(selectedAreaGeometry.getExtent(),"EPSG:3857","EPSG:4326") : null;
+  async function loadGistda(dataset) {
+    const toggle=gistdaToggles[dataset];
+    if(!toggle || !window.SmartTambonGistda) return;
+    const layer=gistdaVectorLayers[dataset];
+    const request=++gistdaRequests[dataset];
+    layer.setVisible(toggle.checked);
+    if(dataset==="flood") gistdaFloodTileLayer.setVisible(false);
+    if(!toggle.checked){ gistdaText(dataset,"data-gistda-count","ปิดอยู่"); return; }
+    gistdaText(dataset,"data-gistda-count","กำลังโหลด…");
+    try {
+      const period=gistdaPeriod(dataset);
+      const payload=await window.SmartTambonGistda.load(dataset,{period,bbox:gistdaAreaBbox()});
+      if(request!==gistdaRequests[dataset]) return;
+      const features=new ol.format.GeoJSON().readFeatures(payload,{featureProjection:"EPSG:3857"})
+        .filter(feature=>!selectedAreaGeometry || selectedAreaGeometry.intersectsExtent(feature.getGeometry().getExtent()));
+      features.forEach(feature=>{const {geometry,...properties}=feature.getProperties(); feature.set("gistda",properties);});
+      layer.getSource().clear();
+      layer.getSource().addFeatures(features);
+      const unit=dataset==="flood" ? "แปลง" : "จุด";
+      gistdaText(dataset,"data-gistda-count",features.length ? `${features.length.toLocaleString()} ${unit}` : (dataset==="flood" ? "ไม่พบพื้นที่น้ำท่วม" : "ไม่พบจุดความร้อน"));
+      if(dataset==="flood" && payload.truncated){
+        // Too many polygons to draw: show GISTDA's own flood tiles for the area as well.
+        gistdaFloodTileLayer.setSource(window.SmartTambonGistda.tileSource("flood",period));
+        gistdaFloodTileLayer.setVisible(true);
+        gistdaText(dataset,"data-gistda-count",`${features.length.toLocaleString()} จาก ${Number(payload.number_matched).toLocaleString()} แปลง`);
+      }
+      const updated=payload.fetched_at ? `ข้อมูล GISTDA ณ ${window.SmartTambonGistda.formatTime(payload.fetched_at)}` : "ข้อมูล GISTDA";
+      gistdaText(dataset,"data-gistda-status",`${updated}${payload.stale ? " (ข้อมูลเก่า เชื่อมต่อ GISTDA ไม่ได้)" : ""}${payload.key_source==="organization" ? " · คีย์ของ อบต." : ""}`);
+    } catch(error) {
+      if(request!==gistdaRequests[dataset]) return;
+      layer.getSource().clear();
+      gistdaText(dataset,"data-gistda-count","โหลดไม่สำเร็จ");
+      gistdaText(dataset,"data-gistda-status",error.payload?.error || "เชื่อมต่อข้อมูล GISTDA ไม่ได้");
+      console.warn(`Unable to load GISTDA ${dataset}`,error);
+    }
+  }
+  function loadGistdaLayers() {
+    loadGistda("flood");
+    loadGistda("hotspots");
+    gistdaDroughtLayer.setVisible(Boolean(gistdaToggles.drought?.checked));
+  }
+  ["flood","hotspots"].forEach(dataset=>{
+    gistdaToggles[dataset]?.addEventListener("change",()=>loadGistda(dataset));
+    document.querySelector(`[data-gistda-period="${dataset}"]`)?.addEventListener("change",()=>loadGistda(dataset));
+  });
+  gistdaToggles.drought?.addEventListener("change",()=>gistdaDroughtLayer.setVisible(gistdaToggles.drought.checked));
+  loadGistdaLayers();
+  const buildingToggle=document.querySelector("[data-building-layer-toggle]");
+  const buildingStatus=document.querySelector("[data-building-layer-status]");
+  const buildingLegend=document.querySelector("[data-building-layer-legend]");
+  let buildingError=null;
+  const updateBuildingStatus=()=>{
+    if(!buildingToggle || !buildingStatus || buildingToggle.disabled) return;
+    if(buildingLegend) buildingLegend.hidden=!buildingToggle.checked || Boolean(buildingError);
+    if(!buildingToggle.checked) buildingStatus.textContent="ปิดอยู่";
+    else if(buildingError) buildingStatus.textContent=buildingError;
+    else if((map.getView().getZoom() || 0) < buildings.minZoom) buildingStatus.textContent=`ซูมเข้าระดับ ${buildings.minZoom} ขึ้นไปเพื่อแสดง`;
+    else buildingStatus.textContent="กำลังแสดง · คลิกอาคารเพื่อดูข้อมูล";
+  };
+  const setBuildingVisible=()=>{
+    buildingLayer.setVisible(Boolean(buildingToggle?.checked) && !buildingError);
+    if(!buildingToggle?.checked) buildings.select(null);
+    updateBuildingStatus();
+  };
+  buildings.ready.then(()=>setBuildingVisible()).catch(error=>{ if(buildingTilesConfig){ buildingError=`โหลดไม่สำเร็จ: ${error.message}`; updateBuildingStatus(); } });
+  buildingToggle?.addEventListener("change",setBuildingVisible);
+  map.getView().on("change:resolution",updateBuildingStatus);
+  updateBuildingStatus();
+  const disasterEventToggle=document.querySelector("[data-disaster-event-toggle]");
+  const disasterEventCount=document.querySelector("[data-disaster-event-count]");
+  const disasterEventFilters={hazard:document.querySelector("[data-disaster-event-hazard]"),year:document.querySelector("[data-disaster-event-year]"),season:document.querySelector("[data-disaster-event-season]")};
+  let loadedDisasterEvents=[];
+  let disasterEventRequest=0;
+  let disasterEventLoaded=0;
+  function renderDisasterEvents() {
+    const source=disasterEventLayer.getSource();
+    source.clear();
+    const visibleFeatures=loadedDisasterEvents.filter(feature=>window.SmartTambonDisasterEvents.inSeason(feature.get("disaster_event"),disasterEventFilters.season?.value));
+    source.addFeatures(visibleFeatures);
+    disasterEventLayer.setVisible(disasterEventToggle.checked);
+    disasterEventCount.textContent=loadedDisasterEvents.length ? (visibleFeatures.length===loadedDisasterEvents.length ? `${visibleFeatures.length.toLocaleString()} เหตุ` : `${visibleFeatures.length.toLocaleString()}/${loadedDisasterEvents.length.toLocaleString()} เหตุ`) : "ไม่พบเหตุในช่วงนี้";
+  }
+  // Loaded only while the layer is on: the archive is history, not something to fetch on every page view.
+  async function loadDisasterEvents() {
+    if(!disasterEventToggle || !window.SmartTambonDisasterEvents) return;
+    const request=++disasterEventRequest;
+    disasterEventLayer.setVisible(disasterEventToggle.checked);
+    if(!disasterEventToggle.checked){ disasterEventCount.textContent="ปิดอยู่"; return; }
+    disasterEventCount.textContent="กำลังโหลด…";
+    try {
+      const payload=await window.SmartTambonDisasterEvents.load({hazard:disasterEventFilters.hazard?.value,year:disasterEventFilters.year?.value});
+      if(request!==disasterEventRequest) return;
+      loadedDisasterEvents=new ol.format.GeoJSON().readFeatures({...payload,features:payload.features.filter(feature=>feature.geometry)},{featureProjection:"EPSG:3857"})
+        .filter(feature=>!selectedAreaGeometry || selectedAreaGeometry.intersectsExtent(feature.getGeometry().getExtent()));
+      loadedDisasterEvents.forEach(feature=>{const {geometry,...properties}=feature.getProperties(); feature.set("disaster_event",properties);});
+      disasterEventLoaded=request;
+      renderDisasterEvents();
+    } catch(error) {
+      if(request!==disasterEventRequest) return;
+      disasterEventCount.textContent="โหลดไม่สำเร็จ";
+      console.warn("Unable to load disaster events",error);
+    }
+  }
+  disasterEventToggle?.addEventListener("change",loadDisasterEvents);
+  [disasterEventFilters.hazard,disasterEventFilters.year].forEach(select=>select?.addEventListener("change",()=>{popupElement.hidden=true;popup.setPosition(undefined);loadDisasterEvents();}));
+  disasterEventFilters.season?.addEventListener("change",()=>{popupElement.hidden=true;popup.setPosition(undefined);if(disasterEventToggle.checked && disasterEventLoaded===disasterEventRequest) renderDisasterEvents();});
+  loadDisasterEvents();
   const projectToggle=document.querySelector("[data-project-layer-toggle]");
   const projectCount=document.querySelector("[data-project-layer-count]");
   const projectGroupFilter=document.querySelector("[data-project-layer-group]");
@@ -1509,7 +1665,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if(areaSelectionToolActive) return;
     stopCctvPopup();
-    const feature = map.forEachFeatureAtPixel(event.pixel, item => (item.get("cctv_camera") || item.get("fire_hotspot") || item.get("activity") || item.get("project") || item.get("place") || item.get("water_station") || item.get("data_type")==="agencies") ? item : null);
+    buildings.select(null);
+    const feature = map.forEachFeatureAtPixel(event.pixel, item => (item.get("cctv_camera") || item.get("fire_hotspot") || item.get("gistda") || item.get("disaster_event") || item.get("activity") || item.get("project") || item.get("place") || item.get("water_station") || ["agencies","location_trackers"].includes(item.get("data_type"))) ? item : null);
     const cctvCamera=feature?.get("cctv_camera");
     if(cctvCamera){
       const place=[cctvCamera.location_name,cctvCamera.subdistrict_name&&`ต.${cctvCamera.subdistrict_name}`].filter(Boolean).join(" ");
@@ -1524,6 +1681,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if(fireHotspot){
       popupElement.innerHTML=window.SmartTambonHotspots?.popupHtml(fireHotspot) || "";
       popupElement.hidden=false; popup.setPosition(feature.getGeometry().getCoordinates());
+      panPopupIntoView();
+      return;
+    }
+    const gistdaProps=feature?.get("gistda");
+    if(gistdaProps){
+      popupElement.innerHTML=window.SmartTambonGistda?.popupHtml(gistdaProps) || "";
+      const geometry=feature.getGeometry();
+      popupElement.hidden=false; popup.setPosition(geometry.getType()==="Point" ? geometry.getCoordinates() : event.coordinate);
+      panPopupIntoView();
+      return;
+    }
+    const disasterEvent=feature?.get("disaster_event");
+    if(disasterEvent){
+      popupElement.innerHTML=window.SmartTambonDisasterEvents?.popupHtml(disasterEvent,disasterEventColors) || "";
+      popupElement.hidden=false; popup.setPosition(event.coordinate);
       panPopupIntoView();
       return;
     }
@@ -1547,6 +1719,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const place = feature?.get("place");
     const waterStation=feature?.get("water_station");
     const agency=feature?.get("data_type")==="agencies" ? feature.getProperties() : null;
+    const tracker=feature?.get("data_type")==="location_trackers" ? feature.getProperties() : null;
+    if(tracker){
+      const observed=tracker.observed_at ? new Date(tracker.observed_at) : null;
+      const observedText=observed && !Number.isNaN(observed.getTime()) ? observed.toLocaleString("th-TH",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",second:"2-digit"}) : null;
+      popupElement.innerHTML=`<strong>${escapeHtml(tracker.name || tracker.sensor_id || "อุปกรณ์ระบุตำแหน่ง")}</strong><p>Device ID: ${escapeHtml(tracker.sensor_id || "-")}</p>${tracker.speed_kmh!=null ? `<p>ความเร็ว: ${Number(tracker.speed_kmh).toFixed(1)} กม./ชม.</p>` : ""}<p>${observedText ? `ตำแหน่งล่าสุด: ${escapeHtml(observedText)} น.` : "ยังไม่มีตำแหน่งจากอุปกรณ์"}</p>`;
+      popupElement.hidden=false; popup.setPosition(feature.getGeometry().getCoordinates());
+      return;
+    }
     if(waterStation){
       const waterLevel=waterStation.water_level_m_msl == null ? "ไม่มีข้อมูล" : `${Number(waterStation.water_level_m_msl).toFixed(2)} ม.รทก.`;
       const rainfall=waterStation.rainfall_value == null ? "ไม่มีข้อมูล" : `${Number(waterStation.rainfall_value).toFixed(1)} มม.`;
@@ -1566,6 +1746,14 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     if (!place) {
+      const building=buildingLayer.getVisible() ? map.forEachFeatureAtPixel(event.pixel,item=>item,{layerFilter:layer=>layer===buildingLayer}) : null;
+      if(building && window.SmartTambonBuildings){
+        buildings.select(building);
+        popupElement.innerHTML=window.SmartTambonBuildings.popupHtml(building);
+        popupElement.hidden=false; popup.setPosition(event.coordinate);
+        panPopupIntoView();
+        return;
+      }
       popupElement.hidden=true; popup.setPosition(undefined);
       if (currentUserRole === "subdistrict_admin") return;
       const subdistrict = map.forEachFeatureAtPixel(event.pixel,item => item,{
@@ -1830,6 +2018,8 @@ document.addEventListener("DOMContentLoaded", () => {
     loadWaterStations();
     loadCctvCameras();
     loadHotspots();
+    loadGistdaLayers();
+    loadDisasterEvents();
     loadProjects();
     loadActivities();
     if(options.loadPlaces!==false){

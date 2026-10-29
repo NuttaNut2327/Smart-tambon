@@ -21,13 +21,7 @@
               <label>หัวข้อข่าว<%= form.text_field :title, required: true %></label>
               <label>ประเด็นสำคัญ (บรรทัดละ 1 ข้อ — ใช้ในโพสต์ Facebook/LINE)<%= text_area_tag "broadcast[bullets_text]", @broadcast.bullets_text, rows: 6, data: { broadcast_bullets: true } %></label>
               <label>บทอ่านออกเสียง (เสียงตามสาย)<%= form.text_area :script, rows: 12, data: { broadcast_script: true } %><small data-script-stats></small></label>
-              <fieldset class="settings-layers"><legend>ช่องทางเผยแพร่</legend>
-                <% if @channels.empty? %><small>ยังไม่มีช่องทาง — ผู้ดูแลประจำ อบต. เพิ่มได้ที่ ตั้งค่า › ช่องทางแจ้งเตือน (Facebook, Instagram, เสียงตามสาย MQTT, LINE, Telegram)</small><% end %>
-                <% @channels.each do |channel| %>
-                  <label class="settings-check"><%= check_box_tag "broadcast[channel_ids][]", channel.id, @broadcast.channel_ids.include?(channel.id), id: "channel_#{channel.id}", disabled: !channel.enabled? %> <span class="material-symbols-outlined"><%= channel.kind_icon %></span><%= channel.name %> <small>(<%= channel.kind_label %><%= ", ปิดอยู่" unless channel.enabled? %>)</small></label>
-                <% end %>
-                <%= hidden_field_tag "broadcast[channel_ids][]", "" %>
-              </fieldset>
+              <%= render "broadcasts/delivery_fields", scope: "broadcast", record: @broadcast, channels: @channels %>
             </fieldset>
             <% if editable %>
               <div class="settings-actions">
@@ -70,7 +64,7 @@
             <% if @broadcast.deliveries.empty? %><small>ยังไม่มีการส่ง</small><% end %>
             <ul class="broadcast-deliveries">
               <% @broadcast.deliveries.reverse.first(20).each do |delivery| %>
-                <li class="<%= delivery['status'] %>"><span class="material-symbols-outlined"><%= delivery["status"] == "sent" ? "check_circle" : "error" %></span><div><b><%= delivery["channel_name"] %></b><small><%= NotificationChannel::KINDS.dig(delivery["kind"], :label) %> · <%= thai_short_datetime(Time.zone.parse(delivery["at"].to_s)) %></small><% if delivery["error"] %><small class="broadcast-error"><%= delivery["error"] %></small><% end %></div></li>
+                <li class="<%= delivery['status'] %>"><span class="material-symbols-outlined"><%= delivery["status"] == "sent" ? "check_circle" : "error" %></span><div><b><%= delivery["channel_name"] %></b><small><%= BroadcastDelivery.kind_label(delivery["kind"]) %> · <%= thai_short_datetime(Time.zone.parse(delivery["at"].to_s)) %></small><% if delivery["error"] %><small class="broadcast-error"><%= delivery["error"] %></small><% end %></div></li>
               <% end %>
             </ul>
           </section>

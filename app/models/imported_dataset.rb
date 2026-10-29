@@ -105,6 +105,14 @@ class ImportedDataset
       { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => true },
       { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true }
     ],
+    "location_trackers" => [
+      { "key" => "sensor_id", "label" => "Device ID", "type" => "text", "required" => true },
+      { "key" => "token", "label" => "Token", "type" => "text", "required" => false, "generated" => true },
+      { "key" => "name", "label" => "ชื่ออุปกรณ์/ยานพาหนะ", "type" => "text", "required" => false },
+      # Optional starting point; the map follows the latest reading reported by the device.
+      { "key" => "latitude", "label" => "ละติจูด", "type" => "number", "required" => false },
+      { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => false }
+    ],
     "incidents" => [
       { "key" => "reference_code", "label" => "รหัสเหตุการณ์", "type" => "text", "required" => false, "generated" => true },
       { "key" => "title", "label" => "ชื่อเหตุการณ์", "type" => "text", "required" => true },
@@ -121,7 +129,7 @@ class ImportedDataset
       { "key" => "longitude", "label" => "ลองจิจูด", "type" => "number", "required" => true }
     ]
   }.freeze
-  TYPE_LABELS = { "population" => "ข้อมูลประชากร", "village_boundaries" => "ขอบเขตหมู่บ้าน", "resources" => "ข้อมูลทรัพยากรและอุปกรณ์", "consumables" => "วัสดุสิ้นเปลือง", "workforce" => "บุคลากรปฏิบัติงาน", "teams" => "ทีมปฏิบัติงาน", "agencies" => "หน่วยงาน", "cctv_devices" => "กล้องวงจรปิด", "water_level_sensors" => "เซนเซอร์วัดระดับน้ำ", "pm25_sensors" => "เซนเซอร์วัด PM 2.5", "incidents" => "แจ้งเหตุการณ์", "custom" => "ชุดข้อมูลแบบกำหนดเอง" }.freeze
+  TYPE_LABELS = { "population" => "ข้อมูลประชากร", "village_boundaries" => "ขอบเขตหมู่บ้าน", "resources" => "ข้อมูลทรัพยากรและอุปกรณ์", "consumables" => "วัสดุสิ้นเปลือง", "workforce" => "บุคลากรปฏิบัติงาน", "teams" => "ทีมปฏิบัติงาน", "agencies" => "หน่วยงาน", "cctv_devices" => "กล้องวงจรปิด", "water_level_sensors" => "เซนเซอร์วัดระดับน้ำ", "pm25_sensors" => "เซนเซอร์วัด PM 2.5", "location_trackers" => "ข้อมูลตำแหน่ง", "incidents" => "แจ้งเหตุการณ์", "custom" => "ชุดข้อมูลแบบกำหนดเอง" }.freeze
   CUSTOM_CATEGORY_LABELS = { "population" => "ข้อมูลประชากร", "resources" => "ข้อมูลทรัพยากรและอุปกรณ์",
     "workforce" => "บุคลากรปฏิบัติงาน", "area" => "ข้อมูลพื้นที่" }.freeze
   GEOMETRY_TYPES = %w[none point line polygon].freeze
@@ -153,6 +161,10 @@ class ImportedDataset
   validate :map_geometry_is_usable
 
   scope :visible_to, ->(user) { user.system_admin? ? all : any_of({ :user_id.in => user.organization_user_ids }, { shared_with_all: true, subdistrict_id: { "$in" => user.accessible_subdistrict_ids } }) }
+
+  def editable_by?(user)
+    user.system_admin? || user_id == user.id || (user.subdistrict_admin? && user.accessible_subdistrict_ids.include?(subdistrict_id))
+  end
 
   def user = User.find_by(id: user_id)
   def user=(value)

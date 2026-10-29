@@ -5,14 +5,15 @@ class AnnouncementFeed
   SEEN_KEY = :announcement_seen_ids
   DISMISSED_KEY = :announcement_dismissed_ids
 
-  def initialize(user, session)
+  def initialize(user, session, except: [])
     @user = user
     @session = session
+    @except = Array(except).map(&:to_s)
   end
 
   def visible
     @visible ||= begin
-      announcements = Announcement.for_user(@user)
+      announcements = Announcement.for_user(@user).reject { |announcement| @except.include?(announcement.id.to_s) }
       receipts = AnnouncementReceipt.where(user_id: @user.id, :announcement_id.in => announcements.map(&:id)).index_by(&:announcement_id)
       announcements.select { |announcement| visible?(announcement, receipts[announcement.id]) }.each do |announcement|
         AnnouncementReceipt.for(announcement, @user) unless receipts[announcement.id]

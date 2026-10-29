@@ -1,10 +1,13 @@
 <%= stylesheet_link_tag "ai_assistant", "data-turbo-track": "reload" %>
-<%= render layout: "settings/frame", locals: { title: "ผู้ให้บริการเสียง (Text-to-Speech)", kicker: "สำหรับผู้ดูแลระบบ (Super admin)", description: "บริการสร้างเสียงอ่านข่าวภาษาไทยสำหรับข่าวประชาสัมพันธ์และเสียงตามสาย — รายการข่าวแต่ละรายการเลือกใช้ได้ หรือใช้ค่าเริ่มต้น", active: :tts } do %>
+<% frame = central_scope? ?
+     { title: "ผู้ให้บริการเสียง (Text-to-Speech)", kicker: "สำหรับผู้ดูแลระบบ (Super admin)", description: "บริการสร้างเสียงอ่านข่าวภาษาไทยที่ทุก อบต. ใช้ได้ — รายการข่าวแต่ละรายการเลือกใช้ได้ หรือใช้ค่าเริ่มต้น · แต่ละ อบต. เพิ่มบัญชีของตัวเอง (เช่น ElevenLabs) ได้ที่หน้าตั้งค่าของ อบต." } :
+     { title: "เสียงอ่านข่าว (Text-to-Speech)", kicker: "ตั้งค่าระบบ", description: "บัญชีบริการสร้างเสียงของ อบต. เอง เช่น ElevenLabs — ใช้แทนค่าเริ่มต้นของส่วนกลางกับรายการข่าวของ อบต. นี้เท่านั้น" } %>
+<%= render layout: "settings/frame", locals: frame.merge(active: :tts) do %>
   <section class="settings-card">
     <header><span class="material-symbols-outlined">record_voice_over</span><div><h2>รายการผู้ให้บริการเสียง</h2><p>API key ถูกเข้ารหัสในฐานข้อมูล · กด "ฟังตัวอย่าง" เพื่อทดสอบเสียงจริง</p></div></header>
     <div class="settings-actions">
       <% TtsProvider::KINDS.each do |kind, info| %>
-        <%= link_to new_tts_provider_path(kind:), class: "button-link #{'primary' if kind == 'google'}" do %><span class="material-symbols-outlined">add</span><%= info[:label] %><% end %>
+        <%= link_to new_tts_provider_path(kind:), class: "button-link #{'primary' if kind == (central_scope? ? 'google' : 'elevenlabs')}" do %><span class="material-symbols-outlined">add</span><%= info[:label] %><% end %>
       <% end %>
     </div>
     <% if @providers.empty? %>
@@ -39,5 +42,20 @@
       </ul>
     <% end %>
   </section>
+  <% unless central_scope? %>
+    <section class="settings-card">
+      <header><span class="material-symbols-outlined">hub</span><div><h2>ผู้ให้บริการส่วนกลาง</h2><p>ตั้งค่าโดยผู้ดูแลระบบ — ใช้เมื่อ อบต. ยังไม่มีบัญชีของตัวเอง หรือเลือกใช้ในรายการข่าว</p></div></header>
+      <% if @central_providers.empty? %>
+        <p class="notify-muted">ยังไม่มีผู้ให้บริการส่วนกลาง</p>
+      <% else %>
+        <ul class="ai-provider-list">
+          <% @central_providers.each do |provider| %>
+            <li class="<%= 'is-default' if provider.is_default? %>"><div class="ai-provider-info"><div class="ai-provider-name"><b><%= provider.name %></b><% if provider.is_default? %><span class="project-approval approved">ค่าเริ่มต้นส่วนกลาง</span><% end %></div>
+              <dl><div><dt>บริการ</dt><dd><%= provider.kind_label %></dd></div><div><dt>เสียง</dt><dd><%= provider.voice_label %></dd></div></dl></div></li>
+          <% end %>
+        </ul>
+      <% end %>
+    </section>
+  <% end %>
 <% end %>
 <%= render "tts_providers/test_script" %>

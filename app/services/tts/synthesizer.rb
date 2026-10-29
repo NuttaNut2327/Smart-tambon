@@ -8,7 +8,7 @@ module Tts
     class Error < StandardError; end
 
     Result = Struct.new(:audio, :content_type, :provider, :voice, :characters, keyword_init: true)
-    CHUNK_LIMITS = { "google" => 400, "botnoi" => 900, "openai" => 3500 }.freeze
+    CHUNK_LIMITS = { "google" => 400, "botnoi" => 900, "openai" => 3500, "elevenlabs" => 2500 }.freeze
     # Self-hosted OpenAI-compatible servers (Open WebUI, llama-swap) render slowly and sit behind proxies that cut
     # requests at ~100 s, so they get short chunks: each one is a quick request that can be retried on its own.
     SELF_HOSTED_CHUNK_LIMIT = 400
@@ -72,6 +72,7 @@ module Tts
       when "google" then google(chunk)
       when "botnoi" then botnoi(chunk)
       when "openai" then openai(chunk)
+      when "elevenlabs" then elevenlabs(chunk)
       else raise Error, "ไม่รู้จักผู้ให้บริการเสียง #{@provider.kind}"
       end
     end
@@ -140,6 +141,51 @@ module Tts
       end
 
       response.body
+    end
+
+    # ElevenLabs only accepts speed 0.7–1.2. language_code "th" pins the Thai text normaliser (needs eleven_v3/v4).
+    ELEVENLABS_SPEED = (0.7..1.2)
+
+    def elevenlabs(chunk)
+      body = { text: chunk, model_id: @provider.model || "eleven_v3", language_code: "th",
+               voice_settings: { stability: 0.5, similarity_boost: 0.75, speed: @provider.speaking_rate.to_f.clamp(ELEVENLABS_SPEED) } }
+      url = "#{@provider.effective_base_url}/v1/text-to-speech/#{CGI.escape(@voice.to_s)}?output_format=mp3_44100_128"
+      response, json = post(url, body.to_json, "xi-api-key" => @provider.api_key, "Accept" => "audio/mpeg")
+      unless response.is_a?(Net::HTTPSuccess) && json.nil?
+        raise(response.code.to_i >= 500 || response.code == "429" ? RetryableError : Error, "ElevenLabs: #{self.class.elevenlabs_error(response, json)}")
+      end
+
+      response.body
+    end
+
+    def self.elevenlabs_error(response, json)
+      detail = json&.dig("detail")
+      message = detail.is_a?(Hash) ? (detail["message"] || detail["status"]) : detail
+      message = message.map { |item| item["msg"] || item.to_s }.join(", ") if message.is_a?(Array)
+      case response.code
+      when "401" then "API key ไม่ถูกต้องหรือไม่มีสิทธิ์ (#{message || 'unauthorized'})"
+      when "404" then "ไม่พบ Voice ID นี้ในบัญชี — เพิ่มเสียงจาก Voice Library เข้า My Voices ก่อน"
+      else message.presence || "HTTP #{response.code}"
+      end
+    end
+
+    # Voices in the account (premade, cloned and ones added from the Voice Library), for the provider form.
+    def self.elevenlabs_voices(provider)
+      raise Error, "ยังไม่ได้ใส่ API key ของ #{provider.name}" if provider.api_key.blank?
+
+      uri = URI.parse("#{provider.effective_base_url}/v2/voices?page_size=100")
+      request = Net::HTTP::Get.new(uri)
+      request["xi-api-key"] = provider.api_key
+      response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: 10, read_timeout: 20) { |http| http.request(request) }
+      json = JSON.parse(response.body) rescue nil
+      raise Error, "ElevenLabs: #{elevenlabs_error(response, json)}" unless response.is_a?(Net::HTTPSuccess) && json
+
+      Array(json["voices"]).map do |voice|
+        labels = voice["labels"].is_a?(Hash) ? voice["labels"].values_at("gender", "accent", "language").compact.join(" · ") : nil
+        { id: voice["voice_id"], name: voice["name"], category: voice["category"], labels: labels.presence }
+      end
+    rescue SocketError, SystemCallError, Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError => error
+      raise Error, "เชื่อมต่อ ElevenLabs ไม่ได้: #{error.message.truncate(120)}"
     end
 
     def post(url, body, headers = {})

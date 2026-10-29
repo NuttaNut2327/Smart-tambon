@@ -27,7 +27,7 @@
             <% @projects.each do |project| %>
               <% area = @subdistricts_by_id[project.subdistrict_id] %>
               <tr>
-                <td><div class="project-name-cell"><% if (cover = project.photos.first) %><%= image_tag photo_project_path(project, cover["id"]), class: "project-cover", alt: "", loading: "lazy" %><% else %><span class="project-cover empty material-symbols-outlined">image</span><% end %><div><b><%= project.name %></b><% if project.code.present? %><small><%= project.code %></small><% end %><% if project.photos.size > 1 %><small><%= project.photos.size %> ภาพ</small><% end %></div></div></td>
+                <td><div class="project-name-cell"><% if (cover = project.photos.first) %><%= image_tag photo_project_path(project, cover["id"], variant: "thumb"), class: "project-cover", alt: "", loading: "lazy" %><% else %><span class="project-cover empty material-symbols-outlined">image</span><% end %><div><b><%= project.name %></b><% if project.simulated? %><span class="demo-badge">ข้อมูลจำลอง</span><% end %><% if project.code.present? %><small><%= project.code %></small><% end %><% if project.photos.size > 1 %><small><%= project.photos.size %> ภาพ</small><% end %></div></div></td>
                 <td><span class="project-group <%= project.group %>"><%= project.group_label %></span><small><%= project.project_type %></small></td>
                 <td><%= project.fiscal_year %></td>
                 <td class="numeric"><%= project.budget ? number_with_precision(project.budget, precision: 2, delimiter: ",") : "-" %><span class="project-approval <%= project.approval_status %>"><%= project.approval_status_label %></span><% if project.budget_source.present? %><small><%= project.budget_source %></small><% end %></td>

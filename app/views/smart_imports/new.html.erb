@@ -1,0 +1,44 @@
+<% area_label = current_user.access_area&.name || current_user.subdistrict&.name_th || "ประเทศไทย" %>
+<div class="shell dashboard-shell gis-dashboard data-layers-shell smart-import-shell">
+  <%= render "dashboard/sidebar", active_nav: :data_layers, initial_area: area_label %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb">นำเข้าข้อมูล <b>›</b> <%= link_to "ชุดข้อมูลแบบกำหนดเอง", imported_datasets_path %> <b>›</b> นำเข้าอัตโนมัติด้วย AI</span></div></header>
+    <div class="dashboard-content smart-import-page">
+      <section class="city-heading"><div><p class="page-kicker">นำเข้าข้อมูล</p><h1>นำเข้าอัตโนมัติด้วย AI</h1><p>อัปโหลดสเปรดชีต PDF หรือรูปถ่ายตาราง ระบบจะอ่านด้วย AI แยกคอลัมน์ หาพิกัดในพื้นที่ อบต. แล้วให้ตรวจแก้ก่อนนำเข้า</p></div></section>
+
+      <form class="smart-import-card" data-smart-import-form action="<%= smart_imports_path %>">
+        <ol class="smart-import-steps"><li class="active">1 อัปโหลดไฟล์</li><li>2 ตรวจและแก้ไขตาราง</li><li>3 นำเข้าระบบ</li></ol>
+        <label class="smart-drop" data-drop>
+          <input type="file" name="file" accept=".xlsx,.xls,.csv,.pdf,.png,.jpg,.jpeg,.webp" required data-file>
+          <span class="material-symbols-outlined">upload_file</span>
+          <b data-file-label>ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</b>
+          <small>XLSX · XLS · CSV · PDF (ข้อความหรือภาพสแกน ไม่เกิน <%= SmartImports::Extractor::MAX_PAGES %> หน้า) · PNG · JPG · ไม่เกิน 20 MB</small>
+        </label>
+        <div class="smart-import-grid">
+          <label>ชื่อชุดข้อมูล<input name="name" placeholder="เว้นว่างให้ AI ตั้งจากชื่อตาราง"></label>
+          <label>พื้นที่ (อบต.) *<select name="subdistrict_id" required>
+            <% @subdistricts.each do |subdistrict| %><option value="<%= subdistrict.id %>" <%= "selected" if subdistrict.id == current_user.subdistrict_id %>><%= subdistrict.name_th %> · <%= subdistrict.province&.name_th %></option><% end %>
+          </select><small>ใช้หาพิกัดจากชื่อสถานที่ และรับเฉพาะตำแหน่งที่อยู่ในเขตพื้นที่นี้</small></label>
+          <label>ผู้ให้บริการ AI<select name="ai_provider_id" data-provider>
+            <% @providers.each do |provider| %><option value="<%= provider.id %>" data-model="<%= provider.model %>"><%= provider.name %></option><% end %>
+          </select></label>
+          <label>โมเดล (ต้องอ่านภาพได้สำหรับ PDF สแกน/รูปภาพ)<input name="model" list="smart-import-models" data-model-input placeholder="เช่น claude-sonnet-5-5">
+            <datalist id="smart-import-models"><option value="claude-sonnet-5-5"><option value="claude-haiku-5-5"><option value="claude-opus-5-5"><option value="qwen3/qwen3-vl-4b"></datalist></label>
+        </div>
+        <% if @providers.empty? %><p class="cctv-flash alert">ยังไม่ได้ตั้งค่าผู้ให้บริการ AI — ผู้ดูแลระบบเพิ่มได้ที่ ตั้งค่าระบบ › ผู้ให้บริการ AI</p><% end %>
+        <p class="smart-error" data-error hidden></p>
+        <footer><%= link_to "ยกเลิก", imported_datasets_path, class: "button-link" %><button class="data-layer-add" type="submit" data-submit <%= "disabled" if @providers.empty? %>><span class="material-symbols-outlined">auto_awesome</span>อ่านไฟล์ด้วย AI</button></footer>
+        <div class="smart-progress" data-progress hidden><span class="smart-spinner"></span><b data-progress-text>กำลังอ่านไฟล์…</b><small>ไฟล์รูปภาพ/PDF สแกนใช้เวลาประมาณ 10–20 วินาทีต่อหน้า</small></div>
+      </form>
+
+      <% if @recent.any? %>
+        <section class="smart-import-card smart-recent"><h2>รายการล่าสุด</h2>
+          <ul><% @recent.each do |item| %><li><%= link_to item.name.presence || item.source_filename, smart_import_path(item) %><small><%= item.source_filename %> · <%= item.rows.size %> แถว · <%= item.imported? ? "นำเข้าแล้ว" : "รอตรวจแก้" %> · <%= item.created_at.in_time_zone.strftime("%d/%m/%Y %H:%M") %></small></li><% end %></ul>
+        </section>
+      <% end %>
+    </div>
+  </main>
+</div>
+<%= stylesheet_link_tag "smart_import" %>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
+<%= javascript_include_tag "smart_import", defer: true %>

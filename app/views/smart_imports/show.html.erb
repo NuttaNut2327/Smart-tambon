@@ -1,0 +1,46 @@
+<% area_label = @subdistrict ? "#{@subdistrict.name_th} · #{@subdistrict.district_name_th}" : "ไม่ระบุพื้นที่" %>
+<div class="shell dashboard-shell gis-dashboard data-layers-shell smart-import-shell">
+  <%= render "dashboard/sidebar", active_nav: :data_layers, initial_area: area_label %>
+  <main class="dashboard-main content">
+    <header class="dashboard-header gis-topbar"><div><p class="topbar-kicker"><%= system_name %></p><span class="breadcrumb">นำเข้าข้อมูล <b>›</b> <%= link_to "นำเข้าอัตโนมัติด้วย AI", new_smart_import_path %> <b>›</b> <%= @smart_import.name %></span></div></header>
+    <div class="dashboard-content smart-import-page" data-smart-editor
+         data-update-url="<%= smart_import_path(@smart_import) %>" data-geocode-url="<%= geocode_smart_import_path(@smart_import) %>"
+         data-finalize-url="<%= finalize_smart_import_path(@smart_import) %>">
+      <section class="city-heading smart-editor-heading">
+        <div><p class="page-kicker">นำเข้าอัตโนมัติด้วย AI</p><h1>ตรวจและแก้ไขตารางก่อนนำเข้า</h1>
+          <p>อ่านจาก <b><%= @smart_import.source_filename %></b> ด้วย <%= @smart_import.ai_model %> · พื้นที่ <b><%= area_label %></b> · ตรวจค่าในตาราง แก้ชื่อ/ชนิด/บทบาทคอลัมน์ แล้วกด นำเข้าระบบ</p></div>
+      </section>
+      <ol class="smart-import-steps"><li class="done">1 อัปโหลดไฟล์</li><li class="active" data-step-edit>2 ตรวจและแก้ไขตาราง</li><li data-step-result>3 นำเข้าระบบ</li></ol>
+      <% @smart_import.notes.each do |note| %><p class="cctv-flash alert"><%= note %></p><% end %>
+
+      <section class="smart-import-card" data-editor-panel>
+        <div class="smart-editor-toolbar">
+          <label>ชื่อชุดข้อมูล<input data-name></label>
+          <div class="smart-geo-summary" data-geo-summary></div>
+          <div class="smart-editor-actions">
+            <button type="button" class="button-link" data-regeocode><span class="material-symbols-outlined">travel_explore</span>หาพิกัดใหม่ทั้งหมด</button>
+            <button type="button" class="button-link" data-add-column>＋ คอลัมน์</button>
+            <button type="button" class="button-link" data-add-row>＋ แถว</button>
+          </div>
+        </div>
+        <p class="smart-hint">บทบาทคอลัมน์ <b>พิกัด</b> / <b>ละติจูด–ลองจิจูด</b> จะถูกแปลงเป็นตำแหน่งบนแผนที่ · <b>ชื่อสถานที่</b> ใช้ค้นหาพิกัดในเขต อบต. · แถวที่หาพิกัดไม่พบ แก้พิกัดเองหรือกด <span class="material-symbols-outlined">location_on</span> แล้วคลิกบนแผนที่</p>
+        <div class="smart-editor-layout">
+          <div class="smart-table-wrap"><table class="smart-table" data-table></table></div>
+          <div class="smart-map-panel"><div class="smart-map" data-map></div><small data-map-hint>จุดสีเขียว = พิกัดจากไฟล์/แก้ไขเอง · สีฟ้า = หาจากชื่อสถานที่ · สีแดง = อยู่นอกพื้นที่</small></div>
+        </div>
+        <p class="smart-error" data-error hidden></p>
+        <footer>
+          <span class="smart-save-state" data-save-state></span>
+          <button type="button" class="button-link" data-save>บันทึกร่าง</button>
+          <button type="button" class="data-layer-add" data-finalize><span class="material-symbols-outlined">database_upload</span>นำเข้าระบบ</button>
+        </footer>
+      </section>
+
+      <section class="smart-import-card smart-result" data-result-panel hidden></section>
+    </div>
+  </main>
+</div>
+<script type="application/json" data-smart-import-json><%= raw json_escape(@smart_import.as_editor_json.to_json) %></script>
+<script type="application/json" data-smart-import-boundary><%= raw json_escape((@subdistrict&.as_geojson(simplified: true) || {}).to_json) %></script>
+<%= stylesheet_link_tag "smart_import" %>
+<%= javascript_include_tag "smart_import", defer: true %>

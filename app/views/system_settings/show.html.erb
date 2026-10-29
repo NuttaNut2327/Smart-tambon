@@ -15,7 +15,8 @@
         <div class="settings-logo span-2">
           <%= image_tag system_logo_src, alt: "โลโก้ระบบ" %>
           <div>
-            <label>โลโก้ระบบ<%= file_field_tag "system_setting[logo_file]", accept: "image/jpeg,image/png,image/webp" %><small>PNG พื้นหลังโปร่งใส แนะนำขนาดอย่างน้อย 128×128 px</small></label>
+            <label>โลโก้ระบบ<%= file_field_tag "system_setting[logo_file]", accept: ImageLibrary::ACCEPT %><small>PNG พื้นหลังโปร่งใส แนะนำขนาดอย่างน้อย 128×128 px</small></label>
+            <%= render "library_images/picker", field: "system_setting[logo_library_image_id]", max: 1, label: "เลือกโลโก้จากคลังภาพ" %>
             <% if @setting.logo.present? %><label class="settings-check"><%= check_box_tag "system_setting[remove_logo]", "1" %> ใช้โลโก้เริ่มต้น</label><% end %>
           </div>
         </div>
@@ -25,7 +26,7 @@
     <section class="settings-card" id="settings-integrations">
       <header><span class="material-symbols-outlined">key</span><div><h2>คีย์และบริการภายนอก</h2><p>ค่าที่บันทึกที่นี่ถูกเข้ารหัส และใช้แทนค่าในไฟล์ .env — เว้นว่างเพื่อคงค่าเดิม</p></div></header>
       <div class="settings-grid">
-        <% { "longdo_map_key" => ["Longdo Map API key", "ใช้ค้นหาสถานที่สำคัญและที่อยู่จากพิกัด — สมัครที่ map.longdo.com/console"], "maptiler_key" => ["MapTiler key", "ใช้แผนที่ภาพดาวเทียม (ถ้าไม่ระบุจะใช้ OpenStreetMap)"] }.each do |name, (label, help)| %>
+        <% { "longdo_map_key" => ["Longdo Map API key", "ใช้ค้นหาสถานที่สำคัญและที่อยู่จากพิกัด — สมัครที่ map.longdo.com/console"], "maptiler_key" => ["MapTiler key", "ใช้แผนที่ภาพดาวเทียม (ถ้าไม่ระบุจะใช้ OpenStreetMap)"], "gistda_api_key" => ["GISTDA Disaster API key", "ชั้นข้อมูลน้ำท่วม จุดความร้อน และภัยแล้งจาก GISTDA — สมัครที่ disaster.gistda.or.th/services/open-api (อบต. ที่ตั้งคีย์ของตนเองจะใช้คีย์นั้นแทน)"] }.each do |name, (label, help)| %>
           <% source = @setting.secret_source(name) %>
           <label><%= label %>
             <%= password_field_tag "system_setting[#{name}]", nil, autocomplete: "new-password", placeholder: @setting.masked_secret(name) || "ยังไม่ได้กำหนด" %>
@@ -48,6 +49,9 @@
           <% SystemSetting::MAP_LAYERS.each do |key, label| %><label class="settings-check"><%= check_box_tag "system_setting[map_layers][]", key, @setting.map_layers.include?(key), id: "system_layer_#{key}" %> <%= label %></label><% end %>
           <%= hidden_field_tag "system_setting[map_layers][]", "" %>
         </fieldset>
+        <label class="span-2">URL ข้อมูลอาคาร (Vector tiles)<%= form.url_field :building_tiles_url, placeholder: ENV["BUILDING_TILES_URL"].presence || "https://map.example.go.th/data/building-polygon.json" %>
+          <small>TileJSON จาก TileServer GL (<code>/data/&lt;ชื่อชุดข้อมูล&gt;.json</code>) หรือ URL แบบ <code>…/{z}/{x}/{y}.pbf</code> — เบราว์เซอร์ของผู้ใช้โหลด tile จาก URL นี้โดยตรง จึงต้องเข้าถึงได้จากเครื่องผู้ใช้และเปิด CORS<% if @setting.building_tiles_url.blank? && ENV["BUILDING_TILES_URL"].present? %> · ตอนนี้ใช้ค่าจาก .env<% end %></small></label>
+        <label>ชื่อชั้นข้อมูลใน tile (ไม่บังคับ)<%= form.text_field :building_tiles_layer, placeholder: "เช่น building-polygon" %><small>เว้นว่างถ้า tileset มีชั้นเดียว · ใส่เมื่อใช้ tileset รวมหลายชั้น เช่น <code>buildingpolygon</code></small></label>
       </div>
     </section>
 
@@ -60,6 +64,24 @@
       </div>
     </section>
 
+    <% demo_counts = DemoData.counts %>
+    <section class="settings-card" id="settings-demo">
+      <header><span class="material-symbols-outlined">science</span><div><h2>ข้อมูลสาธิต (Demo)</h2><p>ข้อมูลจำลองสำหรับนำเสนอ — มีป้าย "ข้อมูลจำลอง" กำกับ ปิดเพื่อซ่อนจากทุกรายการ แผนที่ แผนภูมิ และสถิติ โดยข้อมูลยังอยู่ในระบบ</p></div></header>
+      <div class="settings-toggles"><label class="settings-switch"><%= form.check_box :demo_data_visible %><span><b>แสดงข้อมูลสาธิต</b><small>ตอนนี้มี <%= DemoData::KINDS.map { |key, kind| "#{kind[:label]} #{demo_counts[key]} รายการ" }.join(" · ") %> — ปิดก่อนใช้งานจริงเพื่อไม่ให้ปนกับสถิติจริง</small></span></label></div>
+    </section>
+
     <div class="settings-actions"><%= form.submit "บันทึกการตั้งค่าระบบ", class: "button-link primary" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %></div>
   <% end %>
+
+  <section class="settings-card settings-demo-purge">
+    <header><span class="material-symbols-outlined">delete_sweep</span><div><h2>ลบข้อมูลสาธิตออกจากระบบ</h2><p>ลบถาวรเฉพาะรายการที่ทำเครื่องหมายเป็นข้อมูลสาธิต ข้อมูลจริงไม่ถูกแตะ สร้างใหม่ได้ด้วยคำสั่ง rake ที่ระบุ</p></div></header>
+    <div class="settings-demo-actions">
+      <% DemoData::KINDS.each do |key, kind| %>
+        <div><b><%= kind[:label] %></b><small><%= demo_counts[key] %> รายการ · สร้างใหม่: <code>bin/rails <%= kind[:task] %></code></small>
+          <%= button_to "ลบ#{kind[:label]}สาธิต", purge_demo_data_system_settings_path(kind: key), class: "button-link danger", disabled: demo_counts[key].zero?,
+                form: { data: { purge_confirm: "ลบ#{kind[:label]}ที่เป็นข้อมูลสาธิตทั้งหมด #{demo_counts[key]} รายการ? ลบแล้วกู้คืนไม่ได้" }, onsubmit: "return confirm(this.dataset.purgeConfirm)" } %>
+        </div>
+      <% end %>
+    </div>
+  </section>
 <% end %>

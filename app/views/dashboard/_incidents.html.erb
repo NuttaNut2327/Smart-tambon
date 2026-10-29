@@ -3,7 +3,7 @@
 <% total_count = @incidents.size %>
 <% summary_noun = @incident_category == "disaster" ? "ภัยพิบัติ" : "เหตุการณ์" %>
 
-<section class="incident-page" data-incident-page data-incident-category="<%= @incident_category %>">
+<section class="incident-page" data-incident-page data-incident-category="<%= @incident_category %>" data-history-active="<%= @history_search.active? %>">
   <div class="incident-page-heading">
     <div><p class="page-kicker"><%= @incident_category == "disaster" ? "ศูนย์บริหารจัดการภัยพิบัติ" : "ศูนย์รับแจ้งเหตุประชาชน" %></p><h1><%= @incident_category == "disaster" ? "ภัยพิบัติ" : "เหตุการณ์ทั่วไป" %></h1><p>ดูรายละเอียด ตำแหน่ง การดำเนินงาน แผนรับมือ และทรัพยากรของแต่ละเหตุ</p></div>
     <% if @incident_category == "disaster" || @allow_incident_creation %><div class="incident-heading-actions"><% if @incident_category == "disaster" %><%= link_to disasters_path(view: "plans"), class: "incident-secondary-action disaster-future-plan-link" do %><span class="material-symbols-outlined">assignment</span>แผนรับมือในอนาคต<% end %><% end %><% if @allow_incident_creation %><% if current_user.subdistrict_id.present? || current_user.access_area.present? %><button type="button" class="incident-secondary-action" data-open-incident-dialog="share-incident-form-dialog"><span class="material-symbols-outlined">share</span>แชร์แบบฟอร์ม</button><% end %><button type="button" class="incident-primary-action" data-open-incident-dialog="new-incident-dialog"><span class="material-symbols-outlined">add</span>บันทึกเหตุการณ์ใหม่</button><% end %></div><% end %>
@@ -19,7 +19,11 @@
     <article class="summary-completed"><span class="material-symbols-outlined">task_alt</span><div><small><%= summary_noun %>เสร็จสิ้น</small><strong><%= @incident_summary[:completed] %></strong></div></article>
   </section>
 
-  <% if @incidents.empty? %>
+  <%= render "dashboard/incident_history_search", part: :results if @history_search.active? %>
+
+  <% if @incidents.empty? && @history_search.active? %>
+    <section class="incident-empty"><span class="material-symbols-outlined">search_off</span><h2>ไม่พบ<%= summary_noun %>ในช่วงเวลานี้</h2><p>ลองขยายช่วงวันที่ หรือ <%= link_to "ล้างการค้นหา", @incidents_path %> เพื่อดูรายการทั้งหมด</p></section>
+  <% elsif @incidents.empty? %>
     <section class="incident-empty"><span class="material-symbols-outlined">notifications</span><h2><%= @incident_category == "disaster" ? "ยังไม่มีเหตุการณ์ที่เปิดเป็นภัยพิบัติ" : "ยังไม่มีเหตุการณ์ที่ประชาชนแจ้งเข้ามา" %></h2><p><%= @incident_category == "disaster" ? "เมื่อ Admin เปิดเหตุการณ์ทั่วไปเป็นภัยพิบัติ รายการจะแสดงในหน้านี้" : "รายการรับแจ้งใหม่ทั้งหมดจะแสดงเป็นเหตุการณ์ทั่วไปในหน้านี้" %></p></section>
   <% else %>
     <div class="incident-layout">
@@ -34,7 +38,7 @@
         <div class="incident-list" data-incident-card-list>
           <% @incidents.each do |incident| %>
             <% status_group = incident.status == "pending" ? "pending" : (incident.status == "completed" ? "completed" : "in_progress") %>
-            <%= link_to "#{@incidents_path}?incident_id=#{incident.id}", class: "incident-list-card incident-severity-#{incident.severity} #{'active' if incident == @selected_incident}", data: { incident_status_group: status_group, incident_source: incident.report_source_label } do %>
+            <%= link_to "#{@incidents_path}?#{{ incident_id: incident.id.to_s, **@history_search.to_params }.to_query}", class: "incident-list-card incident-severity-#{incident.severity} #{'active' if incident == @selected_incident}", data: { incident_status_group: status_group, incident_source: incident.report_source_label } do %>
               <div><small><%= incident.reference_code %></small><em class="severity-<%= incident.severity %>"><%= severity_labels[incident.severity] %></em></div>
               <strong class="incident-list-card-title" title="<%= incident.title %>"><%= incident.title %></strong>
               <% has_resolved_address = incident.location_name.present? && !incident.location_name.match?(/\A(ตำแหน่งที่|ไม่ระบุ)/) %>
@@ -96,7 +100,7 @@
               <% incident_photos.each do |photo| %>
                 <% photo_url = incident_photo_path(incident, photo["id"]) %>
                 <%= link_to photo_url, target: "_blank", rel: "noopener", aria: { label: "เปิดรูปภาพประกอบเหตุการณ์" } do %>
-                  <%= image_tag photo_url, alt: "รูปภาพประกอบเหตุการณ์", loading: "lazy" %>
+                  <%= image_tag incident_photo_path(incident, photo["id"], variant: "thumb"), alt: "รูปภาพประกอบเหตุการณ์", loading: "lazy" %>
                 <% end %>
               <% end %>
             </div>
@@ -108,7 +112,7 @@
             <div class="incident-card-heading"><div><h3>แผนรับมือของเหตุการณ์นี้</h3><p>เลือกดูแต่ละ Version และกำหนด Version ที่ต้องการนำไปใช้</p></div><% if @selected_plan && (current_user.system_admin? || current_user.subdistrict_admin?) %><button type="button" class="incident-secondary-action compact incident-plan-edit" data-edit-response-plan><span class="material-symbols-outlined">edit</span>แก้ไขทรัพยากร</button><% end %></div>
             <nav class="incident-plan-tabs">
               <% incident.response_plan_versions.sort_by { |version| -version["version"].to_i }.each do |version| %>
-                <%= link_to "#{@incidents_path}?incident_id=#{incident.id}&plan_version=#{version['version']}", class: "#{'active' if version == @selected_plan}" do %>
+                <%= link_to "#{@incidents_path}?#{{ incident_id: incident.id.to_s, plan_version: version['version'], **@history_search.to_params }.to_query}", class: "#{'active' if version == @selected_plan}" do %>
                   <b>v<%= version["version"] %> <%= "ใช้งานปัจจุบัน" if version["version"].to_i == incident.active_plan_version.to_i %></b><small><%= version["title"].presence || "แผนรับมือ" %></small>
                 <% end %>
               <% end %>

@@ -1,5 +1,7 @@
-# A text-to-speech service the system admin makes available for news broadcasts (เสียงตามสาย).
-# Several can be configured; each broadcast program picks one (or uses the default). Keys are encrypted at rest.
+# A text-to-speech service for news broadcasts (เสียงตามสาย). Central providers (organization_key nil) are set up by
+# the system admin for every อบต.; an อบต. admin can add its own (e.g. its own ElevenLabs account), which only that
+# อบต. sees and which wins over the central default. Each broadcast program picks one (or uses the default).
+# Keys are encrypted at rest.
 class TtsProvider
   include Mongoid::Document
   include Mongoid::Timestamps
@@ -22,10 +24,22 @@ class TtsProvider
       label: "OpenAI Text-to-Speech", base_url: "https://api.openai.com",
       voices: { "alloy" => "alloy", "nova" => "nova", "shimmer" => "shimmer", "onyx" => "onyx", "echo" => "echo", "sage" => "sage" },
       key_hint: "OpenAI API key (หรือบริการที่รองรับ /v1/audio/speech)"
+    },
+    "elevenlabs" => {
+      label: "ElevenLabs", base_url: "https://api.elevenlabs.io",
+      voices: { "21m00Tcm4TlvDq8ikWAM" => "Rachel (หญิง)", "EXAVITQu4vr4xnSDxMaL" => "Sarah (หญิง)",
+                "JBFqnCBsd6RMkjVDRZzb" => "George (ชาย)", "nPczCjzI2devNBz1zQrb" => "Brian (ชาย)" },
+      models: { "eleven_v3" => "Eleven v3 · รองรับภาษาไทย (แนะนำ)", "eleven_v4" => "Eleven v4 · รองรับภาษาไทย",
+                "eleven_v4_turbo" => "Eleven v4 Turbo · รองรับภาษาไทย เร็วกว่า" },
+      key_hint: "API key จาก elevenlabs.io › Developers › API keys (ต้องมีสิทธิ์ Text to Speech และ Voices: read) — " \
+                "Voice ID ดูได้จาก Voice Library หรือกด “โหลดเสียงจากบัญชี” หลังบันทึก key · ภาษาไทยต้องใช้โมเดล eleven_v3 หรือ eleven_v4"
     }
   }.freeze
-  DEFAULT_MODELS = { "openai" => "gpt-4o-mini-tts" }.freeze
+  DEFAULT_MODELS = { "openai" => "gpt-4o-mini-tts", "elevenlabs" => "eleven_v3" }.freeze
+  # ElevenLabs models that read Thai; multilingual_v2 and flash models don't list Thai and mispronounce it.
+  THAI_MODELS = { "elevenlabs" => %w[eleven_v3 eleven_v4 eleven_v4_turbo eleven_v3_conversational] }.freeze
 
+  field :organization_key, type: String
   field :name, type: String
   field :kind, type: String, default: "google"
   field :base_url, type: String
@@ -38,20 +52,32 @@ class TtsProvider
 
   encrypted_secret :api_key, purpose: "tts-provider-secrets"
 
+  index({ organization_key: 1, enabled: 1 })
+
   validates :name, :voice, presence: true
   validates :kind, inclusion: { in: KINDS.keys }
   validates :speaking_rate, numericality: { greater_than_or_equal_to: 0.5, less_than_or_equal_to: 2.0, message: "ต้องอยู่ระหว่าง 0.5 ถึง 2.0" }
   validate :base_url_must_be_http
+  validate :model_must_read_thai
   before_validation :normalize
   after_save :clear_other_defaults, if: :is_default?
 
   scope :enabled, -> { where(enabled: true) }
   scope :ordered, -> { order_by(is_default: :desc, name: :asc) }
+  scope :central, -> { where(organization_key: nil) }
+  scope :for_organization, ->(key) { where(organization_key: key) }
+  # What an อบต. may pick: the central providers plus its own.
+  scope :available_to, ->(key) { key.present? ? any_of({ organization_key: nil }, { organization_key: key }) : central }
 
-  def self.default = enabled.ordered.first
+  def self.default = central.enabled.ordered.first
+  # The อบต.'s own provider first (its default, else its first enabled one), then the central default.
+  def self.default_for(key) = (key.present? && for_organization(key).enabled.ordered.first) || default
+
+  def organization? = organization_key.present?
 
   def kind_label = KINDS.dig(kind, :label) || kind
   def voices = KINDS.dig(kind, :voices) || {}
+  def models = KINDS.dig(kind, :models) || {}
   def voice_label = voices[voice] || voice
   def effective_base_url = (base_url.presence || KINDS.dig(kind, :base_url)).to_s.delete_suffix("/")
   def label = "#{name} · #{voice_label}"
@@ -65,7 +91,14 @@ class TtsProvider
   end
 
   def clear_other_defaults
-    self.class.where(:id.ne => id, is_default: true).update_all(is_default: false)
+    self.class.where(:id.ne => id, is_default: true, organization_key:).update_all(is_default: false)
+  end
+
+  def model_must_read_thai
+    allowed = THAI_MODELS[kind]
+    return if allowed.nil? || model.blank? || allowed.include?(model)
+
+    errors.add(:model, "#{model} ไม่รองรับภาษาไทย — ใช้ #{allowed.first(2).join(' หรือ ')}")
   end
 
   def base_url_must_be_http

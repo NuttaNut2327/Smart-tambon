@@ -3,12 +3,17 @@
 class BroadcastProgram
   include Mongoid::Document
   include Mongoid::Timestamps
+  include BroadcastDelivery
 
   DATA_SOURCES = {
     "weather" => "สภาพอากาศ ฝน และอุณหภูมิ",
     "pm25" => "ฝุ่น PM2.5",
     "water" => "ระดับน้ำจากสถานีวัดน้ำ",
     "fire_hotspots" => "จุดความร้อน (ไฟป่า)",
+    "weather_forecast" => "พยากรณ์ฝนและอากาศ 3 วันข้างหน้า (เตือนฝนหนัก)",
+    "gistda_hotspots" => "จุดความร้อนจาก GISTDA รอบล่าสุด/24 ชั่วโมง (ระบุหมู่บ้าน/ตำบล)",
+    "gistda_flood" => "พื้นที่น้ำท่วมจาก GISTDA (7 วันล่าสุด)",
+    "disaster_history" => "แนวโน้มภัยรายสัปดาห์จากสถิติภัยพิบัติย้อนหลัง และพื้นที่ที่เคยเกิดเหตุในสัปดาห์นี้",
     "activities" => "กิจกรรมในพื้นที่",
     "incidents" => "เหตุการณ์ที่แจ้งเข้ามา (ไม่เปิดเผยข้อมูลผู้แจ้ง)",
     "disasters" => "ภัยพิบัติที่กำลังดำเนินการ",
@@ -22,6 +27,50 @@ class BroadcastProgram
     - ถ้ามีเหตุการณ์หรือความเสี่ยงที่ต้องระวัง ให้บอกสั้น ๆ ว่าต้องทำอะไร
     - ปิดท้ายด้วยช่องทางติดต่อ อบต.
   PROMPT
+
+  # เสียงตามสายควรสั้น: ค่าเริ่มต้นจำกัดบทอ่านให้อ่านจบในราว 1 นาที และยาวได้ไม่เกิน 2 นาที (อ่านภาษาไทยประมาณ 125 คำต่อนาที)
+  WORDS_PER_MINUTE = 125
+  DEFAULT_MAX_WORDS = WORDS_PER_MINUTE
+  MAX_WORDS_LIMIT = WORDS_PER_MINUTE * 2
+
+  # Ready-made "agents": prevention news programmes an อบต. can start from (BroadcastProgramsController#new?template=).
+  TEMPLATES = {
+    "forecast_alert" => {
+      label: "เตือนภัยล่วงหน้า 3 วัน (ทุกเช้า)",
+      description: "ทุกเช้า 06:30 ดูพยากรณ์ฝน 3 วัน ถ้ามีฝนหนักหรือความเสี่ยงสูงจึงออกข่าว พร้อมบอกพื้นที่ที่เคยเกิดภัยเมื่อฝนระดับนี้",
+      attributes: {
+        name: "เตือนภัยล่วงหน้า 3 วัน", schedule_times: ["06:30"], alert_only: true, history_years: 5, max_words: DEFAULT_MAX_WORDS,
+        delivery_modes: %w[pa notification internal], internal_alert_level: "urgent",
+        data_sources: %w[weather_forecast disaster_history gistda_flood disasters],
+        prompt: <<~PROMPT
+          เขียนข่าวเตือนภัยล่วงหน้าสำหรับเสียงตามสายตอนเช้า เน้นการเตรียมตัวป้องกัน
+          - เปิดด้วยคำทักทาย วันที่ และบอกตรง ๆ ว่ามีเรื่องที่ต้องระวังในอีก 3 วันข้างหน้า
+          - บอกวันที่คาดว่าฝนจะหนัก ปริมาณฝน และระดับฝนตาม weather_forecast พร้อมแหล่งที่มา
+          - ถ้า disaster_history มี places_hit_after_similar_rain หรือ past_events_this_week ให้บอกว่าในอดีตช่วงสัปดาห์นี้
+            เคยเกิดภัยอะไรที่หมู่ไหน ตำบลไหน และขอให้คนในพื้นที่นั้นเฝ้าระวังเป็นพิเศษ
+          - ให้คำแนะนำที่ทำได้จริง เช่น ขนของขึ้นที่สูง ลอกทางระบายน้ำ เตรียมไฟฉายและยาประจำตัว เลี่ยงเส้นทางน้ำหลาก
+          - ถ้ามีพื้นที่น้ำท่วมจาก GISTDA หรือภัยที่กำลังดำเนินการ ให้บอกสั้น ๆ
+          - ปิดท้ายด้วยช่องทางแจ้งเหตุของ อบต.
+        PROMPT
+      }
+    },
+    "weekly_outlook" => {
+      label: "แนวโน้มภัยประจำสัปดาห์จากสถิติย้อนหลัง",
+      description: "ทุกวันจันทร์ 07:00 สรุปว่าสัปดาห์นี้ในอดีต 1–5 ปีเคยเกิดภัยอะไร ที่ไหน แนวโน้มเพิ่มหรือลด เทียบกับฝนที่คาดการณ์",
+      attributes: {
+        name: "แนวโน้มภัยประจำสัปดาห์", schedule_times: ["07:00"], schedule_days: ["1"], history_years: 5, max_words: DEFAULT_MAX_WORDS,
+        data_sources: %w[disaster_history weather_forecast],
+        prompt: <<~PROMPT
+          เขียนข่าวประจำสัปดาห์เรื่องแนวโน้มภัยพิบัติจากสถิติย้อนหลังของตำบล เพื่อให้ชาวบ้านเตรียมป้องกันล่วงหน้า
+          - บอกว่าเป็นสถิติจากอดีตกี่ปี และย้ำว่าไม่ใช่การพยากรณ์ว่าจะเกิดแน่นอน
+          - ไล่ภัยที่มีความเสี่ยงสูงก่อน บอกว่าสัปดาห์นี้ในอดีตเกิดบ่อยแค่ไหน ปีที่แล้วเกิดกี่ครั้ง และแนวโน้มสัปดาห์ถัดไป
+          - บอกหมู่บ้านหรือตำบลที่เคยเกิดเหตุบ่อยในช่วงนี้ และเทียบฝนที่คาดการณ์กับฝนก่อนเกิดเหตุในอดีต
+          - ให้คำแนะนำการเตรียมตัวตามภัยแต่ละชนิด
+          - ถ้าไม่มีภัยที่น่ากังวล ให้บอกสั้น ๆ ว่าสัปดาห์นี้ในอดีตไม่ค่อยเกิดภัย
+        PROMPT
+      }
+    }
+  }.freeze
 
   field :organization_key, type: String
   field :subdistrict_id, type: Integer
@@ -37,7 +86,11 @@ class BroadcastProgram
   field :ai_provider_id, type: BSON::ObjectId
   field :tts_provider_id, type: BSON::ObjectId
   field :tts_voice, type: String
-  field :max_words, type: Integer, default: 250
+  field :max_words, type: Integer, default: DEFAULT_MAX_WORDS
+  # Skip the broadcast (status "skipped") when the data shows nothing to warn about.
+  field :alert_only, type: Boolean, default: false
+  # How many past years of the disaster archive the "disaster_history" source looks at.
+  field :history_years, type: Integer, default: 5
   field :enabled, type: Boolean, default: true
   field :created_by, type: String
   field :updated_by, type: String
@@ -48,7 +101,8 @@ class BroadcastProgram
 
   validates :organization_key, :name, :prompt, presence: true
   validates :lookahead_days, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 31 }
-  validates :max_words, numericality: { only_integer: true, greater_than_or_equal_to: 50, less_than_or_equal_to: 1000, message: "ต้องอยู่ระหว่าง 50 ถึง 1,000" }
+  validates :max_words, numericality: { only_integer: true, greater_than_or_equal_to: 50, less_than_or_equal_to: MAX_WORDS_LIMIT, message: "ต้องอยู่ระหว่าง 50 ถึง #{MAX_WORDS_LIMIT} คำ (อ่านไม่เกิน 2 นาที)" }
+  validates :history_years, numericality: { only_integer: true, greater_than_or_equal_to: 1, less_than_or_equal_to: 5, message: "ต้องอยู่ระหว่าง 1 ถึง 5 ปี" }
   validate :schedule_times_must_be_valid
   before_validation :normalize
 
@@ -57,10 +111,14 @@ class BroadcastProgram
 
   attr_writer :schedule_times_text
 
+  def self.from_template(key, **attributes)
+    template = TEMPLATES[key.to_s]
+    new(delivery_modes: %w[pa notification], **(template ? template[:attributes] : {}), **attributes)
+  end
+
   def schedule_times_text = @schedule_times_text || Array(schedule_times).join(", ")
-  def channels = NotificationChannel.for_organization(organization_key).where(:_id.in => Array(channel_ids)).to_a
   def ai_provider = (ai_provider_id && AiProvider.enabled.where(id: ai_provider_id).first) || AiProvider.default_for_chat
-  def tts_provider = (tts_provider_id && TtsProvider.enabled.where(id: tts_provider_id).first) || TtsProvider.default
+  def tts_provider = (tts_provider_id && TtsProvider.available_to(organization_key).enabled.where(id: tts_provider_id).first) || TtsProvider.default_for(organization_key)
   def data_source_labels = data_sources.map { |key| DATA_SOURCES.fetch(key, key) }
   def schedule_label
     return "สร้างเมื่อกดเท่านั้น" unless schedule_enabled? && schedule_times.any?

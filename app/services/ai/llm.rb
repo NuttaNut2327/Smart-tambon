@@ -65,6 +65,11 @@ module Ai
       end
 
       def user_message(text) = { "role" => "user", "content" => text }
+      # images: [{ data: <binary>, media_type: "image/png" }]
+      def image_message(text, images)
+        parts = images.map { |image| { "type" => "image", "source" => { "type" => "base64", "media_type" => image[:media_type], "data" => Base64.strict_encode64(image[:data]) } } }
+        { "role" => "user", "content" => parts + [{ "type" => "text", "text" => text }] }
+      end
       def assistant_text(text) = { "role" => "assistant", "content" => text }
 
       # All results of one round go back in a single user message, so the model keeps making parallel calls.
@@ -127,6 +132,11 @@ module Ai
       end
 
       def user_message(text) = { "role" => "user", "content" => text }
+      # images: [{ data: <binary>, media_type: "image/png" }]
+      def image_message(text, images)
+        parts = images.map { |image| { "type" => "image_url", "image_url" => { "url" => "data:#{image[:media_type]};base64,#{Base64.strict_encode64(image[:data])}" } } }
+        { "role" => "user", "content" => [{ "type" => "text", "text" => text }] + parts }
+      end
       def assistant_text(text) = { "role" => "assistant", "content" => text }
 
       def tool_results(results)

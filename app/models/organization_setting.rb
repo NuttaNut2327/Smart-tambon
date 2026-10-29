@@ -30,6 +30,8 @@ class OrganizationSetting
   field :public_report_version, type: Integer, default: 1
   field :public_report_welcome, type: String
   field :public_report_sources, type: Array, default: -> { DEFAULT_REPORT_SOURCES.map(&:dup) }
+  # The อบต.'s own GISTDA Disaster API key (encrypted); blank means the system key is used.
+  field :gistda_api_key_ciphertext, type: String
   field :updated_by, type: String
 
   index({ organization_key: 1 }, unique: true)
@@ -70,7 +72,33 @@ class OrganizationSetting
                layers: map_layers.nil? ? base[:layers] : (Array(map_layers) & SystemSetting::MAP_LAYERS.keys))
   end
 
+  def gistda_api_key = decrypt(gistda_api_key_ciphertext)
+
+  def masked_gistda_api_key
+    value = gistda_api_key
+    value.present? ? "••••••#{value.last(4)}" : nil
+  end
+
+  # Blank input keeps the current key; clear: true removes it so the system key applies again.
+  def assign_gistda_api_key(value, clear: false)
+    return self.gistda_api_key_ciphertext = nil if clear
+    return if value.blank?
+
+    self.gistda_api_key_ciphertext = encryptor.encrypt_and_sign(value.to_s.strip)
+  end
+
   private
+
+  def encryptor
+    key = ActiveSupport::KeyGenerator.new(Rails.application.secret_key_base).generate_key("organization-setting-secrets", 32)
+    ActiveSupport::MessageEncryptor.new(key)
+  end
+
+  def decrypt(ciphertext)
+    ciphertext.present? ? encryptor.decrypt_and_verify(ciphertext) : nil
+  rescue ActiveSupport::MessageEncryptor::InvalidMessage, ActiveSupport::MessageVerifier::InvalidSignature
+    nil
+  end
 
   def normalize
     %i[organization_name executive_name address phone email website public_report_welcome].each { |key| self[key] = self[key].to_s.strip.presence }

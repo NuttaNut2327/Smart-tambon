@@ -85,6 +85,7 @@ Model identifiers and per-model parameter availability were checked against http
 |---|---|---|
 | `current` | every 30 min | current conditions |
 | `forecast` | 00:15, 06:15, 12:15, 18:15 | 8-day daily + hourly forecast, append-only |
+| `gistda-prune` | 03:30 | deletes GISTDA cache rows that expired more than 7 days ago |
 | `observation` | 02:00 | re-fetches the last 10 days plus any day that is still provisional. Values are revised until ERA5 is final. If anything is still provisional, it schedules one retry 3 h later |
 | backfill | manual only | historical observations. **Never writes to the forecast archive** |
 
@@ -110,6 +111,9 @@ You can identify a location in any weather endpoint with `location_id`, `code`, 
 | POST / PATCH / DELETE | `/locations`, `/locations/{id}` | admin | CRUD |
 | POST | `/weather/sync` | admin | `{"job": "current\|forecast\|observation\|backfill", "location_ids": [..], "start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}` |
 | GET | `/weather/ingestion-logs` | admin | recent ingestion logs |
+| POST | `/gistda/features` | admin | GISTDA flood polygons / VIIRS hotspots from the DB cache: `{"dataset": "flood\|hotspots", "period_days": 1\|3\|7\|30, "bbox": [w,s,e,n], "boundary_wkt": "..."}` |
+| GET | `/gistda/tiles/{drought\|flood}/{z}/{x}/{y}?period_days=7` | admin | cached GISTDA PNG map tile (204 = no tile) |
+| GET | `/gistda/status` | admin | cached GISTDA queries, features and tiles |
 
 For admin endpoints, send `X-API-Key: $WEATHER_ADMIN_API_KEY` (or `Authorization: Bearer …`). If the key is not set, admin endpoints return 503.
 
@@ -187,11 +191,22 @@ Coverage by file:
 | `test_open_meteo.py` | timezone/unixtime parsing, unavailable-param detection, retry/backoff, archive finality |
 | `test_scheduler.py` | job registration in Asia/Bangkok, advisory locks, observation retry, local-time hourly queries |
 | `test_accuracy.py` | MAE/RMSE/MBE, POD/FAR/CSI, Brier, grouping by lead day |
+| `test_gistda.py` | GISTDA cache hit/miss/expiry, stale fallback, boundary clipping, paging cap, key never echoed, tile cache, admin auth |
+
+### GISTDA disaster cache
+
+Flood (น้ำท่วม), VIIRS hotspot (จุดความร้อน) and drought-risk DRI+ (ภัยแล้ง) data from the [GISTDA Disaster Open API](https://disaster.gistda.or.th/services/open-api) (`https://api-gateway.gistda.or.th/api/2.0/resources`, `API-Key` header; checked 2026-10-23).
+
+* A query (dataset + period + bbox, rounded to 4 decimals) is stored in `gistda_fetches` with its features in `gistda_features` (PostGIS geometry + whitelisted properties). It is served from the database until it expires: flood after 1 h, hotspots after 30 min. Map tiles are kept in `gistda_tiles` (drought 12 h, flood 1 h).
+* GISTDA is only called on a miss, with the key the caller sends in `X-Gistda-Api-Key`. Rails sends the อบต.'s own key, or else the system key. The service never stores or logs that key, and it drops GISTDA's `links`, which echo the key.
+* If GISTDA fails and an expired copy exists, that copy is served with `"stale": true`. Missing upstream values stay NULL. Drought is only published as map tiles, so there are no drought features.
+* Large areas are capped at 3,000 flood polygons and 10,000 hotspots, and are then flagged `truncated`. The Rails map then also shows GISTDA's flood tiles.
 
 ## Rails integration
 
 * The dashboard overview page (`app/views/dashboard/_weather_panel.html.erb`, `app/javascript/weather_panel.js`) calls Rails `GET /api/weather`.
 * That endpoint (`WeatherPanelService` + `WeatherFeedClient`) calls this service at `WEATHER_API_URL`, which defaults to `http://host.docker.internal:8010`.
+* The dashboard GISTDA layers call Rails `GET /api/gistda/{flood,hotspots}` and `/api/gistda/tiles/...` (`Api::GistdaController`, `GistdaDisasterLayer`, `GistdaDisasterClient`), which call `/api/v1/gistda/*` here with `WEATHER_ADMIN_API_KEY`.
 * If the Rails app also has `WEATHER_ADMIN_API_KEY`, a user's own subdistrict is registered here automatically the first time they open the dashboard, provided no weather location exists within 10 km. Without the key, the panel shows the nearest seeded location and says how far away it is.
 
 ## Configuration (`.env`)

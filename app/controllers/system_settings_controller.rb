@@ -29,6 +29,14 @@ class SystemSettingsController < ApplicationController
     @checks = SystemStatusService.call
   end
 
+  def purge_demo_data
+    kind = params[:kind].to_s
+    return redirect_to(system_settings_path(anchor: "settings-demo"), alert: "ไม่รู้จักชนิดข้อมูลสาธิต") unless DemoData::KINDS.key?(kind)
+
+    removed = DemoData.purge!(kind)
+    redirect_to system_settings_path(anchor: "settings-demo"), notice: "ลบ#{DemoData::KINDS[kind][:label]}ที่เป็นข้อมูลสาธิต #{removed} รายการแล้ว"
+  end
+
   def logo
     return redirect_to(view_context.image_path("logo-smart-tambon.png")) if @setting.logo.blank?
 
@@ -51,8 +59,8 @@ class SystemSettingsController < ApplicationController
 
   def setting_params
     params.require(:system_setting).permit(:system_name, :system_short_name, :organization_name, :contact_email, :contact_phone,
-                                           :footer_text, :login_message, :geocoder_url, :map_basemap, :map_center_lat, :map_center_lon, :map_zoom,
-                                           :registration_enabled, :registration_terms, :registration_pdpa)
+                                           :footer_text, :login_message, :geocoder_url, :building_tiles_url, :building_tiles_layer, :map_basemap, :map_center_lat, :map_center_lon, :map_zoom,
+                                           :registration_enabled, :registration_terms, :registration_pdpa, :demo_data_visible)
   end
 
   def replace_logo
@@ -60,11 +68,15 @@ class SystemSettingsController < ApplicationController
       IncidentPhotoUploadService.delete_photo(@setting.logo) if @setting.logo
       @setting.logo = nil
     end
+    # A new logo is an upload (stored in the image library) or a picture picked from the library.
     upload = params.dig(:system_setting, :logo_file).presence
-    return unless upload
+    picked = ImageLibrary.pick(current_user, params.dig(:system_setting, :logo_library_image_id)).first
+    return unless upload || picked
 
     previous = @setting.logo
-    @setting.logo = IncidentPhotoUploadService.store!(prefix: "settings/system", upload:)
+    image = picked || ImageLibrary.import!(upload:, owner_user_id: current_user.id, subdistrict_id: current_user.subdistrict_id,
+                                           source: "logo", uploaded_by: current_user.username)
+    @setting.logo = image.attachment
     IncidentPhotoUploadService.delete_photo(previous) if previous
   end
 end

@@ -8,7 +8,7 @@
   <% end %>
 
   <h3>ข้อมูลอุปกรณ์</h3>
-  <% [["water_level_sensors", "water_drop", "เซนเซอร์วัดระดับน้ำ"], ["pm25_sensors", "air", "เซนเซอร์วัด PM 2.5"]].each do |key, icon, label| %>
+  <% [["water_level_sensors", "water_drop", "เซนเซอร์วัดระดับน้ำ"], ["pm25_sensors", "air", "เซนเซอร์วัด PM 2.5"], ["location_trackers", "my_location", "ข้อมูลตำแหน่ง"]].each do |key, icon, label| %>
     <%= link_to data_layers_path(data_type: key), class: "dataset-type-link #{'active' if active_type == key}" do %>
       <span class="material-symbols-outlined dataset-nav-icon"><%= icon %></span><%= label %><b class="material-symbols-outlined dataset-nav-arrow">chevron_right</b>
     <% end %>
@@ -19,8 +19,11 @@
     <span class="material-symbols-outlined dataset-nav-icon">add_box</span>รายการชุดข้อมูล<b class="material-symbols-outlined dataset-nav-arrow">chevron_right</b>
   <% end %>
 
-  <h3>คลังข้อมูลไฟล์</h3>
+  <h3>คลังข้อมูล</h3>
   <%= link_to data_layers_path(data_type: "file_library"), class: "dataset-type-link #{'active' if active_type == 'file_library'}" do %>
     <span class="material-symbols-outlined dataset-nav-icon">folder_open</span>คลังข้อมูลไฟล์<b class="material-symbols-outlined dataset-nav-arrow">chevron_right</b>
+  <% end %>
+  <%= link_to library_images_path, class: "dataset-type-link #{'active' if active_type == 'image_library'}" do %>
+    <span class="material-symbols-outlined dataset-nav-icon">photo_library</span>คลังข้อมูลภาพ<b class="material-symbols-outlined dataset-nav-arrow">chevron_right</b>
   <% end %>
 </aside>

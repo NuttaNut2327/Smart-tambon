@@ -32,7 +32,7 @@ from app.seed import seed_locations  # noqa: E402
 
 ADMIN = {"X-API-Key": "test-admin-key"}
 TABLES = ("weather_daily_observation_revisions weather_daily_observation weather_daily_forecast weather_hourly "
-          "weather_current weather_ingestion_logs weather_locations").split()
+          "weather_current weather_ingestion_logs weather_locations gistda_features gistda_fetches gistda_tiles").split()
 
 
 @pytest.fixture(scope="session", autouse=True)

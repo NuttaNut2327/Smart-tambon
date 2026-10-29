@@ -15,7 +15,7 @@ class IncidentPhotoUploadServiceTest < ActiveSupport::TestCase
     error = assert_raises(IncidentPhotoUploadService::InvalidUpload) do
       IncidentPhotoUploadService.validate!([upload])
     end
-    assert_equal "รองรับเฉพาะไฟล์ JPG, PNG และ WebP", error.message
+    assert_equal "รองรับเฉพาะไฟล์ภาพ JPG, PNG, WebP, HEIC และ AVIF", error.message
   ensure
     upload&.tempfile&.close!
   end

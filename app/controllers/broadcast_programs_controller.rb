@@ -5,7 +5,8 @@ class BroadcastProgramsController < ApplicationController
   before_action :set_program, only: %i[edit update destroy run]
 
   def new
-    @program = BroadcastProgram.new(organization_key: current_user.organization_key, name: "ข่าวประจำวัน")
+    @program = BroadcastProgram.from_template(params[:template], organization_key: current_user.organization_key)
+    @program.name ||= "ข่าวประจำวัน"
     load_options
   end
 
@@ -50,13 +51,14 @@ class BroadcastProgramsController < ApplicationController
   def load_options
     @channels = NotificationChannel.for_organization(current_user.organization_key).order_by(kind: :asc, name: :asc).to_a
     @ai_providers = AiProvider.enabled.ordered.to_a
-    @tts_providers = TtsProvider.enabled.ordered.to_a
+    @tts_providers = TtsProvider.available_to(current_user.organization_key).enabled.ordered.to_a
     nil
   end
 
   def program_params
-    params.require(:broadcast_program).permit(:name, :prompt, :lookahead_days, :max_words, :schedule_enabled, :auto_publish, :enabled,
-                                              :ai_provider_id, :tts_provider_id, :tts_voice, data_sources: [], schedule_days: [], channel_ids: [])
+    params.require(:broadcast_program).permit(:name, :prompt, :lookahead_days, :max_words, :schedule_enabled, :auto_publish, :enabled, :alert_only, :history_years,
+                                              :ai_provider_id, :tts_provider_id, :tts_voice, :internal_alert_level, :internal_alert_hours,
+                                              data_sources: [], schedule_days: [], channel_ids: [], delivery_modes: [])
   end
 
   def require_organization_member!

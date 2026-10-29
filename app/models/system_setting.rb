@@ -7,9 +7,13 @@ class SystemSetting
   DEFAULT_NAME = "SMART TAMBON SAFETY THAILAND".freeze
   DEFAULT_SHORT_NAME = "SMART TAMBON".freeze
   DEFAULT_GEOCODER_URL = "https://geocode.pcm-life.com".freeze
-  SECRETS = { "longdo_map_key" => "LONGDO_MAP_KEY", "maptiler_key" => "MAPTILER_KEY" }.freeze
+  SECRETS = { "longdo_map_key" => "LONGDO_MAP_KEY", "maptiler_key" => "MAPTILER_KEY", "gistda_api_key" => "GISTDA_API_KEY" }.freeze
   BASEMAPS = { "street" => "แผนที่ถนน", "satellite" => "ภาพดาวเทียม" }.freeze
-  MAP_LAYERS = { "water" => "สถานีวัดน้ำและฝน", "cctv" => "กล้องวงจรปิด", "activities" => "กิจกรรมในพื้นที่", "projects" => "โครงการ", "hotspots" => "จุดความร้อน (Hotspot)" }.freeze
+  MAP_LAYERS = { "water" => "สถานีวัดน้ำและฝน", "cctv" => "กล้องวงจรปิด", "activities" => "กิจกรรมในพื้นที่", "projects" => "โครงการ", "hotspots" => "จุดความร้อน (Hotspot)",
+                 "gistda_flood" => "พื้นที่น้ำท่วม (GISTDA)", "gistda_hotspots" => "จุดความร้อน (GISTDA)", "gistda_drought" => "พื้นที่เสี่ยงภัยแล้ง (GISTDA)",
+                 "buildings" => "อาคาร (Building polygon)" }.freeze
+  # Off by default: a building tile server has to be configured first, and the layer only draws when zoomed in.
+  DEFAULT_MAP_LAYERS = (MAP_LAYERS.keys - %w[buildings]).freeze
 
   field :singleton_key, type: String, default: "system"
   field :system_name, type: String, default: DEFAULT_NAME
@@ -22,16 +26,23 @@ class SystemSetting
   field :logo, type: Hash
   field :longdo_map_key_ciphertext, type: String
   field :maptiler_key_ciphertext, type: String
+  field :gistda_api_key_ciphertext, type: String
   field :geocoder_url, type: String
   field :map_basemap, type: String, default: "street"
   field :map_center_lat, type: Float, default: 13.7563
   field :map_center_lon, type: Float, default: 100.5018
   field :map_zoom, type: Integer, default: 6
-  field :map_layers, type: Array, default: MAP_LAYERS.keys
+  field :map_layers, type: Array, default: DEFAULT_MAP_LAYERS
+  # Building footprints as Mapbox vector tiles: a TileJSON URL (TileServer GL /data/<id>.json) or a
+  # {z}/{x}/{y}.pbf template, plus the source-layer name when the tileset holds several layers.
+  field :building_tiles_url, type: String
+  field :building_tiles_layer, type: String
   # อบต. self-registration (/register): on/off and optional overrides of RegistrationPolicy's default texts.
   field :registration_enabled, type: Boolean, default: true
   field :registration_terms, type: String
   field :registration_pdpa, type: String
+  # Show simulated demo records (projects, disaster history). Off keeps them out of every list and statistic.
+  field :demo_data_visible, type: Boolean, default: true
   field :updated_by, type: String
 
   index({ singleton_key: 1 }, unique: true)
@@ -42,7 +53,8 @@ class SystemSetting
   validates :map_center_lon, numericality: { greater_than_or_equal_to: -180, less_than_or_equal_to: 180, message: "ต้องอยู่ระหว่าง -180 ถึง 180" }
   validates :map_zoom, numericality: { only_integer: true, greater_than_or_equal_to: 5, less_than_or_equal_to: 18, message: "ต้องอยู่ระหว่าง 5 ถึง 18" }
   validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP, message: "ไม่ใช่อีเมลที่ถูกต้อง" }, allow_blank: true
-  validate :geocoder_url_must_be_http
+  validate { url_must_be_http(:geocoder_url) }
+  validate { url_must_be_http(:building_tiles_url, template: true) }
   before_validation :normalize
 
   def self.current
@@ -70,7 +82,15 @@ class SystemSetting
 
   def longdo_map_key = secret("longdo_map_key")
   def maptiler_key = secret("maptiler_key")
+  def gistda_api_key = secret("gistda_api_key")
   def effective_geocoder_url = geocoder_url.presence || ENV["GEOCODER_URL"].presence || DEFAULT_GEOCODER_URL
+  def effective_building_tiles_url = building_tiles_url.presence || ENV["BUILDING_TILES_URL"].presence
+
+  # What the map needs to draw the building layer, or nil when no tile server is configured.
+  def building_tiles
+    url = effective_building_tiles_url
+    url && { url:, layer: building_tiles_layer.presence }
+  end
 
   def map_defaults
     custom_view = [map_center_lat, map_center_lon, map_zoom] != [13.7563, 100.5018, 6]
@@ -80,20 +100,23 @@ class SystemSetting
   private
 
   def normalize
-    %i[system_name system_short_name organization_name contact_email contact_phone footer_text login_message geocoder_url].each { |key| self[key] = self[key].to_s.strip.presence }
+    %i[system_name system_short_name organization_name contact_email contact_phone footer_text login_message geocoder_url
+       building_tiles_url building_tiles_layer].each { |key| self[key] = self[key].to_s.strip.presence }
     self.system_name ||= DEFAULT_NAME
     self.system_short_name ||= DEFAULT_SHORT_NAME
     self.geocoder_url = geocoder_url&.delete_suffix("/")
     self.map_layers = Array(map_layers).compact_blank & MAP_LAYERS.keys
   end
 
-  def geocoder_url_must_be_http
-    return if geocoder_url.blank?
+  # template: allow {z}/{x}/{y} placeholders, which URI.parse rejects.
+  def url_must_be_http(attribute, template: false)
+    value = self[attribute]
+    return if value.blank?
 
-    uri = URI.parse(geocoder_url)
-    errors.add(:geocoder_url, "ต้องขึ้นต้นด้วย http:// หรือ https://") unless %w[http https].include?(uri.scheme) && uri.host.present?
+    uri = URI.parse(template ? value.gsub(/\{[a-z]\}/, "0") : value)
+    errors.add(attribute, "ต้องขึ้นต้นด้วย http:// หรือ https://") unless %w[http https].include?(uri.scheme) && uri.host.present?
   rescue URI::InvalidURIError
-    errors.add(:geocoder_url, "ไม่ใช่ URL ที่ถูกต้อง")
+    errors.add(attribute, "ไม่ใช่ URL ที่ถูกต้อง")
   end
 
   def encryptor

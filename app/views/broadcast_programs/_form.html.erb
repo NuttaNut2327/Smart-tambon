@@ -6,18 +6,22 @@
     <div class="dashboard-content users-page users-workspace">
       <section class="city-heading users-title-row"><div><p class="page-kicker">รายการข่าว</p><h1><%= title %></h1><p>AI จะใช้ prompt นี้ร่วมกับข้อมูลจริงที่เลือก เพื่อเขียนข่าวแบบผู้ประกาศเสียงตามสาย</p></div></section>
       <%= form_with model: @program, url: @program.new_record? ? broadcast_programs_path : broadcast_program_path(@program), html: { class: "settings-form" } do |form| %>
+        <% if @program.new_record? %><nav class="broadcast-templates" aria-label="แม่แบบรายการข่าว"><span>เริ่มจากแม่แบบ:</span>
+          <% BroadcastProgram::TEMPLATES.each do |key, template| %><%= link_to new_broadcast_program_path(template: key), class: "button-link#{' primary' if params[:template] == key}", title: template[:description] do %><span class="material-symbols-outlined">smart_toy</span><%= template[:label] %><% end %><% end %>
+        </nav><% end %>
         <% if @program.errors.any? %><div class="form-errors"><% @program.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
 
         <section class="settings-card">
           <header><span class="material-symbols-outlined">edit_note</span><div><h2>เนื้อหาข่าว</h2><p>บอก AI ว่าต้องการข่าวแบบไหน — AI ใช้ได้เฉพาะข้อเท็จจริงจากแหล่งข้อมูลที่เลือกด้านล่าง</p></div></header>
           <div class="settings-grid">
             <label>ชื่อรายการ<%= form.text_field :name, required: true, placeholder: "เช่น ข่าวเช้า 07:00" %></label>
-            <label>ความยาวบทอ่านโดยประมาณ (คำ)<%= form.number_field :max_words, min: 50, max: 1000, step: 10 %><small>250 คำ ≈ อ่าน 2 นาที</small></label>
+            <label>ความยาวบทอ่านโดยประมาณ (คำ)<%= form.number_field :max_words, min: 50, max: BroadcastProgram::MAX_WORDS_LIMIT, step: 5 %><small>ค่าเริ่มต้น <%= BroadcastProgram::DEFAULT_MAX_WORDS %> คำ ≈ อ่าน 1 นาที · สูงสุด <%= BroadcastProgram::MAX_WORDS_LIMIT %> คำ ≈ 2 นาที</small></label>
             <label class="span-2">Prompt (คำสั่งถึง AI)<%= form.text_area :prompt, rows: 8, required: true %><small>เช่น ลำดับหัวข้อ น้ำเสียง คำทักทาย/ปิดท้าย เรื่องที่ต้องเน้น — ไม่ต้องใส่ตัวเลขเอง ระบบจะส่งข้อมูลจริงให้ AI</small></label>
             <fieldset class="settings-layers span-2"><legend>แหล่งข้อมูลจริงที่ให้ AI ใช้</legend>
               <% BroadcastProgram::DATA_SOURCES.each do |key, label| %><label class="settings-check"><%= check_box_tag "broadcast_program[data_sources][]", key, @program.data_sources.include?(key), id: "source_#{key}" %> <%= label %></label><% end %>
               <%= hidden_field_tag "broadcast_program[data_sources][]", "" %>
             </fieldset>
+            <label>สถิติภัยย้อนหลัง (ปี)<%= form.number_field :history_years, min: 1, max: 5 %><small>ใช้กับแหล่งข้อมูล "แนวโน้มภัยรายสัปดาห์"</small></label>
             <label>กิจกรรมล่วงหน้า (วัน)<%= form.number_field :lookahead_days, min: 0, max: 31 %><small>นับกิจกรรมที่จะเริ่มภายในกี่วัน</small></label>
             <label>โมเดล AI<%= form.select :ai_provider_id, @ai_providers.map { |provider| [provider.label, provider.id] }, { include_blank: "ค่าเริ่มต้นของระบบ" } %><% if @ai_providers.empty? %><small class="broadcast-error">ยังไม่มีผู้ให้บริการ AI — แจ้งผู้ดูแลระบบให้เพิ่มก่อน</small><% end %></label>
           </div>
@@ -35,20 +39,17 @@
           </div>
           <div class="settings-toggles">
             <label class="settings-switch"><%= form.check_box :auto_publish %><span><b>เผยแพร่อัตโนมัติเมื่อถึงเวลา</b><small>สร้างเสียงและส่งไปทุกช่องทางที่เลือกทันทีโดยไม่ต้องมีคนตรวจ — เหมาะกับข่าวที่มั่นใจแล้ว เช่น สภาพอากาศประจำวัน ถ้าปิด ข่าวจะเก็บเป็นร่างรอตรวจ</small></span></label>
+            <label class="settings-switch"><%= form.check_box :alert_only %><span><b>ออกข่าวเฉพาะเมื่อมีเรื่องต้องเตือน</b><small>วันที่ไม่มีฝนหนัก ไม่มีความเสี่ยงสูงจากสถิติย้อนหลัง ไม่มีพื้นที่น้ำท่วม/จุดความร้อน และไม่มีภัยที่กำลังดำเนินการ ระบบจะข้ามวันนั้น (สถานะ "ไม่มีเรื่องต้องเตือน")</small></span></label>
             <label class="settings-switch"><%= form.check_box :enabled %><span><b>เปิดใช้รายการนี้</b></span></label>
           </div>
         </section>
 
         <section class="settings-card">
-          <header><span class="material-symbols-outlined">record_voice_over</span><div><h2>เสียงอ่านและช่องทางเผยแพร่</h2><p>ช่องทางเพิ่มได้ที่ ตั้งค่า › ช่องทางแจ้งเตือน (Facebook Page, Instagram, เสียงตามสาย MQTT, LINE, Telegram, Webhook)</p></div></header>
+          <header><span class="material-symbols-outlined">record_voice_over</span><div><h2>เสียงอ่านและรูปแบบการแจ้งเตือน</h2><p>เลือกได้มากกว่า 1 รูปแบบ — ส่งออกเสียงตามสาย, แจ้งเตือนผ่าน LINE/ช่องทางอื่น และแจ้งเตือนภายในระบบให้เจ้าหน้าที่ที่กำลังใช้งาน</p></div></header>
           <div class="settings-grid">
-            <label>ผู้ให้บริการเสียง<%= form.select :tts_provider_id, @tts_providers.map { |provider| [provider.label, provider.id] }, { include_blank: "ค่าเริ่มต้นของระบบ" } %><% if @tts_providers.empty? %><small class="broadcast-error">ยังไม่มีผู้ให้บริการเสียง — แจ้งผู้ดูแลระบบให้เพิ่มก่อน</small><% end %></label>
+            <label>ผู้ให้บริการเสียง<%= form.select :tts_provider_id, @tts_providers.map { |provider| ["#{provider.label}#{' (ของ อบต.)' if provider.organization?}", provider.id] }, { include_blank: "ค่าเริ่มต้น (ของ อบต. ถ้ามี ไม่เช่นนั้นใช้ของส่วนกลาง)" } %><% if @tts_providers.empty? %><small class="broadcast-error">ยังไม่มีผู้ให้บริการเสียง — เพิ่มเองได้ที่ ตั้งค่าระบบ › เสียงอ่านข่าว หรือแจ้งผู้ดูแลระบบ</small><% end %></label>
             <label>เสียงผู้อ่าน (ไม่บังคับ)<%= form.text_field :tts_voice, placeholder: "ใช้เสียงที่ตั้งไว้ของผู้ให้บริการ" %></label>
-            <fieldset class="settings-layers span-2"><legend>ส่งไปที่</legend>
-              <% if @channels.empty? %><small>ยังไม่มีช่องทาง — <%= link_to "เพิ่มช่องทาง", notification_channels_path %></small><% end %>
-              <% @channels.each do |channel| %><label class="settings-check"><%= check_box_tag "broadcast_program[channel_ids][]", channel.id, @program.channel_ids.include?(channel.id), id: "program_channel_#{channel.id}" %> <span class="material-symbols-outlined"><%= channel.kind_icon %></span><%= channel.name %> <small>(<%= channel.kind_label %>)</small></label><% end %>
-              <%= hidden_field_tag "broadcast_program[channel_ids][]", "" %>
-            </fieldset>
+            <%= render "broadcasts/delivery_fields", scope: "broadcast_program", record: @program, channels: @channels %>
           </div>
         </section>
 

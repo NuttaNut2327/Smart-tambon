@@ -82,7 +82,7 @@ class ProjectSimulator
   end
 
   def run
-    removed = Project.where(code: CODE_PATTERN).delete_all
+    removed = Project.any_of({ simulated: true }, { code: CODE_PATTERN }).delete_all
     current_year = Project.current_fiscal_year
     fiscal_years = ((current_year - @years + 1)..current_year).to_a
     points = random_points(fiscal_years.size * @per_year)
@@ -117,7 +117,7 @@ class ProjectSimulator
     started = Date.new(fiscal_year - 544, 10, 1) + @random.rand(0..300)
 
     Project.new(
-      code: format("SIM-%d-%03d", fiscal_year, sequence), name:, group:, project_type: type,
+      code: format("SIM-%d-%03d", fiscal_year, sequence), simulated: true, name:, group:, project_type: type,
       budget:, budget_source: weighted(BUDGET_SOURCES), agency: AGENCIES.fetch(group), fiscal_year:,
       approval_status:, status:, progress_percent: progress,
       location_name: point && "หมู่ที่ #{moo} บ้าน#{VILLAGES.sample(random: @random)}",

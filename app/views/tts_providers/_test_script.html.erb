@@ -25,5 +25,27 @@
         button.disabled = false;
       }
     }));
+
+    // ElevenLabs "โหลดเสียงจากบัญชี": list the account's voices; picking one fills the Voice ID field.
+    document.querySelectorAll("button[data-tts-voices]").forEach(button => button.addEventListener("click", async () => {
+      const form = button.closest("form");
+      const select = form?.querySelector("[data-tts-voice-select]");
+      const input = form?.querySelector('[name="tts_provider[voice]"]');
+      const status = form?.querySelector("[data-tts-status]");
+      button.disabled = true;
+      try {
+        const response = await fetch(button.dataset.ttsVoices, { headers: { Accept: "application/json" } });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        select.replaceChildren(new Option(`เลือกเสียง (${data.voices.length} เสียงในบัญชี)`, ""),
+          ...data.voices.map(voice => new Option([voice.name, voice.labels, voice.category].filter(Boolean).join(" · "), voice.id, false, voice.id === input.value)));
+        select.hidden = false;
+        select.onchange = () => { if (select.value) input.value = select.value; };
+      } catch (error) {
+        if (status) { status.hidden = false; status.className = "tts-test-status error"; status.textContent = `โหลดรายการเสียงไม่สำเร็จ: ${error.message}`; }
+      } finally {
+        button.disabled = false;
+      }
+    }));
   });
 </script>

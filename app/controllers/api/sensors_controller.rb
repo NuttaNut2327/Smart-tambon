@@ -14,8 +14,9 @@ module Api
             next if record["sensor_id"].blank?
 
             latest = config[:model].where(imported_dataset_id: dataset.id, sensor_id: record["sensor_id"].to_s).desc(:observed_at).first
+            position = config[:moving] && latest ? latest : record
             { sensor_type: type, sensor_id: record["sensor_id"].to_s, dataset_id: dataset.id.to_s,
-              latitude: record["latitude"], longitude: record["longitude"], latest: latest&.as_reading_json }
+              latitude: position["latitude"], longitude: position["longitude"], latest: latest&.as_reading_json }
           end
         end
       end

@@ -5,9 +5,11 @@ require "mqtt"
 # Devices publish JSON to  <prefix>/<sensor_type>/<sensor_id>, e.g.
 #   smart-tambon/sensors/pm25/PM-001         {"token":"...","pm25":38.2,"observed_at":"2026-10-14T10:00:00+07:00"}
 #   smart-tambon/sensors/water_level/WL-001  {"token":"...","water_level_m":2.35}
+#   smart-tambon/sensors/location/GPS-001    {"token":"...","latitude":13.75,"longitude":100.50,"speed_kmh":32}
 # and receive the result on <topic>/ack:     {"status":"accepted","observed_at":"..."} or {"status":"rejected","error":"..."}
 class MqttSensorListener
-  TYPE_ALIASES = { "pm25" => "pm25", "pm2_5" => "pm25", "water_level" => "water_level", "water-level" => "water_level", "waterlevel" => "water_level" }.freeze
+  TYPE_ALIASES = { "pm25" => "pm25", "pm2_5" => "pm25", "water_level" => "water_level", "water-level" => "water_level", "waterlevel" => "water_level",
+                   "location" => "location", "gps" => "location" }.freeze
   MAX_PAYLOAD_BYTES = 16.kilobytes
   MAX_BACKOFF = 60
 

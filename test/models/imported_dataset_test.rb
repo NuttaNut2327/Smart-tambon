@@ -6,7 +6,7 @@ class ImportedDatasetTest < ActiveSupport::TestCase
   end
 
   test "standard schemas are available for all system dataset types" do
-    assert_equal %w[population village_boundaries resources consumables workforce teams agencies cctv_devices water_level_sensors pm25_sensors incidents], ImportedDataset::STANDARD_SCHEMAS.keys
+    assert_equal %w[population village_boundaries resources consumables workforce teams agencies cctv_devices water_level_sensors pm25_sensors location_trackers incidents], ImportedDataset::STANDARD_SCHEMAS.keys
     ImportedDataset::STANDARD_SCHEMAS.each_value { |schema| assert schema.any? }
   end
 

@@ -2,6 +2,8 @@ module Broadcasts
   # Collects the real data a news broadcast may talk about, scoped to one อบต. through a representative user so the
   # normal visibility rules apply. Only public-safe facts are included: no reporter names, phone numbers or photos.
   class Context
+    THAI_MONTHS = %w[มกราคม กุมภาพันธ์ มีนาคม เมษายน พฤษภาคม มิถุนายน กรกฎาคม สิงหาคม กันยายน ตุลาคม พฤศจิกายน ธันวาคม].freeze
+
     def self.for(program, now: Time.current) = new(program, now).build
 
     def initialize(program, now)
@@ -17,7 +19,9 @@ module Broadcasts
         "organization" => organization_name(subdistricts),
         "area" => subdistricts.map { |area| "ต.#{area.name_th} อ.#{area.district_name_th} จ.#{area.province&.name_th}" },
         "generated_at" => thai_datetime(@now),
-        "today" => "#{%w[อาทิตย์ จันทร์ อังคาร พุธ พฤหัสบดี ศุกร์ เสาร์][@now.wday]} #{thai_date(@now)}"
+        "today" => "#{%w[อาทิตย์ จันทร์ อังคาร พุธ พฤหัสบดี ศุกร์ เสาร์][@now.wday]} #{thai_date(@now)}",
+        # Spelled-out date so the announcer script doesn't misread the abbreviated one.
+        "today_full" => "วัน#{%w[อาทิตย์ จันทร์ อังคาร พุธ พฤหัสบดี ศุกร์ เสาร์][@now.wday]}ที่ #{@now.day} #{THAI_MONTHS[@now.month - 1]} พ.ศ. #{@now.year + 543}"
       }
       sources = @program.data_sources
       environment = environment(subdistricts) if (sources & %w[weather pm25]).any?
@@ -25,15 +29,34 @@ module Broadcasts
       context["air_quality"] = environment.map { |row| row.slice("area", "pm25", "pm25_avg_24h", "pm25_level", "pm25_source") } if sources.include?("pm25")
       context["water_levels"] = water_levels if sources.include?("water")
       context["fire_hotspots"] = fire_hotspots if sources.include?("fire_hotspots")
+      outlook = HazardOutlook.new(@user, now: @now) if (sources & %w[weather_forecast gistda_hotspots gistda_flood disaster_history]).any?
+      context["weather_forecast"] = outlook.weather_forecast if sources.include?("weather_forecast")
+      context["disaster_history"] = outlook.disaster_history(years: @program.history_years) if sources.include?("disaster_history")
+      context["gistda_hotspots_24h"] = outlook.gistda_hotspots if sources.include?("gistda_hotspots")
+      context["gistda_flood"] = outlook.gistda_flood if sources.include?("gistda_flood")
       context["activities"] = activities if sources.include?("activities")
       context["incidents_last_24h"] = incidents("general") if sources.include?("incidents")
       context["disasters_active"] = incidents("disaster", active_only: true) if sources.include?("disasters")
       context["projects"] = projects if sources.include?("projects")
       context["contact"] = contact
+      context["alerts"] = alerts(context)
       context.compact
     end
 
+    # What is worth warning about in the collected data; an alert-only programme skips the day when this is nil.
+    def self.alerts(context)
+      list = Array(context.dig("weather_forecast", "heavy_rain_days")).map { |day| "#{day['rain_level']} #{day['date']} (#{day['rain_mm']} มม.)" }
+      list += Array(context.dig("disaster_history", "hazards")).select { |row| row["risk"].in?(%w[สูง สูงมาก]) }
+        .map { |row| "#{row['hazard']} ความเสี่ยง#{row['risk']} ตามสถิติย้อนหลัง" }
+      list << "พื้นที่น้ำท่วมจาก GISTDA #{context.dig('gistda_flood', 'flood_areas')} แปลง" if context.dig("gistda_flood", "flood_areas").to_i.positive?
+      list << "จุดความร้อน 24 ชม. #{context.dig('gistda_hotspots_24h', 'count_24h')} จุด" if context.dig("gistda_hotspots_24h", "count_24h").to_i.positive?
+      list << "ภัยพิบัติที่กำลังดำเนินการ #{context.dig('disasters_active', 'count')} เรื่อง" if context.dig("disasters_active", "count").to_i.positive?
+      list.presence
+    end
+
     private
+
+    def alerts(context) = self.class.alerts(context)
 
     def organization_name(subdistricts)
       OrganizationSetting.for(@user)&.organization_name.presence || "องค์การบริหารส่วนตำบล#{subdistricts.first&.name_th}"

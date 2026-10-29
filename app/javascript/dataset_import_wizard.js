@@ -49,9 +49,13 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   const returnToCurrentView = () => window.location.assign(window.location.href);
 
-  document.querySelector("[data-fixed-search]")?.addEventListener("input", event => {
-    const query = event.target.value.trim().toLowerCase();
-    document.querySelectorAll("[data-fixed-row]").forEach(row => row.hidden = !row.dataset.search.includes(query));
+  // Filters on the standard dataset tables are server-side; dropdowns apply as soon as they change.
+  document.querySelectorAll("[data-record-filter-form] [data-record-filter]").forEach(select => {
+    select.addEventListener("change", () => select.form.requestSubmit());
+  });
+  // Keep shared links short: unused filters are left out of the query string.
+  document.querySelector("[data-record-filter-form]")?.addEventListener("submit", event => {
+    [...event.currentTarget.elements].forEach(field => { if (field.name && !field.value) field.disabled = true; });
   });
 
   const versionPreviewLinks = document.querySelectorAll("[data-version-preview-url]");
@@ -506,7 +510,7 @@ document.addEventListener("DOMContentLoaded", () => {
       row.querySelector("[data-resource-delete]").addEventListener("click", event => deleteResourceRecord(event.currentTarget, url));
     });
     const resourceStatusTones = { "พร้อมใช้": "ready", "กำลังใช้งาน": "in-use", "ซ่อมบำรุง": "maintenance", "ชำรุด": "damaged", "ปลดระวาง": "retired" };
-    const resourceStatusIndex = [...resourceTable.querySelectorAll("thead th")].findIndex(header => header.textContent.trim() === "สถานะความพร้อม");
+    const resourceStatusIndex = [...resourceTable.querySelectorAll("thead th")].findIndex(header => header.dataset.key === "status");
     resourceTable.querySelectorAll("tbody [data-fixed-row]").forEach(row => {
       const statusCell = resourceStatusIndex >= 0 ? row.cells[resourceStatusIndex] : null;
       const status = statusCell?.textContent.trim(), tone = resourceStatusTones[status];
@@ -546,7 +550,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const workforceTable = document.querySelector(".fixed-data-table");
-  if (workforceTable?.querySelector("thead th")?.textContent.trim() === "ชื่อทีม") {
+  if (workforceTable?.querySelector("thead th[data-key]")?.dataset.key === "team_name") {
     const workforceFields = [
       ["team_name", "ชื่อทีม", true], ["duty", "หน้าที่", true], ["member_count", "จำนวนสมาชิก", true],
       ["ready_count", "พร้อมปฏิบัติงาน", true], ["responsible_area", "พื้นที่รับผิดชอบ", true], ["team_leader", "หัวหน้าทีม", true]

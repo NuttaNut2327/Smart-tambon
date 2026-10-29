@@ -1,49 +1,34 @@
 require "aws-sdk-s3"
 
-# Stores project photos in the same MinIO bucket as incident photos, under projects/<id>/.
+# Project photos. New uploads go through the image library (WebP + thumbnail); photos stored before the library
+# existed are plain objects under projects/<id>/ in the incident bucket.
 class ProjectPhotoUploadService
-  class InvalidUpload < StandardError; end
+  InvalidUpload = ImageLibrary::InvalidUpload
   class ObjectNotFound < StandardError; end
 
   MAX_FILES = 20
-  MAX_FILE_SIZE = 10.megabytes
-  ALLOWED_TYPES = %w[image/jpeg image/png image/webp].freeze
+  MAX_FILE_SIZE = ImageLibrary::MAX_FILE_SIZE
+  ALLOWED_TYPES = ImageLibrary::ALLOWED_TYPES
 
   def self.uploads_from(params)
     Array(params.dig(:project, :photos)).compact_blank
   end
 
-  def self.validate!(uploads, existing_count: 0)
-    raise InvalidUpload, "แนบรูปได้ไม่เกิน #{MAX_FILES} รูปต่อโครงการ" if uploads.size + existing_count > MAX_FILES
-
-    uploads.each do |upload|
-      raise InvalidUpload, "รองรับเฉพาะไฟล์ JPG, PNG และ WebP" unless ALLOWED_TYPES.include?(content_type_for(upload))
-      raise InvalidUpload, "รูปแต่ละรูปต้องมีขนาดไม่เกิน 10 MB" if upload.size > MAX_FILE_SIZE
-    end
+  def self.library_ids_from(params)
+    Array(params.dig(:project, :library_image_ids)).compact_blank
   end
 
-  def self.attach!(project:, uploads:)
-    uploaded = []
-    uploads.each do |upload|
-      id = SecureRandom.uuid
-      content_type = content_type_for(upload)
-      extension = Rack::Mime::MIME_TYPES.key(content_type).to_s.delete_prefix(".").presence || "bin"
-      key = "projects/#{project.id}/#{id}.#{extension}"
-      upload.tempfile.rewind
-      client.put_object(bucket: bucket, key: key, body: upload.tempfile, content_type: content_type)
-      uploaded << {
-        "id" => id,
-        "key" => key,
-        "filename" => upload.original_filename.to_s,
-        "content_type" => content_type,
-        "byte_size" => upload.size,
-        "uploaded_at" => Time.current
-      }
-    end
-    project.set(photos: Array(project.photos) + uploaded) if uploaded.any?
-  rescue StandardError
-    uploaded.each { |photo| delete_object(photo["key"]) }
-    raise
+  def self.validate!(uploads, existing_count: 0, picked_count: 0)
+    raise InvalidUpload, "แนบรูปได้ไม่เกิน #{MAX_FILES} รูปต่อโครงการ" if uploads.size + picked_count + existing_count > MAX_FILES
+
+    ImageLibrary.validate!(uploads)
+  end
+
+  def self.attach!(project:, uploads:, picked: [], uploaded_by: nil)
+    added = ImageLibrary.attachments!(uploads:, picked:, existing: project.photos, owner_user_id: project.user_id,
+                                      subdistrict_id: project.subdistrict_id, source: "project", uploaded_by:)
+    project.set(photos: Array(project.photos) + added) if added.any?
+    added
   end
 
   def self.remove!(project:, photo_ids:)
@@ -51,22 +36,24 @@ class ProjectPhotoUploadService
     return if ids.empty?
 
     removed, kept = Array(project.photos).partition { |photo| ids.include?(photo["id"]) }
-    removed.each { |photo| delete_object(photo["key"]) }
+    removed.each { |photo| delete_photo(photo) }
     project.set(photos: kept)
   end
 
-  def self.download(photo)
-    client.get_object(bucket: bucket, key: photo.fetch("key"))
+  def self.download(photo, variant: nil)
+    key = variant.to_s == "thumb" ? photo["thumbnail_key"].presence || photo.fetch("key") : photo.fetch("key")
+    client.get_object(bucket: bucket, key:)
   rescue Aws::S3::Errors::NoSuchKey, Aws::S3::Errors::NotFound
     raise ObjectNotFound
   end
 
   def self.purge_for(project)
-    Array(project.photos).each { |photo| delete_object(photo["key"]) }
+    Array(project.photos).each { |photo| delete_photo(photo) }
   end
 
-  def self.content_type_for(upload)
-    Marcel::MimeType.for(upload.tempfile, name: upload.original_filename, declared_type: upload.content_type)
+  # Library pictures outlive their attachments, so only legacy objects are deleted here.
+  def self.delete_photo(photo)
+    delete_object(photo["key"]) if photo["key"].present? && photo["library_image_id"].blank?
   end
 
   def self.delete_object(key)
@@ -89,5 +76,5 @@ class ProjectPhotoUploadService
     ENV.fetch("MINIO_BUCKET", "smart-tambon-incidents")
   end
 
-  private_class_method :client, :bucket, :delete_object, :content_type_for
+  private_class_method :client, :bucket, :delete_object
 end

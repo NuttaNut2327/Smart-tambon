@@ -26,13 +26,14 @@ class ProjectsController < ApplicationController
 
   def create
     uploads = ProjectPhotoUploadService.uploads_from(params)
+    picked = ImageLibrary.pick(current_user, ProjectPhotoUploadService.library_ids_from(params))
     @project = Project.new(project_params.merge(user_id: current_user.id))
     @project.acting_user = current_user
-    ProjectPhotoUploadService.validate!(uploads)
+    ProjectPhotoUploadService.validate!(uploads, picked_count: picked.size)
     return render(:new, status: :unprocessable_entity) unless @project.save
 
     begin
-      ProjectPhotoUploadService.attach!(project: @project, uploads: uploads)
+      ProjectPhotoUploadService.attach!(project: @project, uploads: uploads, picked: picked, uploaded_by: current_user.username)
     rescue StandardError => error
       Rails.logger.error("Project photo upload failed: #{error.class}: #{error.message}")
       @project.destroy
@@ -52,12 +53,13 @@ class ProjectsController < ApplicationController
     uploads = ProjectPhotoUploadService.uploads_from(params)
     removed_ids = Array(params.dig(:project, :remove_photo_ids)).compact_blank
     kept_count = Array(@project.photos).count { |photo| !removed_ids.include?(photo["id"]) }
-    ProjectPhotoUploadService.validate!(uploads, existing_count: kept_count)
+    picked = ImageLibrary.pick(current_user, ProjectPhotoUploadService.library_ids_from(params))
+    ProjectPhotoUploadService.validate!(uploads, existing_count: kept_count, picked_count: picked.size)
     @project.acting_user = current_user
     return render(:edit, status: :unprocessable_entity) unless @project.update(project_params)
 
     ProjectPhotoUploadService.remove!(project: @project, photo_ids: removed_ids)
-    ProjectPhotoUploadService.attach!(project: @project, uploads: uploads)
+    ProjectPhotoUploadService.attach!(project: @project, uploads: uploads, picked: picked, uploaded_by: current_user.username)
     redirect_to projects_path, notice: "อัปเดตโครงการ #{@project.name} เรียบร้อยแล้ว"
   rescue ProjectPhotoUploadService::InvalidUpload => error
     @project.errors.add(:base, error.message)
@@ -77,7 +79,7 @@ class ProjectsController < ApplicationController
     photo = Array(@project.photos).find { |item| item["id"] == params[:photo_id] }
     return head :not_found unless photo
 
-    object = ProjectPhotoUploadService.download(photo)
+    object = ProjectPhotoUploadService.download(photo, variant: params[:variant])
     expires_in 1.hour, public: false
     send_data object.body.read,
       filename: photo["filename"].presence || "project-photo",
@@ -106,7 +108,8 @@ class ProjectsController < ApplicationController
   def project_params
     params.require(:project).permit(
       :name, :code, :group, :project_type, :budget, :budget_source, :agency, :fiscal_year,
-      :status, :approval_status, :progress_percent, :location_name, :description, :latitude, :longitude
+      :status, :approval_status, :progress_percent, :location_name, :description, :latitude, :longitude,
+      *(current_user.system_admin? ? [:simulated] : [])
     )
   end
 end
