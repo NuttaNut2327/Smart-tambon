@@ -382,6 +382,28 @@
   color: #fff;
 }
 
+.incident-dialog footer input.incident-confirm-action {
+  appearance: none;
+  border-color: #2C3930 !important;
+  background: #2C3930 !important;
+  color: #fff !important;
+}
+
+.incident-dialog footer input.incident-confirm-action:hover:not(:disabled),
+.incident-dialog footer input.incident-confirm-action:focus:not(:disabled) {
+  border-color: #2C3930 !important;
+  background: #2C3930 !important;
+  color: #fff !important;
+}
+
+.incident-dialog footer input.incident-confirm-action:disabled {
+  border-color: #a9c1b4 !important;
+  background: #a9c1b4 !important;
+  color: #fff !important;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
 .incident-secondary-action {
   border: 1px solid #d8cfbd;
   background: #fff;
