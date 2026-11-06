@@ -99,17 +99,22 @@
     const mapElement = document.querySelector("#project-location-map");
     if (!window.ol || !mapElement) return;
     const marker = new ol.Feature();
-    const markerLayer = new ol.layer.Vector({ source: new ol.source.Vector({ features: [marker] }), style: window.SmartTambonProjects?.markerStyle("planned") });
+    const markerLayer = new ol.layer.Vector({ source: new ol.source.Vector({ features: [marker] }), style: window.SmartTambonProjects?.markerStyle("planned"), zIndex: 10 });
     const map = new ol.Map({
       target: mapElement,
       layers: [new ol.layer.Tile({ source: new ol.source.OSM() }), markerLayer],
       view: new ol.View({ center: ol.proj.fromLonLat(JSON.parse(mapElement.dataset.center)), zoom: Number(mapElement.dataset.zoom) })
+    });
+    const accessArea = window.SmartTambonLocation?.attachAccessArea(map, {
+      fit: !(latInput.value && lonInput.value),
+      onReady: controller => window.SmartTambonLocation?.attachImportantPlaces(map, { isInside: coordinate => controller.isInside(coordinate) })
     });
     const syncMarker = () => {
       const lat = parseFloat(latInput.value), lon = parseFloat(lonInput.value);
       marker.setGeometry(Number.isFinite(lat) && Number.isFinite(lon) ? new ol.geom.Point(ol.proj.fromLonLat([lon, lat])) : undefined);
     };
     map.on("singleclick", event => {
+      if (accessArea && !accessArea.isInside(event.coordinate)) return;
       const [lon, lat] = ol.proj.toLonLat(event.coordinate);
       latInput.value = lat.toFixed(6);
       lonInput.value = lon.toFixed(6);
@@ -121,6 +126,7 @@
     }));
     window.SmartTambonLocation?.attachSearch(map, {
       onSelect: (lon, lat, result) => {
+        if (accessArea && !accessArea.isInside(ol.proj.fromLonLat([lon, lat]))) return;
         latInput.value = lat.toFixed(6);
         lonInput.value = lon.toFixed(6);
         syncMarker();

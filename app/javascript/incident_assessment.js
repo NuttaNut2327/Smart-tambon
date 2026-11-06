@@ -130,7 +130,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const colors = severity >= .67 ? ["#b7474d", "rgba(183,71,77,.58)"] : severity >= .34 ? ["#a97924", "rgba(169,121,36,.5)"] : ["#567f6d", "rgba(86,127,109,.42)"];
     return new ol.style.Style({ stroke: new ol.style.Stroke({ color: colors[0], width: 1 }), fill: new ol.style.Fill({ color: colors[1] }) });
   } });
-  const simulationPointLayer = new ol.layer.Vector({ source: simulationPointSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 7, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) }) }) });
+  const simulationPointSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="46" height="58" viewBox="0 0 46 58"><defs><filter id="s" x="-60%" y="-40%" width="220%" height="220%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#173d29" flood-opacity=".55"/></filter></defs><circle cx="23" cy="22" r="21" fill="#2e8b57" opacity=".22"/><path d="M23 55S5 38.5 5 22a18 18 0 1 1 36 0c0 16.5-18 33-18 33Z" fill="#2e8b57" stroke="#fff" stroke-width="3" filter="url(#s)"/><circle cx="23" cy="22" r="7" fill="#fff"/></svg>';
+  const simulationPointLayer = new ol.layer.Vector({ source: simulationPointSource, zIndex: 28, style: new ol.style.Style({ image: new ol.style.Icon({ src: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(simulationPointSvg)}`, anchor: [0.5, 1], scale: 0.9 }) }) });
   const parseOptionalCoordinate = (value) => {
     if (value === undefined || value === null || String(value).trim() === "") return null;
     const coordinate = Number(value);

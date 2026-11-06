@@ -179,11 +179,22 @@
       pointSource = new ol.source.Vector();
       const boundarySource = new ol.source.Vector();
       if (boundary.geometry) boundarySource.addFeatures(new ol.format.GeoJSON().readFeatures(boundary, { featureProjection: "EPSG:3857" }));
+      const boundaryRings = boundarySource.getFeatures().flatMap(feature => {
+        const geometry = feature.getGeometry();
+        if (geometry?.getType() === "Polygon") return [geometry.getCoordinates()[0]];
+        if (geometry?.getType() === "MultiPolygon") return geometry.getCoordinates().map(polygon => polygon[0]);
+        return [];
+      });
+      const world = 20037508.34;
+      const maskSource = new ol.source.Vector({
+        features: boundaryRings.length ? [new ol.Feature(new ol.geom.Polygon([[[-world, -world], [world, -world], [world, world], [-world, world], [-world, -world]], ...boundaryRings]))] : []
+      });
       const colors = { file: "#16a34a", manual: "#16a34a", geocoded: "#2563eb", outside: "#dc2626" };
       map = new ol.Map({
         target: element,
         layers: [
           new ol.layer.Tile({ source: new ol.source.OSM() }),
+          new ol.layer.Vector({ source: maskSource, style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(44,57,48,.58)" }) }) }),
           new ol.layer.Vector({ source: boundarySource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#0f766e", width: 2 }), fill: new ol.style.Fill({ color: "rgba(15,118,110,.08)" }) }) }),
           new ol.layer.Vector({ source: pointSource, style: feature => new ol.style.Style({
             image: new ol.style.Circle({ radius: 7, fill: new ol.style.Fill({ color: colors[feature.get("geo")] || "#64748b" }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) }),
@@ -192,9 +203,16 @@
         ],
         view: new ol.View({ center: ol.proj.fromLonLat([100.5, 13.7]), zoom: 6 })
       });
+      window.SmartTambonLocation?.attachImportantPlaces(map, {
+        isInside: coordinate => !boundarySource.getFeatures().length || boundarySource.getFeatures().some(feature => feature.getGeometry()?.intersectsCoordinate(coordinate))
+      });
       if (boundarySource.getFeatures().length) map.getView().fit(boundarySource.getExtent(), { padding: [20, 20, 20, 20] });
       map.on("singleclick", event => {
         if (pickRow == null) return;
+        if (boundarySource.getFeatures().length && !boundarySource.getFeatures().some(feature => feature.getGeometry()?.intersectsCoordinate(event.coordinate))) {
+          showError("กรุณาปักหมุดภายในขอบเขตพื้นที่ดูแล");
+          return;
+        }
         const [lon, lat] = ol.proj.toLonLat(event.coordinate);
         const index = pickRow;
         pickRow = null;

@@ -136,11 +136,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (addressFields.children.length) panel.after(addressFields);
 
     const accessSource = new ol.source.Vector();
+    const accessMaskSource = new ol.source.Vector();
     const markerSource = new ol.source.Vector();
     const map = new ol.Map({ target: panel.querySelector("[data-agency-location-map]"), layers: [
       new ol.layer.Tile({ source: new ol.source.OSM() }),
+      new ol.layer.Vector({ source: accessMaskSource, style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(44,57,48,.58)" }) }) }),
       new ol.layer.Vector({ source: accessSource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#438a61", width: 3 }), fill: new ol.style.Fill({ color: "rgba(67,138,97,.06)" }) }) }),
-      new ol.layer.Vector({ source: markerSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 8, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) }) }) })
+      new ol.layer.Vector({ source: markerSource, zIndex: 10, style: window.SmartTambonLocation?.selectedPinStyle() })
     ], view: new ol.View({ center: ol.proj.fromLonLat([100.5, 14]), zoom: 10 }) });
     const format = new ol.format.GeoJSON();
     const state = panel.querySelector("[data-agency-location-state]");
@@ -189,6 +191,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!json) throw new Error();
       const features = format.readFeatures(json, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" });
       accessSource.addFeatures(features);
+      const rings = features.flatMap(feature => {
+        const geometry = feature.getGeometry();
+        if (geometry?.getType() === "Polygon") return [geometry.getCoordinates()[0]];
+        if (geometry?.getType() === "MultiPolygon") return geometry.getCoordinates().map(polygon => polygon[0]);
+        return [];
+      });
+      const world = 20037508.34;
+      if (rings.length) accessMaskSource.addFeature(new ol.Feature(new ol.geom.Polygon([[[-world, -world], [world, -world], [world, world], [-world, world], [-world, -world]], ...rings])));
+      window.SmartTambonLocation?.attachImportantPlaces(map, { isInside: coordinate => insideAccessArea(coordinate) });
       if (!markerSource.getFeatures().length && features.length) map.getView().fit(accessSource.getExtent(), { padding: [28, 28, 28, 28], maxZoom: 15 });
       state.textContent = latitudeInput.value && longitudeInput.value ? "ตำแหน่งที่บันทึกไว้" : "คลิกบนแผนที่เพื่อปักหมุด";
     }).catch(() => { state.className = "agency-location-state error"; state.textContent = "ไม่สามารถโหลดขอบเขตพื้นที่ดูแลได้"; });
@@ -226,12 +237,16 @@ document.addEventListener("DOMContentLoaded", () => {
       image: new ol.style.Circle({ radius: 5, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) })
     }) });
     const boundarySource = new ol.source.Vector();
+    const boundaryMaskSource = new ol.source.Vector();
+    const boundaryMaskLayer = new ol.layer.Vector({ source: boundaryMaskSource, style: new ol.style.Style({
+      fill: new ol.style.Fill({ color: "rgba(0,0,0,.58)" })
+    }) });
     const boundaryLayer = new ol.layer.Vector({ source: boundarySource, style: new ol.style.Style({
       stroke: new ol.style.Stroke({ color: "#438a61", width: 3, lineDash: [8, 5] }),
       fill: new ol.style.Fill({ color: "rgba(67,138,97,.06)" })
     }) });
     const map = new ol.Map({ target: editor.querySelector("[data-boundary-map]"), layers: [
-      new ol.layer.Tile({ source: new ol.source.OSM() }), boundaryLayer, vectorLayer
+      new ol.layer.Tile({ source: new ol.source.OSM() }), boundaryMaskLayer, boundaryLayer, vectorLayer
     ], view: new ol.View({ center: ol.proj.fromLonLat([100.5, 14]), zoom: 10 }) });
     const format = new ol.format.GeoJSON();
     let draw;
@@ -323,6 +338,14 @@ document.addEventListener("DOMContentLoaded", () => {
     fetch("/api/access_area", { headers: { Accept: "application/json" } }).then(response => response.ok ? response.json() : null).then(json => {
       if (!json) return; const features = format.readFeatures(json, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" });
       boundarySource.addFeatures(features); if (features.length) {
+        const rings = features.flatMap(feature => {
+          const geometry = feature.getGeometry();
+          if (geometry?.getType() === "Polygon") return [geometry.getCoordinates()[0]];
+          if (geometry?.getType() === "MultiPolygon") return geometry.getCoordinates().map(polygon => polygon[0]);
+          return [];
+        });
+        const world = 20037508.34;
+        if (rings.length) boundaryMaskSource.addFeature(new ol.Feature(new ol.geom.Polygon([[[-world, -world], [world, -world], [world, world], [-world, world], [-world, -world]], ...rings])));
         map.getView().fit(boundarySource.getExtent(), { padding: [28, 28, 28, 28], maxZoom: 15 }); state.textContent = "พร้อมวาดขอบเขต";
         if (manualDialog.open && !geometryInput.value && !draw) startDrawing();
       }
