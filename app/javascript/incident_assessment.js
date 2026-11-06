@@ -195,13 +195,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const hotspotLayer = new ol.layer.Vector({ source: hotspotSource, zIndex: 24, style: (feature) => window.SmartTambonHotspots?.markerStyle(feature.get("fireHotspot")) });
   const cctvLayer = new ol.layer.Vector({ source: cctvSource, zIndex: 25, style: (feature) => window.SmartTambonCctv?.markerStyle(feature.get("cctvCamera")?.status) });
   const maptilerKey = page.closest(".shell")?.dataset.maptilerKey?.trim();
+  const esriSatelliteUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+  const maptilerSatelliteUrl = maptilerKey ? `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${maptilerKey}` : null;
   const roadLayer = new ol.layer.Tile({ source: new ol.source.OSM() });
-  const satelliteLayer = new ol.layer.Tile({ source: new ol.source.XYZ({
-    url: maptilerKey ? `https://api.maptiler.com/tiles/satellite/{z}/{x}/{y}.jpg?key=${maptilerKey}` : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  const satelliteSource = new ol.source.XYZ({
+    url: maptilerSatelliteUrl || esriSatelliteUrl,
     attributions: maptilerKey ? "© MapTiler © OpenStreetMap contributors" : "Tiles © Esri",
     maxZoom: maptilerKey ? 19 : 18,
     wrapX: false
-  }), visible: false });
+  });
+  let satelliteFallbackEnabled = false;
+  satelliteSource.on("tileloaderror", () => {
+    if (!maptilerSatelliteUrl || satelliteFallbackEnabled) return;
+    satelliteFallbackEnabled = true;
+    satelliteSource.setUrl(esriSatelliteUrl);
+    satelliteSource.setAttributions("Tiles © Esri, Maxar, Earthstar Geographics");
+  });
+  const satelliteLayer = new ol.layer.Tile({ source: satelliteSource, visible: false });
   const initialMapCenter = hasIncidentCoordinates
     ? ol.proj.fromLonLat([longitude, latitude])
     : embeddedBoundaryGeometry
@@ -213,6 +223,15 @@ document.addEventListener("DOMContentLoaded", () => {
     : ol.proj.get("EPSG:3857").getExtent();
   const map = new ol.Map({ target: mapElement, layers: [roadLayer, satelliteLayer, maskLayer, boundaryLayer, villageBoundaryLayer, placesLayer, waterLayer, hotspotLayer, cctvLayer, activityLayer, ...importedDatasetLayers.values()].map((entry) => entry.layer || entry).concat([cityIncidentLayer, selectionLayer, simulationGridLayer, simulationPointLayer, incidentLayer]), view: new ol.View({ center: initialMapCenter, zoom: initialMapZoom, minZoom: 5, maxZoom: 18, extent: managedViewExtent }), controls: [] });
   window.smartCityAssessmentMap = map;
+  let active2dBasemap = "road";
+  const show2dBasemap = (mode = active2dBasemap) => {
+    active2dBasemap = mode === "satellite" ? "satellite" : "road";
+    mapWrap.classList.remove("is-3d");
+    roadLayer.setVisible(active2dBasemap === "road");
+    satelliteLayer.setVisible(active2dBasemap === "satellite");
+    page.querySelectorAll("[data-basemap]").forEach((button) => button.classList.toggle("active", button.dataset.basemap === active2dBasemap));
+    window.setTimeout(() => map.updateSize(), 0);
+  };
   if (embeddedBoundaryGeometry) {
     map.getView().fit(embeddedBoundaryGeometry.getExtent(), { padding: [48, 48, 48, 48], maxZoom: 15, duration: 0 });
   } else if (!hasIncidentCoordinates && initialExtent.length === 4 && initialExtent.every(Number.isFinite)) {
@@ -424,11 +443,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!window.Cesium) throw new Error("ไม่สามารถโหลดแผนที่ 3D ได้");
     const Cesium = window.Cesium;
     const satelliteImagery = new Cesium.UrlTemplateImageryProvider({
-      url: maptilerKey
-        ? `https://api.maptiler.com/tiles/satellite/{z}/{x}/{y}.jpg?key=${maptilerKey}`
-        : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      credit: maptilerKey ? "MapTiler" : "Esri, Maxar, Earthstar Geographics",
-      maximumLevel: maptilerKey ? 19 : 18
+      url: esriSatelliteUrl,
+      credit: "Esri, Maxar, Earthstar Geographics",
+      maximumLevel: 18
     });
     cesiumViewer = new Cesium.Viewer(cesiumElement, {
       terrainProvider: new Cesium.CustomHeightmapTerrainProvider({ width: 257, height: 257, tilingScheme: new Cesium.WebMercatorTilingScheme(), callback: terrainHeights }),
@@ -646,10 +663,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await calculate(geometry, "", "simulation");
   };
   const showDrawingMap = () => {
-    mapWrap.classList.remove("is-3d");
-    roadLayer.setVisible(true); satelliteLayer.setVisible(false);
-    page.querySelectorAll("[data-basemap]").forEach((button) => button.classList.toggle("active", button.dataset.basemap === "road"));
-    window.setTimeout(() => map.updateSize(), 0);
+    show2dBasemap();
   };
   const bufferedLineGeometry = (line, distance) => {
     const coordinates = line.getCoordinates();
@@ -864,9 +878,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.setTimeout(() => { map.updateSize(); cesiumViewer?.resize(); }, 0);
   }));
   page.querySelector("[data-pick-simulation-point]").addEventListener("click", () => {
-    mapWrap.classList.remove("is-3d"); roadLayer.setVisible(true); satelliteLayer.setVisible(false);
-    page.querySelectorAll("[data-basemap]").forEach((button) => button.classList.toggle("active", button.dataset.basemap === "road"));
-    window.setTimeout(() => map.updateSize(), 0);
+    show2dBasemap();
     page.querySelector("[data-assessment-hint]").textContent = "คลิกตำแหน่งเริ่มต้นสถานการณ์บนแผนที่";
     map.once("singleclick", (event) => {
       simulationOrigin = event.coordinate;
@@ -923,7 +935,31 @@ document.addEventListener("DOMContentLoaded", () => {
       page.querySelector("[data-assessment-hint]").textContent = "เลือกพื้นที่เพื่อค้นหากฎสำหรับประเภทภัยที่เลือก";
     }
   });
-  page.querySelectorAll("[data-basemap]").forEach((button) => button.addEventListener("click", async () => { const mode = button.dataset.basemap; const is3d = mode === "3d"; mapWrap.classList.toggle("is-3d", is3d); roadLayer.setVisible(mode === "road"); satelliteLayer.setVisible(mode === "satellite"); page.querySelectorAll("[data-basemap]").forEach((item) => item.classList.toggle("active", item === button)); if (is3d) { try { await initializeCesium(); if (lastAssessmentGeometry) { const geometry = lastAssessmentGeometry.getType() === "Circle" ? ol.geom.Polygon.fromCircle(lastAssessmentGeometry, 96) : lastAssessmentGeometry; const geojson = new ol.format.GeoJSON().writeGeometryObject(geometry, { featureProjection: "EPSG:3857", dataProjection: "EPSG:4326" }); await syncCesiumSelection(geojson); } cesiumViewer.resize(); await focusCesiumOnManagedArea(); } catch (error) { page.querySelector("[data-assessment-hint]").textContent = error.message; } } else { window.setTimeout(() => map.updateSize(), 0); } }));
+  page.querySelectorAll("[data-basemap]").forEach((button) => button.addEventListener("click", async () => {
+    const mode = button.dataset.basemap;
+    if (mode !== "3d") {
+      show2dBasemap(mode);
+      return;
+    }
+
+    mapWrap.classList.add("is-3d");
+    roadLayer.setVisible(false);
+    satelliteLayer.setVisible(false);
+    page.querySelectorAll("[data-basemap]").forEach((item) => item.classList.toggle("active", item === button));
+    try {
+      await initializeCesium();
+      if (lastAssessmentGeometry) {
+        const geometry = lastAssessmentGeometry.getType() === "Circle" ? ol.geom.Polygon.fromCircle(lastAssessmentGeometry, 96) : lastAssessmentGeometry;
+        const geojson = new ol.format.GeoJSON().writeGeometryObject(geometry, { featureProjection: "EPSG:3857", dataProjection: "EPSG:4326" });
+        await syncCesiumSelection(geojson);
+      }
+      cesiumViewer.resize();
+      await focusCesiumOnManagedArea();
+    } catch (error) {
+      show2dBasemap();
+      page.querySelector("[data-assessment-hint]").textContent = error.message;
+    }
+  }));
   const clearDisplayedResults = () => { if (cesiumViewer && cesiumSelection) { cesiumViewer.dataSources.remove(cesiumSelection, true); cesiumSelection = null; } selectedAreaSqKm = null; lastAssessmentGeometry = null; refreshPlaceLayerStyles(); renderAffectedPlaces(null); rulePicker.hidden = true; ruleSelect.innerHTML = '<option value="">ยังไม่มีกฎที่ผ่านเงื่อนไข</option>'; ruleSelect.disabled = true; page.querySelectorAll("[data-result-area],[data-result-population],[data-result-households],[data-result-villages]").forEach((element) => { element.textContent = "—"; }); page.querySelector("[data-resource-results]").innerHTML = "<p>ยังไม่มีผลการคำนวณ</p>"; const saveButton = page.querySelector("[data-save-button]"); const planSaveTrigger = page.querySelector("[data-open-plan-save]"); if (saveButton) saveButton.disabled = true; if (planSaveTrigger) planSaveTrigger.disabled = true; };
   page.querySelector("[data-clear-area]").addEventListener("click", () => { selectionSource.clear(); lastAnalysisGeometry = null; areaAnchor = null; areaLine = null; page.querySelector("[data-area-status]").textContent = ""; page.querySelector("[data-clear-area]").disabled = true; clearDisplayedResults(); });
   page.querySelector("[data-clear-simulation]").addEventListener("click", () => { simulationPointSource.clear(); simulationGridSource.clear(); simulationOrigin = null; lastSimulationGeometry = null; simulationRunId += 1; page.querySelector("[data-simulation-grid-legend]").hidden = true; page.querySelector("[data-clear-simulation]").disabled = true; clearDisplayedResults(); page.querySelector("[data-assessment-hint]").textContent = "กำหนดค่าจำลองแล้วกดปักจุดบนแผนที่"; });
