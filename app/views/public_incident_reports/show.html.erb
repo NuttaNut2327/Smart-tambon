@@ -4,9 +4,22 @@
   <%= render "public_incident_reports/header" %>
 
   <div class="public-report-container">
-    <section class="public-report-intro"><span class="material-symbols-outlined">notification_important</span><div><p>แจ้งเหตุในพื้นที่</p><h1>แบบฟอร์มแจ้งเหตุภายในพื้นที่ <%= @report_area_name %></h1><p>กรอกข้อมูลและปักตำแหน่งภายในขอบเขตพื้นที่ <%= @report_area_name %> เจ้าหน้าที่จะตรวจสอบและรับเรื่องโดยเร็วที่สุด</p></div></section>
+    <section class="public-report-intro"><div><p>แจ้งเหตุในพื้นที่</p><h1>แบบฟอร์มแจ้งเหตุภายในพื้นที่ <%= @report_area_name %></h1><p>กรอกข้อมูลและปักตำแหน่งภายในขอบเขตพื้นที่ <%= @report_area_name %> เจ้าหน้าที่จะตรวจสอบและรับเรื่องโดยเร็วที่สุด</p></div></section>
 
     <% if @organization_setting&.public_report_welcome.present? %><section class="public-report-welcome"><span class="material-symbols-outlined">campaign</span><p><%= simple_format(@organization_setting.public_report_welcome, {}, wrapper_tag: "span") %></p></section><% end %>
+    <% organization = @organization_setting %>
+    <% if organization && [organization.organization_name, organization.executive_name, organization.address, organization.phone, organization.email, organization.website].any?(&:present?) %>
+      <section class="public-report-organization" aria-labelledby="public-report-organization-title">
+        <div class="public-report-organization-heading"><span class="material-symbols-outlined">account_balance</span><div><p>หน่วยงานผู้รับแจ้งเหตุ</p><h2 id="public-report-organization-title"><%= organization.display_name(@report_area_name) %></h2></div></div>
+        <dl class="public-report-organization-grid">
+          <% if organization.executive_name.present? %><div><dt><span class="material-symbols-outlined">person</span>ผู้บริหาร/นายก อบต.</dt><dd><%= organization.executive_name %></dd></div><% end %>
+          <% if organization.website.present? %><div><dt><span class="material-symbols-outlined">language</span>เว็บไซต์</dt><dd><%= link_to organization.website, organization.website, target: "_blank", rel: "noopener noreferrer" %></dd></div><% end %>
+          <% if organization.phone.present? %><div><dt><span class="material-symbols-outlined">call</span>โทรศัพท์</dt><dd><%= link_to organization.phone, "tel:#{organization.phone.gsub(/[^\d+]/, '')}" %></dd></div><% end %>
+          <% if organization.email.present? %><div><dt><span class="material-symbols-outlined">mail</span>อีเมล</dt><dd><%= mail_to organization.email %></dd></div><% end %>
+          <% if organization.address.present? %><div class="wide"><dt><span class="material-symbols-outlined">location_on</span>ที่อยู่</dt><dd><%= simple_format(organization.address, {}, wrapper_tag: "span") %></dd></div><% end %>
+        </dl>
+      </section>
+    <% end %>
     <% if @incident.errors.any? %><div class="public-report-errors"><strong>กรุณาตรวจสอบข้อมูล</strong><ul><% @incident.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul></div><% end %>
 
     <%= form_with model: @incident, url: public_incident_report_path(token: params[:token]), method: :post, local: true, html: { class: "public-report-form", multipart: true } do |form| %>
