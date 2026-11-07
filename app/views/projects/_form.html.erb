@@ -19,7 +19,7 @@
             <label>รหัสโครงการ<%= form.text_field :code, placeholder: "เช่น e-plan / เลขที่สัญญา" %><small>ไม่บังคับ</small></label>
             <label>กลุ่มโครงการ<%= form.select :group, Project::GROUPS.map { |value, group| [group[:label], value] }, { include_blank: "เลือกกลุ่มโครงการ" }, required: true, data: { project_group: true } %></label>
             <label>ลักษณะ/ประเภทโครงการ<%= form.text_field :project_type, required: true, list: "project-type-options", autocomplete: "off", placeholder: "เลือกจากรายการหรือพิมพ์เอง", data: { project_type: true } %><datalist id="project-type-options"></datalist></label>
-            <label>หน่วยงานรับผิดชอบ<%= form.text_field :agency, required: true, placeholder: "เช่น กองช่าง อบต.ป่ากลาง" %></label>
+            <label>หน่วยงานรับผิดชอบ<%= form.select :agency, @agency_options.map { |name, code| [code.present? ? "#{name} (#{code})" : name, name] }, { include_blank: "เลือกหน่วยงานรับผิดชอบ" }, required: true %><small>รายชื่อจากข้อมูลหน่วยงานที่นำเข้าในระบบ</small></label>
             <label>รายละเอียด<%= form.text_area :description, rows: 4, placeholder: "วัตถุประสงค์ ขอบเขตงาน เป้าหมาย ฯลฯ" %></label>
           </fieldset>
           <fieldset class="cctv-fieldset">

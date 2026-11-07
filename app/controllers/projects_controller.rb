@@ -1,5 +1,6 @@
 class ProjectsController < ApplicationController
   before_action :set_project, only: %i[edit update destroy photo]
+  before_action :load_agency_options, only: %i[new create edit update]
   before_action :require_project_manager!, only: %i[edit update destroy]
 
   def index
@@ -111,5 +112,20 @@ class ProjectsController < ApplicationController
       :status, :approval_status, :progress_percent, :location_name, :description, :latitude, :longitude,
       *(current_user.system_admin? ? [:simulated] : [])
     )
+  end
+
+  def load_agency_options
+    @agency_options = ImportedDataset.visible_to(current_user).where(data_type: "agencies")
+      .flat_map { |dataset| Array(dataset.current_version&.records) }
+      .filter_map do |record|
+        name = record["agency_name"].to_s.strip
+        code = record["agency_code"].to_s.strip
+        [name, code] if name.present?
+      end
+      .uniq
+      .sort_by(&:first)
+
+    current_agency = @project&.agency.to_s.strip
+    @agency_options.unshift([current_agency, ""]) if current_agency.present? && @agency_options.none? { |name, _code| name == current_agency }
   end
 end
