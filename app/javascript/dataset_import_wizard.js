@@ -103,16 +103,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const parseOptions = selector => { try { return JSON.parse(manualDialog.querySelector(selector)?.textContent || "[]"); } catch (_) { return []; } };
     const agencies = parseOptions("[data-agency-options]");
     const teams = parseOptions("[data-team-options]");
-    manualDialog.querySelector("[data-agency-select]")?.addEventListener("change", event => {
+    const agencySelect = manualDialog.querySelector("[data-agency-select]");
+    const teamSelect = manualDialog.querySelector("[data-team-select]");
+    const normalize = value => String(value || "").trim().toLocaleLowerCase("th");
+    const refreshManualTeams = () => {
+      if (!teamSelect) return;
+      const agency = agencies.find(item => item.name === agencySelect?.value);
+      const filteredTeams = agency ? teams.filter(team =>
+        (agency.code && normalize(team.agency_code) === normalize(agency.code)) ||
+        normalize(team.agency_name) === normalize(agency.name)
+      ) : [];
+      const placeholder = !agency ? "เลือกหน่วยงานก่อน" : filteredTeams.length ? "เลือกทีมปฏิบัติงาน" : "ไม่พบทีมปฏิบัติงานของหน่วยงานนี้";
+      teamSelect.replaceChildren(new Option(placeholder, ""), ...filteredTeams.map(team => new Option(team.name, team.name)));
+      teamSelect.disabled = !agency || filteredTeams.length === 0;
+      const codeInput = teamSelect.form.elements["record[team_code]"];
+      if (codeInput) codeInput.value = "";
+    };
+    agencySelect?.addEventListener("change", event => {
       const agency = agencies.find(item => item.name === event.target.value);
       const codeInput = event.target.form.elements["record[agency_code]"];
       if (codeInput) codeInput.value = agency?.code || "";
+      refreshManualTeams();
     });
-    manualDialog.querySelector("[data-team-select]")?.addEventListener("change", event => {
+    teamSelect?.addEventListener("change", event => {
       const team = teams.find(item => item.name === event.target.value);
       const codeInput = event.target.form.elements["record[team_code]"];
       if (codeInput) codeInput.value = team?.code || "";
     });
+    refreshManualTeams();
   }
   const setupAgencyLocationPicker = form => {
     const selectedType = form?.elements.data_type?.value || document.querySelector("#file-import-dialog")?.dataset.selectedType;
@@ -655,11 +673,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const refreshImportTeams = () => {
     if (!importTeam) return;
     const agencyCode = importAgency?.value || "";
-    const teams = importTeams.filter(team => team.agency_code === agencyCode);
-    importTeam.innerHTML = `<option value="">${agencyCode ? "เลือกทีมปฏิบัติงาน" : "เลือกหน่วยงานก่อน"}</option>${teams.map(team => `<option value="${escapeHtml(team.code)}">${escapeHtml(team.name)}</option>`).join("")}`;
-    importTeam.disabled = !agencyCode;
+    const agencyName = importAgency?.selectedOptions[0]?.dataset.agencyName || "";
+    const normalize = value => String(value || "").trim().toLocaleLowerCase("th");
+    const teams = importTeams.filter(team =>
+      (agencyCode && normalize(team.agency_code) === normalize(agencyCode)) ||
+      (agencyName && normalize(team.agency_name) === normalize(agencyName))
+    );
+    const placeholder = !agencyCode ? "เลือกหน่วยงานก่อน" : teams.length ? "เลือกทีมปฏิบัติงาน" : "ไม่พบทีมปฏิบัติงานของหน่วยงานนี้";
+    importTeam.innerHTML = `<option value="">${placeholder}</option>${teams.map(team => `<option value="${escapeHtml(team.code)}">${escapeHtml(team.name)}</option>`).join("")}`;
+    importTeam.disabled = !agencyCode || teams.length === 0;
   };
   importAgency?.addEventListener("change", refreshImportTeams);
+  refreshImportTeams();
 
   dialog.querySelectorAll('input[name="import_mode"]').forEach(input => input.addEventListener("change", () => {
     const warning = dialog.querySelector("[data-replace-warning]");

@@ -70,8 +70,13 @@ class DataLayersController < ApplicationController
       .flat_map { |dataset| Array(dataset.current_version&.records) }
       .filter_map do |record|
         if record["team_name"].present? && record["team_code"].present?
+          agency_name = record["agency_name"].to_s.strip
+          agency_code = record["agency_code"].to_s.strip
+          if agency_code.blank? && agency_name.present?
+            agency_code = @agency_options.find { |name, _code| name.casecmp?(agency_name) }&.last.to_s
+          end
           { name: record["team_name"].to_s.strip, code: record["team_code"].to_s.strip,
-            agency_code: record["agency_code"].to_s.strip }
+            agency_name:, agency_code: }
         end
       end.uniq { |team| team[:code] }.sort_by { |team| team[:name] }
     if %w[population village_boundaries].include?(@selected_type)
