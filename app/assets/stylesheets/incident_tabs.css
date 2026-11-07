@@ -1127,78 +1127,96 @@
 .incident-usage-picker.kind-resource{border-left:4px solid #2C3930}.incident-usage-picker.kind-workforce{border-left:4px solid #806f5f}.incident-usage-picker.kind-consumable{border-left:4px solid #b96132}.incident-usage-summary-groups{display:grid;gap:12px;padding:14px}.incident-usage-summary-group{overflow:hidden;border:1px solid #e2dac8;border-radius:10px;background:#fff}.incident-usage-summary-group>header{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fffdf6;color:#607466}.incident-usage-summary-group>header .material-symbols-outlined{font-size:19px}.incident-usage-summary-group>header h4{flex:1;margin:0;font-size:13px}.incident-usage-summary-group>header>b{display:grid;place-items:center;min-width:25px;height:25px;border-radius:999px;background:#fffefb;font-size:11px}.incident-usage-summary-group article{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px;border-top:1px solid #edf1f5}.incident-usage-summary-group article b,.incident-usage-summary-group article small{display:block}.incident-usage-summary-group article small{margin-top:3px;color:#806f5f;font-size:11px}.incident-usage-summary-group>p{margin:0;padding:14px;color:#806f5f;font-size:11px}.incident-usage-amount{text-align:right;white-space:nowrap}.incident-usage-amount strong{color:#2c3930;font-size:12px}.incident-usage-amount .usage-state{font-weight:700}.incident-usage-amount .usage-state.active{color:#2C3930}.incident-usage-amount .usage-state.ready{color:#607466}.incident-usage-summary-group.kind-consumable>header{background:#fff9ed}.incident-usage-summary-group.kind-workforce>header{background:#f8f5ff}@media(max-width:620px){.incident-usage-summary-group article{align-items:flex-start;flex-direction:column}.incident-usage-amount{text-align:left}}
 .incident-usage-row.without-quantity{grid-template-columns:minmax(0,1fr) 36px}
 
-/* Match incident/disaster list cards with the overview task-card palette. */
+/* Keep the original incident-card treatment and vary only its severity colours. */
+.incident-list-card em[class^="severity-"] {
+  font-weight: 800;
+}
+
 .incident-list-card {
-  border: 1px solid #e2dac8;
-  border-left-width: 4px;
+  border-color: transparent;
+  border-left-width: 3px;
 }
 
 .incident-list-card.incident-severity-critical,
 .incident-list-card.incident-severity-critical:hover,
-.incident-list-card.incident-severity-critical.active,
+.incident-list-card.incident-severity-critical.active {
+  border-color: transparent;
+  border-left-color: #a92d38;
+  background: #fcebec;
+}
+
 .incident-list-card.incident-severity-very_urgent,
 .incident-list-card.incident-severity-very_urgent:hover,
 .incident-list-card.incident-severity-very_urgent.active {
-  border-color: #edc6cb;
-  border-left-color: #b94851;
-  background: #fff0f1;
+  border-color: transparent;
+  border-left-color: #c35a24;
+  background: #fff0e5;
 }
 
 .incident-list-card.incident-severity-urgent,
 .incident-list-card.incident-severity-urgent:hover,
-.incident-list-card.incident-severity-urgent.active {
-  border-color: #e7c5b0;
-  border-left-color: #c66732;
-  background: #fff2e8;
-}
-
+.incident-list-card.incident-severity-urgent.active,
 .incident-list-card.incident-severity-watch,
 .incident-list-card.incident-severity-watch:hover,
 .incident-list-card.incident-severity-watch.active {
-  border-color: #e5d18c;
-  border-left-color: #c69521;
-  background: #fff9dc;
+  border-color: transparent;
+  border-left-color: #b8860b;
+  background: #fff8dc;
 }
 
-.incident-list-card.incident-severity-general,
-.incident-list-card.incident-severity-general:hover,
-.incident-list-card.incident-severity-general.active,
 .incident-list-card.incident-severity-non_urgent,
 .incident-list-card.incident-severity-non_urgent:hover,
 .incident-list-card.incident-severity-non_urgent.active,
 .incident-list-card.incident-severity-waiting,
 .incident-list-card.incident-severity-waiting:hover,
 .incident-list-card.incident-severity-waiting.active {
-  border-color: #f3f1ea;
-  border-left-color: #806f5f;
-  background: #f6f8fa;
+  border-color: transparent;
+  border-left-color: #4f8060;
+  background: #edf7f0;
+}
+
+.incident-list-card.incident-severity-general,
+.incident-list-card.incident-severity-general:hover,
+.incident-list-card.incident-severity-general.active {
+  border-color: transparent;
+  border-left-color: #607d88;
+  background: #eff5f7;
 }
 
 .incident-list-card.active {
-  box-shadow: 0 0 0 2px rgb(63 79 68 / 14%);
+  box-shadow: none;
 }
 
-.severity-critical,
+.severity-critical {
+  border: 1px solid #e5adb4;
+  background: #fcebec;
+  color: #a92d38;
+}
+
 .severity-very_urgent {
-  background: #ffe8eb;
-  color: #b94050;
+  border: 1px solid #e8b995;
+  background: #fff0e5;
+  color: #c35a24;
 }
 
-.severity-urgent {
-  background: #ffdcca;
-  color: #a94f26;
-}
-
+.severity-urgent,
 .severity-watch {
-  background: #ffedaa;
-  color: #806016;
+  border: 1px solid #e7d38c;
+  background: #fff8dc;
+  color: #8a6508;
 }
 
-.severity-general,
 .severity-non_urgent,
 .severity-waiting {
-  background: #edf1f5;
-  color: #607466;
+  border: 1px solid #b9d8c3;
+  background: #edf7f0;
+  color: #3f704f;
+}
+
+.severity-general {
+  border: 1px solid #bdd0d8;
+  background: #eff5f7;
+  color: #526f7a;
 }
 
 /* Distinguish incident usage groups at a glance. */
