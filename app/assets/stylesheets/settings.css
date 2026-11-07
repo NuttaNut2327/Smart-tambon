@@ -1,4 +1,6 @@
 /* System settings (super admin) and อบต. settings (tambon admin) */
+.settings-shell .dashboard-header{position:sticky;z-index:50;top:0;background:#fff!important;isolation:isolate}
+.settings-shell .dashboard-content{position:relative;z-index:1}
 .settings-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
 .settings-tabs a{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid #e3e7e2;border-radius:999px;background:#fff;color:#4b5a50;font-size:13px;text-decoration:none}
 .settings-tabs a .material-symbols-outlined{font-size:18px}
