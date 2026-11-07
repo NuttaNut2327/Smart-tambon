@@ -1,7 +1,7 @@
 // Map markers and popup content for area activities (Incident category "activity").
 // The activity's main photo is drawn as a round icon; activities without one show their type's symbol.
 (() => {
-  const PHASE_COLORS = { upcoming: "#7a5cc2", ongoing: "#2e8b57", finished: "#8a8f98" };
+  const PHASE_COLORS = { upcoming: "#2c3930", ongoing: "#2e8b57", finished: "#8a8f98" };
   const SIZE = 46, RING = 4, TAIL = 9;
   const styles = new Map();
   const escapeHtml = value => String(value ?? "").replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);

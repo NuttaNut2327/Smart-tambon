@@ -92,7 +92,7 @@ Rails.application.routes.draw do
   get "dataset_templates/:data_type", to: "data_layers#template", as: :dataset_template
   resources :place_imports, only: :create
   resources :cctv_cameras, except: :show
-  resources :activities, except: :show do
+  resources :activities do
     patch :acknowledge, on: :member
   end
   get "ai", to: "ai_assistant#index", as: :ai_assistant

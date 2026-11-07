@@ -19,10 +19,19 @@
           <% @activities.each do |activity| %>
             <% phase = activity.activity_phase %>
             <% cover = activity.cover_photo %>
-            <article class="activity-card phase-<%= phase %>" id="activity-<%= activity.id %>">
+            <article class="activity-card phase-<%= phase %>" id="activity-<%= activity.id %>" data-activity-card data-activity-id="<%= activity.id %>" tabindex="0" role="button" aria-label="เปิดรายละเอียดกิจกรรม <%= activity.title %>">
               <div class="activity-cover">
                 <% if cover %><%= image_tag incident_photo_path(activity, cover["id"], variant: "thumb"), alt: activity.title, loading: "lazy" %><% else %><span class="material-symbols-outlined"><%= activity.activity_icon %></span><% end %>
                 <span class="activity-phase"><%= activity.activity_phase_label %></span>
+                <% if current_user.can_manage_organization_data?(activity.owner_user_id) %>
+                  <details class="activity-card-menu" data-activity-card-menu>
+                    <summary aria-label="จัดการกิจกรรม"><span class="material-symbols-outlined">more_horiz</span></summary>
+                    <div class="activity-card-menu-list">
+                      <%= link_to edit_activity_path(activity) do %><span class="material-symbols-outlined">edit</span>แก้ไข<% end %>
+                      <%= button_to activity_path(activity), method: :delete, form: { data: { activity_delete: activity.title } } do %><span class="material-symbols-outlined">delete</span>ลบข้อมูล<% end %>
+                    </div>
+                  </details>
+                <% end %>
               </div>
               <div class="activity-body">
                 <small class="activity-type"><span class="material-symbols-outlined"><%= activity.activity_icon %></span><%= activity.activity_type_label %> · <%= activity.reference_code %></small>
@@ -37,13 +46,32 @@
                     <% if activity.status == "pending" && phase != "finished" %>
                       <%= button_to acknowledge_activity_path(activity, filter: @filter), method: :patch, class: "button-link primary" do %><span class="material-symbols-outlined">task_alt</span>รับเรื่อง<% end %>
                     <% end %>
-                    <% if current_user.can_manage_organization_data?(activity.owner_user_id) %>
-                      <%= link_to "แก้ไข", edit_activity_path(activity), class: "button-link" %>
-                      <%= button_to "ลบ", activity_path(activity), method: :delete, class: "button-link danger", form: { data: { activity_delete: activity.title } } %>
-                    <% end %>
                   </div>
                 </div>
               </div>
+              <template data-activity-detail-template>
+                <div class="activity-modal-hero phase-<%= phase %>">
+                  <% if cover %><%= image_tag incident_photo_path(activity, cover["id"]), alt: activity.title, loading: "lazy" %><% else %><span class="material-symbols-outlined"><%= activity.activity_icon %></span><% end %>
+                  <span class="activity-phase"><%= activity.activity_phase_label %></span>
+                </div>
+                <div class="activity-modal-content">
+                  <header class="activity-modal-heading">
+                    <div><small><%= activity.activity_type_label %> · <%= activity.reference_code %></small><h2><%= activity.title %></h2></div>
+                    <span class="activity-status status-<%= activity.status %>"><%= activity.activity_status_label %><% if activity.received_by.present? %> โดย <%= activity.received_by %><% end %></span>
+                  </header>
+                  <section class="activity-modal-facts">
+                    <div><span class="material-symbols-outlined">schedule</span><small>วันและเวลาจัดกิจกรรม</small><b><%= thai_period(activity.starts_at, activity.ends_at) %></b></div>
+                    <div><span class="material-symbols-outlined">location_on</span><small>สถานที่จัดกิจกรรม</small><b><%= activity.location_name.presence || "ไม่ได้ระบุชื่อสถานที่" %></b></div>
+                    <div><span class="material-symbols-outlined">corporate_fare</span><small>ผู้จัดหรือหน่วยงานรับผิดชอบ</small><b><%= activity.organizer.presence || "ไม่ได้ระบุ" %></b></div>
+                    <div><span class="material-symbols-outlined">groups</span><small>จำนวนผู้เข้าร่วมโดยประมาณ</small><b><%= activity.expected_attendees.present? ? "#{number_with_delimiter(activity.expected_attendees)} คน" : "ไม่ได้ระบุ" %></b></div>
+                  </section>
+                  <section class="activity-modal-section"><h3>รายละเอียดกิจกรรม</h3><p><%= activity.description.presence || "ไม่มีรายละเอียดเพิ่มเติม" %></p></section>
+                  <section class="activity-modal-contact"><div><small>ผู้ประสานงาน</small><b><%= activity.reporter_name.presence || "ไม่ได้ระบุ" %></b></div><div><small>ข้อมูลติดต่อ</small><b><%= activity.reporter_contact.presence || "ไม่ได้ระบุ" %></b></div></section>
+                  <% if Array(activity.photos).any? %>
+                    <section class="activity-modal-section"><h3>รูปภาพกิจกรรม</h3><div class="activity-modal-gallery"><% Array(activity.photos).each do |photo| %><%= image_tag incident_photo_path(activity, photo["id"], variant: "thumb"), alt: activity.title, loading: "lazy" %><% end %></div></section>
+                  <% end %>
+                </div>
+              </template>
             </article>
           <% end %>
         </section>
@@ -51,12 +79,46 @@
     </div>
   </main>
 </div>
+<dialog class="activity-detail-dialog" data-activity-detail-dialog>
+  <button type="button" class="activity-modal-close" data-activity-modal-close aria-label="ปิด"><span class="material-symbols-outlined">close</span></button>
+  <div data-activity-modal-body></div>
+</dialog>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-activity-delete]").forEach(form => form.addEventListener("submit", event => {
       if (!window.confirm(`ต้องการลบกิจกรรม "${form.dataset.activityDelete}" ใช่หรือไม่?`)) event.preventDefault();
     }));
+    const dialog = document.querySelector("[data-activity-detail-dialog]");
+    const modalBody = dialog?.querySelector("[data-activity-modal-body]");
+    const openActivity = card => {
+      const template = card.querySelector("[data-activity-detail-template]");
+      if (!dialog || !modalBody || !template) return;
+      modalBody.replaceChildren(template.content.cloneNode(true));
+      dialog.showModal();
+    };
+    document.querySelectorAll("[data-activity-card]").forEach(card => {
+      card.addEventListener("click", event => {
+        if (event.target.closest("a, button, form, input, select, textarea, details, summary")) return;
+        openActivity(card);
+      });
+      card.addEventListener("keydown", event => {
+        if ((event.key === "Enter" || event.key === " ") && !event.target.closest("a, button, form, details, summary")) {
+          event.preventDefault();
+          openActivity(card);
+        }
+      });
+    });
+    document.addEventListener("click", event => {
+      document.querySelectorAll("[data-activity-card-menu][open]").forEach(menu => {
+        if (!menu.contains(event.target)) menu.removeAttribute("open");
+      });
+    });
+    dialog?.querySelector("[data-activity-modal-close]")?.addEventListener("click", () => dialog.close());
+    dialog?.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
     const target = location.hash && document.querySelector(location.hash);
     target?.classList.add("highlight");
+    const requestedActivityId = new URLSearchParams(location.search).get("activity_id");
+    const requestedCard = requestedActivityId && document.querySelector(`[data-activity-id="${CSS.escape(requestedActivityId)}"]`);
+    if (requestedCard) openActivity(requestedCard);
   });
 </script>
