@@ -134,6 +134,32 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     assert_equal "simulation", NotificationDelivery.last.source
   end
 
+  test "preview uses the template for the selected event tag" do
+    post notification_tests_path, params: { mode: "simulate", tag: "disaster.created", data: "sample", commit_action: "preview" }
+
+    assert_response :success
+    assert_select ".notify-preview-box" do |preview|
+      assert_includes preview.text, "แจ้งเตือนภัยพิบัติ"
+      assert_not_includes preview.text, "มีเหตุการณ์แจ้งเข้ามาใหม่"
+    end
+  end
+
+  test "delivery history filters by an inclusive date range and displays Thai date and time" do
+    before_range = NotificationDelivery.create!(organization_key: @admin.organization_key, channel_name: "ก่อนช่วง", tag: "disaster.created", status: "sent", created_at: Time.zone.local(2026, 11, 6, 12, 0))
+    in_range = NotificationDelivery.create!(organization_key: @admin.organization_key, channel_name: "ในช่วง", tag: "disaster.created", status: "sent", created_at: Time.zone.local(2026, 11, 7, 19, 0))
+    other_tag = NotificationDelivery.create!(organization_key: @admin.organization_key, channel_name: "คนละแท็ก", tag: "incident.created", status: "sent", created_at: Time.zone.local(2026, 11, 7, 20, 0))
+    after_range = NotificationDelivery.create!(organization_key: @admin.organization_key, channel_name: "หลังช่วง", tag: "disaster.created", status: "sent", created_at: Time.zone.local(2026, 11, 8, 12, 0))
+
+    get notification_tests_path, params: { history_start_date: "2026-11-07", history_end_date: "2026-11-07", history_tag: "disaster.created" }
+
+    assert_response :success
+    assert_includes response.body, in_range.channel_name
+    assert_includes response.body, "7 พ.ย. 2569 19.00 น."
+    assert_not_includes response.body, before_range.channel_name
+    assert_not_includes response.body, other_tag.channel_name
+    assert_not_includes response.body, after_range.channel_name
+  end
+
   test "test page reports a failed channel without stopping the others" do
     fake = FakeSender.new(fail_for: "กลุ่มเวร")
     Notifications::Senders.stub(:for, ->(channel, setting = nil) { fake.for(channel, setting) }) do

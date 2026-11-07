@@ -48,7 +48,20 @@ class NotificationTestsController < ApplicationController
   def load_page
     @channels = NotificationChannel.for_organization(organization_key).order_by(created_at: :asc).to_a
     @templates = NotificationTemplate.for_organization(organization_key).order_by(tag: :asc, updated_at: :desc).to_a
-    @deliveries = NotificationDelivery.for_organization(organization_key).desc(:created_at).limit(30).to_a
+    @history_start_date = history_date(:history_start_date)
+    @history_end_date = history_date(:history_end_date)
+    @history_tag = params[:history_tag].presence_in(NotificationChannel::TAGS.keys)
+    deliveries = NotificationDelivery.for_organization(organization_key)
+    deliveries = deliveries.where(:created_at.gte => @history_start_date.in_time_zone.beginning_of_day) if @history_start_date
+    deliveries = deliveries.where(:created_at.lte => @history_end_date.in_time_zone.end_of_day) if @history_end_date
+    deliveries = deliveries.where(tag: @history_tag) if @history_tag
+    @deliveries = deliveries.desc(:created_at).limit(30).to_a
+  end
+
+  def history_date(key)
+    Date.iso8601(params[key]) if params[key].present?
+  rescue Date::Error
+    nil
   end
 
   # Simulation follows the real event path: channels that are enabled and subscribed to the tag.

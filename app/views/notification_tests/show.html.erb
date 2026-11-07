@@ -31,25 +31,32 @@
     </section>
 
     <section class="settings-card">
-      <header><span class="material-symbols-outlined">preview</span><div><h2>ตัวอย่างข้อความ</h2><p><%= @preview[:incident] ? "ใช้ข้อมูลจริงจากเรื่อง #{@preview[:incident].reference_code}" : "ใช้ข้อมูลตัวอย่าง" %> — กด “แสดงตัวอย่าง” หลังเปลี่ยนตัวเลือก</p></div></header>
+      <header><span class="material-symbols-outlined">preview</span><div><h2>ตัวอย่างข้อความ</h2><p><%= @preview[:incident] ? "ใช้ข้อมูลจริงจากเรื่อง #{@preview[:incident].reference_code}" : "ใช้ข้อมูลตัวอย่าง" %> — ตัวอย่างจะอัปเดตตามแท็กที่เลือก</p></div></header>
       <pre class="notify-pre notify-preview-box"><%= @preview[:text].presence || "(ข้อความว่าง)" %></pre>
+      <div class="settings-actions">
+        <%= button_tag type: "submit", name: "commit_action", value: "preview", class: "button-link", data: { notify_preview: true } do %><span class="material-symbols-outlined">visibility</span>แสดงตัวอย่าง<% end %>
+        <%= button_tag type: "submit", name: "commit_action", value: "send", class: "button-link primary", data: { notify_send: true } do %><span class="material-symbols-outlined">send</span>ส่งทดสอบ<% end %>
+      </div>
     </section>
-
-    <div class="settings-actions">
-      <%= button_tag type: "submit", name: "commit_action", value: "preview", class: "button-link" do %><span class="material-symbols-outlined">visibility</span>แสดงตัวอย่าง<% end %>
-      <%= button_tag type: "submit", name: "commit_action", value: "send", class: "button-link primary", data: { notify_send: true } do %><span class="material-symbols-outlined">send</span>ส่งทดสอบ<% end %>
-    </div>
   <% end %>
 
-  <section class="settings-card">
+  <section class="settings-card notify-test-history">
     <header><span class="material-symbols-outlined">history</span><div><h2>ประวัติการส่งล่าสุด</h2><p>30 รายการล่าสุดของ อบต. ทั้งที่ส่งอัตโนมัติเมื่อมีเหตุใหม่และจากการทดสอบ (เก็บไว้ 90 วัน)</p></div></header>
+    <%= form_with url: notification_tests_path, method: :get, class: "notify-history-filter" do %>
+      <label>วันที่เริ่มต้น<%= date_field_tag :history_start_date, @history_start_date&.iso8601 %></label>
+      <span aria-hidden="true">–</span>
+      <label>วันที่สิ้นสุด<%= date_field_tag :history_end_date, @history_end_date&.iso8601 %></label>
+      <label>แท็กเหตุการณ์<%= select_tag :history_tag, options_for_select(NotificationChannel::TAGS.map { |tag, label| [label, tag] }, @history_tag), include_blank: "ทุกแท็ก" %></label>
+      <%= button_tag type: "submit", class: "button-link primary" do %><span class="material-symbols-outlined">filter_alt</span>กรองข้อมูล<% end %>
+      <% if @history_start_date || @history_end_date || @history_tag %><%= link_to notification_tests_path, class: "button-link" do %><span class="material-symbols-outlined">filter_alt_off</span>ล้างตัวกรอง<% end %><% end %>
+    <% end %>
     <% if @deliveries.empty? %>
-      <p class="notify-muted">ยังไม่มีการส่ง</p>
+      <p class="notify-muted"><%= @history_start_date || @history_end_date || @history_tag ? "ไม่พบประวัติการส่งตามตัวกรองที่เลือก" : "ยังไม่มีการส่ง" %></p>
     <% else %>
       <div class="users-table-wrap"><table class="users-table notify-log"><thead><tr><th>เวลา</th><th>ช่องทาง</th><th>แท็ก</th><th>ที่มา</th><th>ผล</th></tr></thead><tbody>
         <% @deliveries.each do |delivery| %>
           <tr>
-            <td><%= delivery.created_at.strftime("%d/%m %H:%M:%S") %></td>
+            <td><%= thai_short_date(delivery.created_at) %> <%= delivery.created_at.in_time_zone("Asia/Bangkok").strftime("%H.%M") %> น.</td>
             <td><b><%= delivery.channel_name %></b><small><%= NotificationChannel::KINDS.dig(delivery.kind, :label) %></small></td>
             <td><%= NotificationChannel::TAGS.fetch(delivery.tag, delivery.tag) %></td>
             <td><%= delivery.source_label %><% if delivery.sent_by %><small><%= delivery.sent_by %></small><% end %></td>
