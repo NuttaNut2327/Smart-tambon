@@ -73,6 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tourism: { color: "#e06b2d", icon: "star" }, transport: { color: "#168b8b", icon: "directions_car" },
     service: { color: "#a34f85", icon: "local_mall" }, emergency: { color: "#b4232f", icon: "emergency_home" }
   };
+  const inactivePlaceColor = "#8a918e";
   const placeMarkerIcon = (color) => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 42 52"><path d="M21 1C10 1 2 9.5 2 20c0 14.2 19 30.4 19 30.4S40 34.2 40 20C40 9.5 32 1 21 1z" fill="${color}" stroke="#fff" stroke-width="3"/></svg>`;
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -90,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const layer = new ol.layer.Vector({ source, zIndex: 17, style: (feature) => {
       const geometryType = feature.getGeometry()?.getType();
       const highlighted = !lastAssessmentGeometry || geometryType !== "Point" || lastAssessmentGeometry.intersectsCoordinate(feature.getGeometry().getCoordinates());
-      const displayColor = highlighted ? color : "#89796a";
+      const displayColor = highlighted ? color : inactivePlaceColor;
       if (geometryType === "Polygon" || geometryType === "MultiPolygon") return new ol.style.Style({ stroke: new ol.style.Stroke({ color: displayColor, width: 2.5 }), fill: new ol.style.Fill({ color: `${displayColor}22` }) });
       return new ol.style.Style({
         image: new ol.style.Icon({ src: placeMarkerIcon(displayColor), anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
@@ -105,9 +106,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!visiblePlaceCategories.has(category)) return null;
     const config = placeConfig[category] || placeConfig.service;
     const key = `${category}:${highlighted}`;
+    const displayColor = highlighted ? config.color : inactivePlaceColor;
     if (!placeStyleCache[key]) placeStyleCache[key] = new ol.style.Style({
-      image: new ol.style.Icon({ src: placeMarkerIcon(config.color), opacity: highlighted ? 1 : 0.58, anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
-      text: new ol.style.Text({ text: config.icon, font: '20px "Material Symbols Outlined"', fill: new ol.style.Fill({ color: highlighted ? "#fff" : "rgba(255,255,255,.72)" }), offsetY: -25 })
+      image: new ol.style.Icon({ src: placeMarkerIcon(displayColor), anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
+      text: new ol.style.Text({ text: config.icon, font: '20px "Material Symbols Outlined"', fill: new ol.style.Fill({ color: "#fff" }), offsetY: -25 })
     });
     return placeStyleCache[key];
   };
@@ -549,12 +551,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (entity.billboard) {
         const category = entity.properties?.category?.getValue(now);
         const config = placeConfig[category] || placeConfig.service;
-        entity.billboard.image = placeMarkerIcon(config.color);
-        entity.billboard.color = Cesium.Color.WHITE.withAlpha(highlighted ? 1 : 0.58);
+        entity.billboard.image = placeMarkerIcon(highlighted ? config.color : inactivePlaceColor);
+        entity.billboard.color = Cesium.Color.WHITE;
         return;
       }
-      entity.point.color = window.Cesium.Color.fromCssColorString(highlighted ? "#567f6d" : "#89796a");
-      entity.label.fillColor = window.Cesium.Color.fromCssColorString(highlighted ? "#674427" : "#89796a");
+      entity.point.color = window.Cesium.Color.fromCssColorString(highlighted ? "#567f6d" : inactivePlaceColor);
+      entity.label.fillColor = window.Cesium.Color.fromCssColorString(highlighted ? "#674427" : inactivePlaceColor);
     });
   };
   const syncCesiumSelection = async (geometryGeoJSON) => {
