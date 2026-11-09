@@ -103,16 +103,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const parseOptions = selector => { try { return JSON.parse(manualDialog.querySelector(selector)?.textContent || "[]"); } catch (_) { return []; } };
     const agencies = parseOptions("[data-agency-options]");
     const teams = parseOptions("[data-team-options]");
-    manualDialog.querySelector("[data-agency-select]")?.addEventListener("change", event => {
+    const agencySelect = manualDialog.querySelector("[data-agency-select]");
+    const teamSelect = manualDialog.querySelector("[data-team-select]");
+    const normalize = value => String(value || "").trim().toLocaleLowerCase("th");
+    const refreshManualTeams = () => {
+      if (!teamSelect) return;
+      const agency = agencies.find(item => item.name === agencySelect?.value);
+      const filteredTeams = agency ? teams.filter(team =>
+        (agency.code && normalize(team.agency_code) === normalize(agency.code)) ||
+        normalize(team.agency_name) === normalize(agency.name)
+      ) : [];
+      const placeholder = !agency ? "เลือกหน่วยงานก่อน" : filteredTeams.length ? "เลือกทีมปฏิบัติงาน" : "ไม่พบทีมปฏิบัติงานของหน่วยงานนี้";
+      teamSelect.replaceChildren(new Option(placeholder, ""), ...filteredTeams.map(team => new Option(team.name, team.name)));
+      teamSelect.disabled = !agency || filteredTeams.length === 0;
+      const codeInput = teamSelect.form.elements["record[team_code]"];
+      if (codeInput) codeInput.value = "";
+    };
+    agencySelect?.addEventListener("change", event => {
       const agency = agencies.find(item => item.name === event.target.value);
       const codeInput = event.target.form.elements["record[agency_code]"];
       if (codeInput) codeInput.value = agency?.code || "";
+      refreshManualTeams();
     });
-    manualDialog.querySelector("[data-team-select]")?.addEventListener("change", event => {
+    teamSelect?.addEventListener("change", event => {
       const team = teams.find(item => item.name === event.target.value);
       const codeInput = event.target.form.elements["record[team_code]"];
       if (codeInput) codeInput.value = team?.code || "";
     });
+    refreshManualTeams();
   }
   const setupAgencyLocationPicker = form => {
     const selectedType = form?.elements.data_type?.value || document.querySelector("#file-import-dialog")?.dataset.selectedType;
@@ -136,11 +154,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (addressFields.children.length) panel.after(addressFields);
 
     const accessSource = new ol.source.Vector();
+    const accessMaskSource = new ol.source.Vector();
     const markerSource = new ol.source.Vector();
     const map = new ol.Map({ target: panel.querySelector("[data-agency-location-map]"), layers: [
       new ol.layer.Tile({ source: new ol.source.OSM() }),
+      new ol.layer.Vector({ source: accessMaskSource, style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(44,57,48,.58)" }) }) }),
       new ol.layer.Vector({ source: accessSource, style: new ol.style.Style({ stroke: new ol.style.Stroke({ color: "#438a61", width: 3 }), fill: new ol.style.Fill({ color: "rgba(67,138,97,.06)" }) }) }),
-      new ol.layer.Vector({ source: markerSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 8, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) }) }) })
+      new ol.layer.Vector({ source: markerSource, zIndex: 10, style: window.SmartTambonLocation?.selectedPinStyle() })
     ], view: new ol.View({ center: ol.proj.fromLonLat([100.5, 14]), zoom: 10 }) });
     const format = new ol.format.GeoJSON();
     const state = panel.querySelector("[data-agency-location-state]");
@@ -189,6 +209,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!json) throw new Error();
       const features = format.readFeatures(json, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" });
       accessSource.addFeatures(features);
+      const rings = features.flatMap(feature => {
+        const geometry = feature.getGeometry();
+        if (geometry?.getType() === "Polygon") return [geometry.getCoordinates()[0]];
+        if (geometry?.getType() === "MultiPolygon") return geometry.getCoordinates().map(polygon => polygon[0]);
+        return [];
+      });
+      const world = 20037508.34;
+      if (rings.length) accessMaskSource.addFeature(new ol.Feature(new ol.geom.Polygon([[[-world, -world], [world, -world], [world, world], [-world, world], [-world, -world]], ...rings])));
+      window.SmartTambonLocation?.attachImportantPlaces(map, { isInside: coordinate => insideAccessArea(coordinate) });
       if (!markerSource.getFeatures().length && features.length) map.getView().fit(accessSource.getExtent(), { padding: [28, 28, 28, 28], maxZoom: 15 });
       state.textContent = latitudeInput.value && longitudeInput.value ? "ตำแหน่งที่บันทึกไว้" : "คลิกบนแผนที่เพื่อปักหมุด";
     }).catch(() => { state.className = "agency-location-state error"; state.textContent = "ไม่สามารถโหลดขอบเขตพื้นที่ดูแลได้"; });
@@ -226,12 +255,16 @@ document.addEventListener("DOMContentLoaded", () => {
       image: new ol.style.Circle({ radius: 5, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) })
     }) });
     const boundarySource = new ol.source.Vector();
+    const boundaryMaskSource = new ol.source.Vector();
+    const boundaryMaskLayer = new ol.layer.Vector({ source: boundaryMaskSource, style: new ol.style.Style({
+      fill: new ol.style.Fill({ color: "rgba(0,0,0,.58)" })
+    }) });
     const boundaryLayer = new ol.layer.Vector({ source: boundarySource, style: new ol.style.Style({
       stroke: new ol.style.Stroke({ color: "#438a61", width: 3, lineDash: [8, 5] }),
       fill: new ol.style.Fill({ color: "rgba(67,138,97,.06)" })
     }) });
     const map = new ol.Map({ target: editor.querySelector("[data-boundary-map]"), layers: [
-      new ol.layer.Tile({ source: new ol.source.OSM() }), boundaryLayer, vectorLayer
+      new ol.layer.Tile({ source: new ol.source.OSM() }), boundaryMaskLayer, boundaryLayer, vectorLayer
     ], view: new ol.View({ center: ol.proj.fromLonLat([100.5, 14]), zoom: 10 }) });
     const format = new ol.format.GeoJSON();
     let draw;
@@ -323,6 +356,14 @@ document.addEventListener("DOMContentLoaded", () => {
     fetch("/api/access_area", { headers: { Accept: "application/json" } }).then(response => response.ok ? response.json() : null).then(json => {
       if (!json) return; const features = format.readFeatures(json, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" });
       boundarySource.addFeatures(features); if (features.length) {
+        const rings = features.flatMap(feature => {
+          const geometry = feature.getGeometry();
+          if (geometry?.getType() === "Polygon") return [geometry.getCoordinates()[0]];
+          if (geometry?.getType() === "MultiPolygon") return geometry.getCoordinates().map(polygon => polygon[0]);
+          return [];
+        });
+        const world = 20037508.34;
+        if (rings.length) boundaryMaskSource.addFeature(new ol.Feature(new ol.geom.Polygon([[[-world, -world], [world, -world], [world, world], [-world, world], [-world, -world]], ...rings])));
         map.getView().fit(boundarySource.getExtent(), { padding: [28, 28, 28, 28], maxZoom: 15 }); state.textContent = "พร้อมวาดขอบเขต";
         if (manualDialog.open && !geometryInput.value && !draw) startDrawing();
       }
@@ -632,11 +673,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const refreshImportTeams = () => {
     if (!importTeam) return;
     const agencyCode = importAgency?.value || "";
-    const teams = importTeams.filter(team => team.agency_code === agencyCode);
-    importTeam.innerHTML = `<option value="">${agencyCode ? "เลือกทีมปฏิบัติงาน" : "เลือกหน่วยงานก่อน"}</option>${teams.map(team => `<option value="${escapeHtml(team.code)}">${escapeHtml(team.name)}</option>`).join("")}`;
-    importTeam.disabled = !agencyCode;
+    const agencyName = importAgency?.selectedOptions[0]?.dataset.agencyName || "";
+    const normalize = value => String(value || "").trim().toLocaleLowerCase("th");
+    const teams = importTeams.filter(team =>
+      (agencyCode && normalize(team.agency_code) === normalize(agencyCode)) ||
+      (agencyName && normalize(team.agency_name) === normalize(agencyName))
+    );
+    const placeholder = !agencyCode ? "เลือกหน่วยงานก่อน" : teams.length ? "เลือกทีมปฏิบัติงาน" : "ไม่พบทีมปฏิบัติงานของหน่วยงานนี้";
+    importTeam.innerHTML = `<option value="">${placeholder}</option>${teams.map(team => `<option value="${escapeHtml(team.code)}">${escapeHtml(team.name)}</option>`).join("")}`;
+    importTeam.disabled = !agencyCode || teams.length === 0;
   };
   importAgency?.addEventListener("change", refreshImportTeams);
+  refreshImportTeams();
 
   dialog.querySelectorAll('input[name="import_mode"]').forEach(input => input.addEventListener("change", () => {
     const warning = dialog.querySelector("[data-replace-warning]");

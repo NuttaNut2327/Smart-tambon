@@ -49,6 +49,33 @@
   <%= button_to "ออกจากระบบ", destroy_user_session_path, method: :delete, class: "logout" %>
 </aside>
 
+<% if sidebar_local_admin %>
+  <dialog class="area-name-dialog" data-area-name-dialog>
+    <%= form_with url: my_access_area_path, method: :patch do %>
+      <div class="area-name-dialog-heading">
+        <b>แก้ไขชื่อขอบเขตพื้นที่</b>
+        <button type="button" data-area-name-close aria-label="ปิด">×</button>
+      </div>
+      <label>
+        ชื่อที่แสดงบนแผนที่
+        <input type="text" name="access_area[name]" value="<%= current_user.access_area&.name || current_user.subdistrict&.name_th %>" required autocomplete="off">
+      </label>
+      <small>การแก้ไขชื่อนี้ไม่เปลี่ยนขอบเขตหรือสิทธิ์การเข้าถึง</small>
+      <div>
+        <button type="submit" class="button-link primary">บันทึกชื่อ</button>
+        <button type="button" class="button-link" data-area-name-close>ยกเลิก</button>
+      </div>
+    <% end %>
+  </dialog>
+  <script>
+    (() => {
+      const dialog = document.querySelector("[data-area-name-dialog]");
+      document.querySelectorAll("[data-area-name-edit]").forEach((button) => button.addEventListener("click", () => dialog?.showModal()));
+      document.querySelectorAll("[data-area-name-close]").forEach((button) => button.addEventListener("click", () => dialog?.close()));
+    })();
+  </script>
+<% end %>
+
 <section class="incoming-incident-notification" data-incident-notification data-notification-url="<%= incident_notification_path %>" data-notification-popup="<%= organization_setting&.notify_new_incidents != false %>" data-notification-sound="<%= organization_setting&.notification_sound == true %>" role="alert" aria-live="assertive" hidden>
   <span class="material-symbols-outlined incoming-incident-icon" aria-hidden="true">notification_important</span>
   <div class="incoming-incident-content">

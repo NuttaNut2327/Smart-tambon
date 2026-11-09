@@ -40,14 +40,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   if (!document.querySelector("#map") || !window.ol) return;
-  const key = document.querySelector(".shell").dataset.maptilerKey;
+  const key = document.querySelector(".shell").dataset.maptilerKey?.trim();
+  const esriSatelliteUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+  const maptilerSatelliteUrl = key ? `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${key}` : null;
   const street = new ol.layer.Tile({ source: new ol.source.OSM() });
-  const satellite = new ol.layer.Tile({ visible: false, source: new ol.source.XYZ({
-    url: key ? `https://api.maptiler.com/tiles/satellite/{z}/{x}/{y}.jpg?key=${key}` : "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attributions: key ? "© MapTiler © OpenStreetMap contributors" : "© OpenStreetMap contributors",
+  const satelliteSource = new ol.source.XYZ({
+    url: maptilerSatelliteUrl || esriSatelliteUrl,
+    attributions: key ? "© MapTiler © OpenStreetMap contributors" : "Tiles © Esri, Maxar, Earthstar Geographics",
     maxZoom: key ? 19 : 18,
     wrapX: false
-  })});
+  });
+  let satelliteFallbackEnabled = false;
+  satelliteSource.on("tileloaderror", () => {
+    if (!maptilerSatelliteUrl || satelliteFallbackEnabled) return;
+    satelliteFallbackEnabled = true;
+    satelliteSource.setUrl(esriSatelliteUrl);
+    satelliteSource.setAttributions("Tiles © Esri, Maxar, Earthstar Geographics");
+  });
+  const satellite = new ol.layer.Tile({ visible: false, source: satelliteSource });
   const highlight = new ol.layer.Vector({ source: new ol.source.Vector(), style: new ol.style.Style({
     stroke: new ol.style.Stroke({color:"#5f9279",width:5}), fill:new ol.style.Fill({color:"rgba(0,0,0,0)"}),
     image:new ol.style.Circle({radius:8,fill:new ol.style.Fill({color:"#438a61"}),stroke:new ol.style.Stroke({color:"white",width:3})})
@@ -375,13 +385,13 @@ document.addEventListener("DOMContentLoaded", () => {
   terrainSourceNotice.href="https://registry.opendata.aws/terrain-tiles/";
   terrainSourceNotice.target="_blank";
   terrainSourceNotice.rel="noopener";
-  terrainSourceNotice.textContent="แผนที่ฐาน: OpenStreetMap · ความสูงภูมิประเทศ: AWS Open Data Terrain Tiles";
+  terrainSourceNotice.textContent="แผนที่ฐาน: Esri World Imagery · ความสูงภูมิประเทศ: AWS Open Data Terrain Tiles";
   document.querySelector(".map-wrap").appendChild(terrainSourceNotice);
   const terrainElevationLegend=document.createElement("section");
   terrainElevationLegend.id="terrain-elevation-legend";
   terrainElevationLegend.innerHTML='<div class="terrain-legend-heading"><b>สีและเงาตามระดับความสูง</b><button type="button" id="terrain-color-toggle" class="terrain-switch is-on" role="switch" aria-checked="true" aria-label="เปิดหรือปิดสีแสดงระดับความสูง"><span></span></button></div><span class="terrain-gradient"></span><div><small>0 ม.</small><small>100</small><small>250</small><small>500</small><small>1,000+ ม.</small></div>';
   document.querySelector(".map-wrap").appendChild(terrainElevationLegend);
-  let cesiumViewer, cesiumBoundaryDataSource, cesiumSiblingBoundaryDataSource, cesiumProvinceBoundaryDataSource, cesiumVillageBoundaryDataSource, cesiumPickHandler, terrainColorLayer, floodDataSource, floodStartEntity, floodStart, floodPicking=false, cesiumMode=false, terrainColorEnabled=true, villageBoundaryVisible=true, villageBoundaryGeoJson=null, selectedFeatureData, lastFloodAnalysis=null, cesiumPlaceVersion=0, cesiumBoundaryVersion=0;
+  let cesiumViewer, cesiumBoundaryDataSource, cesiumSiblingBoundaryDataSource, cesiumProvinceBoundaryDataSource, cesiumVillageBoundaryDataSource, cesiumPickHandler, terrainColorLayer, floodDataSource, floodStartEntity, floodStart, floodPicking=false, cesiumMode=false, terrainColorEnabled=true, villageBoundaryVisible=true, villageBoundaryGeoJson=null, selectedFeatureData, lastFloodAnalysis=null, cesiumPlaceVersion=0, cesiumBoundaryVersion=0, active2dBasemap="street";
   const cesiumPlaceEntities=[];
   const cesiumBoundaryPayloadCache=new Map();
   const selectedAreaPayloadCache=new Map();
@@ -432,9 +442,14 @@ document.addEventListener("DOMContentLoaded", () => {
       width:257,height:257,tilingScheme:new Cesium.WebMercatorTilingScheme(),
       callback:(x,y,level)=>awsTerrainHeightmap(x,y,level)
     });
+    const satelliteImagery=new Cesium.UrlTemplateImageryProvider({
+      url:esriSatelliteUrl,
+      credit:"Esri, Maxar, Earthstar Geographics",
+      maximumLevel:18
+    });
     cesiumViewer=new Cesium.Viewer("cesium-map",{
       terrainProvider,
-      baseLayer:new Cesium.ImageryLayer(new Cesium.OpenStreetMapImageryProvider({url:"https://tile.openstreetmap.org/",credit:new Cesium.Credit("© OpenStreetMap contributors")})),
+      baseLayer:new Cesium.ImageryLayer(satelliteImagery),
       animation:false,baseLayerPicker:false,fullscreenButton:false,geocoder:false,homeButton:true,infoBox:true,sceneModePicker:false,selectionIndicator:false,timeline:false,navigationHelpButton:false,
       requestRenderMode:true,maximumRenderTimeChange:Number.POSITIVE_INFINITY
     });
@@ -687,8 +702,14 @@ document.addEventListener("DOMContentLoaded", () => {
     terrainSourceNotice.classList.toggle("active",is3d);
     terrainElevationLegend.classList.toggle("active",is3d);
     document.querySelectorAll("[data-map-mode]").forEach(button=>button.classList.toggle("active",is3d && button.dataset.mapMode==="3d"));
+    if(is3d) document.querySelectorAll("[data-basemap]").forEach(button=>button.classList.remove("active"));
     updateFloodControls();
-    if(!is3d){requestAnimationFrame(()=>map.updateSize());return;}
+    if(!is3d){
+      const satelliteVisible=active2dBasemap==="satellite";
+      street.setVisible(!satelliteVisible); satellite.setVisible(satelliteVisible);
+      document.querySelectorAll("[data-basemap]").forEach(button=>button.classList.toggle("active",button.dataset.basemap===active2dBasemap));
+      requestAnimationFrame(()=>map.updateSize());return;
+    }
     try{await window.loadCesium?.();initializeCesium();updateFloodControls();cesiumViewer.resize();syncCesiumPlaces();syncCesiumBoundary();syncCesiumVillageBoundaries();if(selectedAreaCenter){focusCesiumArea();}else{placeSearchLocation().then(focusCesiumCurrentLocation);}}catch(error){setMapMode(false);document.querySelector("#map-message").textContent=error.message;document.querySelector("#map-message").classList.add("error");}
   }
   function setTerrainColorVisible(visible) {
@@ -722,7 +743,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // Keep the marker attached just above the rendered terrain.  The terrain is
       // vertically exaggerated for readability, so an absolute, raw elevation
       // would otherwise be hidden inside the visible ground surface.
-      floodStartEntity=cesiumViewer.entities.add({name:"จุดเริ่มต้นระดับน้ำ",position:Cesium.Cartesian3.fromRadians(sample.longitude,sample.latitude,14),point:{pixelSize:16,color:Cesium.Color.fromCssColorString("#438f86"),outlineColor:Cesium.Color.WHITE,outlineWidth:3,heightReference:Cesium.HeightReference.RELATIVE_TO_GROUND,disableDepthTestDistance:Number.POSITIVE_INFINITY},label:{text:"จุดเริ่มต้นน้ำ",font:"600 12px Noto Sans Thai",fillColor:Cesium.Color.WHITE,outlineColor:Cesium.Color.fromCssColorString("#2c3930"),outlineWidth:3,style:Cesium.LabelStyle.FILL_AND_OUTLINE,pixelOffset:new Cesium.Cartesian2(0,-22),heightReference:Cesium.HeightReference.RELATIVE_TO_GROUND,disableDepthTestDistance:Number.POSITIVE_INFINITY}});
+      floodStartEntity=cesiumViewer.entities.add({name:"จุดเริ่มต้นระดับน้ำ",position:Cesium.Cartesian3.fromRadians(sample.longitude,sample.latitude,14),point:{pixelSize:22,color:Cesium.Color.fromCssColorString("#2e8b57"),outlineColor:Cesium.Color.WHITE,outlineWidth:4,heightReference:Cesium.HeightReference.RELATIVE_TO_GROUND,disableDepthTestDistance:Number.POSITIVE_INFINITY},label:{text:"จุดเริ่มต้นน้ำ",font:"700 13px Noto Sans Thai",fillColor:Cesium.Color.WHITE,outlineColor:Cesium.Color.fromCssColorString("#173d29"),outlineWidth:4,style:Cesium.LabelStyle.FILL_AND_OUTLINE,pixelOffset:new Cesium.Cartesian2(0,-28),heightReference:Cesium.HeightReference.RELATIVE_TO_GROUND,disableDepthTestDistance:Number.POSITIVE_INFINITY}});
       floodStatus.textContent=`จุดเริ่มต้นสูง ${sample.height.toFixed(1)} ม. จากระดับน้ำทะเล`;
       updateFloodControls();
     }).catch(error=>{floodStatus.textContent=error.message;updateFloodControls();});
@@ -2064,7 +2085,7 @@ document.addEventListener("DOMContentLoaded", () => {
     button.addEventListener("click",selectAccessArea);
     selectAccessArea();
   });
-  document.querySelectorAll("[data-basemap]").forEach(b=>b.onclick=()=>{setMapMode(false);const sat=b.dataset.basemap==="satellite";street.setVisible(!sat);satellite.setVisible(sat);document.querySelectorAll("[data-basemap]").forEach(x=>x.classList.toggle("active",x===b));if(sat&&!key)document.querySelector("#map-message").textContent="กำหนด MAPTILER_KEY เพื่อเปิดภาพดาวเทียม"});
+  document.querySelectorAll("[data-basemap]").forEach(b=>b.onclick=()=>{active2dBasemap=b.dataset.basemap==="satellite" ? "satellite" : "street";setMapMode(false);});
   if(window.SMART_TAMBON_MAP_DEFAULTS?.basemap==="satellite") document.querySelector('[data-basemap="satellite"]')?.click();
   document.querySelectorAll("[data-map-mode]").forEach(button=>button.addEventListener("click",()=>setMapMode(button.dataset.mapMode==="3d")));
   const areaSearch = document.querySelector("#area-search");

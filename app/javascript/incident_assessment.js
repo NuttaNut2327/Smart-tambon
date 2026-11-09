@@ -73,6 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tourism: { color: "#e06b2d", icon: "star" }, transport: { color: "#168b8b", icon: "directions_car" },
     service: { color: "#a34f85", icon: "local_mall" }, emergency: { color: "#b4232f", icon: "emergency_home" }
   };
+  const inactivePlaceColor = "#8a918e";
   const placeMarkerIcon = (color) => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 42 52"><path d="M21 1C10 1 2 9.5 2 20c0 14.2 19 30.4 19 30.4S40 34.2 40 20C40 9.5 32 1 21 1z" fill="${color}" stroke="#fff" stroke-width="3"/></svg>`;
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -90,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const layer = new ol.layer.Vector({ source, zIndex: 17, style: (feature) => {
       const geometryType = feature.getGeometry()?.getType();
       const highlighted = !lastAssessmentGeometry || geometryType !== "Point" || lastAssessmentGeometry.intersectsCoordinate(feature.getGeometry().getCoordinates());
-      const displayColor = highlighted ? color : "#89796a";
+      const displayColor = highlighted ? color : inactivePlaceColor;
       if (geometryType === "Polygon" || geometryType === "MultiPolygon") return new ol.style.Style({ stroke: new ol.style.Stroke({ color: displayColor, width: 2.5 }), fill: new ol.style.Fill({ color: `${displayColor}22` }) });
       return new ol.style.Style({
         image: new ol.style.Icon({ src: placeMarkerIcon(displayColor), anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
@@ -105,9 +106,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!visiblePlaceCategories.has(category)) return null;
     const config = placeConfig[category] || placeConfig.service;
     const key = `${category}:${highlighted}`;
+    const displayColor = highlighted ? config.color : inactivePlaceColor;
     if (!placeStyleCache[key]) placeStyleCache[key] = new ol.style.Style({
-      image: new ol.style.Icon({ src: placeMarkerIcon(config.color), opacity: highlighted ? 1 : 0.58, anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
-      text: new ol.style.Text({ text: config.icon, font: '20px "Material Symbols Outlined"', fill: new ol.style.Fill({ color: highlighted ? "#fff" : "rgba(255,255,255,.72)" }), offsetY: -25 })
+      image: new ol.style.Icon({ src: placeMarkerIcon(displayColor), anchor: [0.5, 1], anchorXUnits: "fraction", anchorYUnits: "fraction" }),
+      text: new ol.style.Text({ text: config.icon, font: '20px "Material Symbols Outlined"', fill: new ol.style.Fill({ color: "#fff" }), offsetY: -25 })
     });
     return placeStyleCache[key];
   };
@@ -130,7 +132,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const colors = severity >= .67 ? ["#b7474d", "rgba(183,71,77,.58)"] : severity >= .34 ? ["#a97924", "rgba(169,121,36,.5)"] : ["#567f6d", "rgba(86,127,109,.42)"];
     return new ol.style.Style({ stroke: new ol.style.Stroke({ color: colors[0], width: 1 }), fill: new ol.style.Fill({ color: colors[1] }) });
   } });
-  const simulationPointLayer = new ol.layer.Vector({ source: simulationPointSource, style: new ol.style.Style({ image: new ol.style.Circle({ radius: 7, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) }) }) });
+  const simulationPointSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="46" height="58" viewBox="0 0 46 58"><defs><filter id="s" x="-60%" y="-40%" width="220%" height="220%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#173d29" flood-opacity=".55"/></filter></defs><circle cx="23" cy="22" r="21" fill="#2e8b57" opacity=".22"/><path d="M23 55S5 38.5 5 22a18 18 0 1 1 36 0c0 16.5-18 33-18 33Z" fill="#2e8b57" stroke="#fff" stroke-width="3" filter="url(#s)"/><circle cx="23" cy="22" r="7" fill="#fff"/></svg>';
+  const simulationPointLayer = new ol.layer.Vector({ source: simulationPointSource, zIndex: 28, style: new ol.style.Style({ image: new ol.style.Icon({ src: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(simulationPointSvg)}`, anchor: [0.5, 1], scale: 0.9 }) }) });
   const parseOptionalCoordinate = (value) => {
     if (value === undefined || value === null || String(value).trim() === "") return null;
     const coordinate = Number(value);
@@ -195,13 +198,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const hotspotLayer = new ol.layer.Vector({ source: hotspotSource, zIndex: 24, style: (feature) => window.SmartTambonHotspots?.markerStyle(feature.get("fireHotspot")) });
   const cctvLayer = new ol.layer.Vector({ source: cctvSource, zIndex: 25, style: (feature) => window.SmartTambonCctv?.markerStyle(feature.get("cctvCamera")?.status) });
   const maptilerKey = page.closest(".shell")?.dataset.maptilerKey?.trim();
+  const esriSatelliteUrl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+  const maptilerSatelliteUrl = maptilerKey ? `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${maptilerKey}` : null;
   const roadLayer = new ol.layer.Tile({ source: new ol.source.OSM() });
-  const satelliteLayer = new ol.layer.Tile({ source: new ol.source.XYZ({
-    url: maptilerKey ? `https://api.maptiler.com/tiles/satellite/{z}/{x}/{y}.jpg?key=${maptilerKey}` : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  const satelliteSource = new ol.source.XYZ({
+    url: maptilerSatelliteUrl || esriSatelliteUrl,
     attributions: maptilerKey ? "© MapTiler © OpenStreetMap contributors" : "Tiles © Esri",
     maxZoom: maptilerKey ? 19 : 18,
     wrapX: false
-  }), visible: false });
+  });
+  let satelliteFallbackEnabled = false;
+  satelliteSource.on("tileloaderror", () => {
+    if (!maptilerSatelliteUrl || satelliteFallbackEnabled) return;
+    satelliteFallbackEnabled = true;
+    satelliteSource.setUrl(esriSatelliteUrl);
+    satelliteSource.setAttributions("Tiles © Esri, Maxar, Earthstar Geographics");
+  });
+  const satelliteLayer = new ol.layer.Tile({ source: satelliteSource, visible: false });
   const initialMapCenter = hasIncidentCoordinates
     ? ol.proj.fromLonLat([longitude, latitude])
     : embeddedBoundaryGeometry
@@ -213,6 +226,15 @@ document.addEventListener("DOMContentLoaded", () => {
     : ol.proj.get("EPSG:3857").getExtent();
   const map = new ol.Map({ target: mapElement, layers: [roadLayer, satelliteLayer, maskLayer, boundaryLayer, villageBoundaryLayer, placesLayer, waterLayer, hotspotLayer, cctvLayer, activityLayer, ...importedDatasetLayers.values()].map((entry) => entry.layer || entry).concat([cityIncidentLayer, selectionLayer, simulationGridLayer, simulationPointLayer, incidentLayer]), view: new ol.View({ center: initialMapCenter, zoom: initialMapZoom, minZoom: 5, maxZoom: 18, extent: managedViewExtent }), controls: [] });
   window.smartCityAssessmentMap = map;
+  let active2dBasemap = "road";
+  const show2dBasemap = (mode = active2dBasemap) => {
+    active2dBasemap = mode === "satellite" ? "satellite" : "road";
+    mapWrap.classList.remove("is-3d");
+    roadLayer.setVisible(active2dBasemap === "road");
+    satelliteLayer.setVisible(active2dBasemap === "satellite");
+    page.querySelectorAll("[data-basemap]").forEach((button) => button.classList.toggle("active", button.dataset.basemap === active2dBasemap));
+    window.setTimeout(() => map.updateSize(), 0);
+  };
   if (embeddedBoundaryGeometry) {
     map.getView().fit(embeddedBoundaryGeometry.getExtent(), { padding: [48, 48, 48, 48], maxZoom: 15, duration: 0 });
   } else if (!hasIncidentCoordinates && initialExtent.length === 4 && initialExtent.every(Number.isFinite)) {
@@ -424,11 +446,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!window.Cesium) throw new Error("ไม่สามารถโหลดแผนที่ 3D ได้");
     const Cesium = window.Cesium;
     const satelliteImagery = new Cesium.UrlTemplateImageryProvider({
-      url: maptilerKey
-        ? `https://api.maptiler.com/tiles/satellite/{z}/{x}/{y}.jpg?key=${maptilerKey}`
-        : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      credit: maptilerKey ? "MapTiler" : "Esri, Maxar, Earthstar Geographics",
-      maximumLevel: maptilerKey ? 19 : 18
+      url: esriSatelliteUrl,
+      credit: "Esri, Maxar, Earthstar Geographics",
+      maximumLevel: 18
     });
     cesiumViewer = new Cesium.Viewer(cesiumElement, {
       terrainProvider: new Cesium.CustomHeightmapTerrainProvider({ width: 257, height: 257, tilingScheme: new Cesium.WebMercatorTilingScheme(), callback: terrainHeights }),
@@ -531,12 +551,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (entity.billboard) {
         const category = entity.properties?.category?.getValue(now);
         const config = placeConfig[category] || placeConfig.service;
-        entity.billboard.image = placeMarkerIcon(config.color);
-        entity.billboard.color = Cesium.Color.WHITE.withAlpha(highlighted ? 1 : 0.58);
+        entity.billboard.image = placeMarkerIcon(highlighted ? config.color : inactivePlaceColor);
+        entity.billboard.color = Cesium.Color.WHITE;
         return;
       }
-      entity.point.color = window.Cesium.Color.fromCssColorString(highlighted ? "#567f6d" : "#89796a");
-      entity.label.fillColor = window.Cesium.Color.fromCssColorString(highlighted ? "#674427" : "#89796a");
+      entity.point.color = window.Cesium.Color.fromCssColorString(highlighted ? "#567f6d" : inactivePlaceColor);
+      entity.label.fillColor = window.Cesium.Color.fromCssColorString(highlighted ? "#674427" : inactivePlaceColor);
     });
   };
   const syncCesiumSelection = async (geometryGeoJSON) => {
@@ -646,10 +666,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await calculate(geometry, "", "simulation");
   };
   const showDrawingMap = () => {
-    mapWrap.classList.remove("is-3d");
-    roadLayer.setVisible(true); satelliteLayer.setVisible(false);
-    page.querySelectorAll("[data-basemap]").forEach((button) => button.classList.toggle("active", button.dataset.basemap === "road"));
-    window.setTimeout(() => map.updateSize(), 0);
+    show2dBasemap();
   };
   const bufferedLineGeometry = (line, distance) => {
     const coordinates = line.getCoordinates();
@@ -864,9 +881,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.setTimeout(() => { map.updateSize(); cesiumViewer?.resize(); }, 0);
   }));
   page.querySelector("[data-pick-simulation-point]").addEventListener("click", () => {
-    mapWrap.classList.remove("is-3d"); roadLayer.setVisible(true); satelliteLayer.setVisible(false);
-    page.querySelectorAll("[data-basemap]").forEach((button) => button.classList.toggle("active", button.dataset.basemap === "road"));
-    window.setTimeout(() => map.updateSize(), 0);
+    show2dBasemap();
     page.querySelector("[data-assessment-hint]").textContent = "คลิกตำแหน่งเริ่มต้นสถานการณ์บนแผนที่";
     map.once("singleclick", (event) => {
       simulationOrigin = event.coordinate;
@@ -923,7 +938,31 @@ document.addEventListener("DOMContentLoaded", () => {
       page.querySelector("[data-assessment-hint]").textContent = "เลือกพื้นที่เพื่อค้นหากฎสำหรับประเภทภัยที่เลือก";
     }
   });
-  page.querySelectorAll("[data-basemap]").forEach((button) => button.addEventListener("click", async () => { const mode = button.dataset.basemap; const is3d = mode === "3d"; mapWrap.classList.toggle("is-3d", is3d); roadLayer.setVisible(mode === "road"); satelliteLayer.setVisible(mode === "satellite"); page.querySelectorAll("[data-basemap]").forEach((item) => item.classList.toggle("active", item === button)); if (is3d) { try { await initializeCesium(); if (lastAssessmentGeometry) { const geometry = lastAssessmentGeometry.getType() === "Circle" ? ol.geom.Polygon.fromCircle(lastAssessmentGeometry, 96) : lastAssessmentGeometry; const geojson = new ol.format.GeoJSON().writeGeometryObject(geometry, { featureProjection: "EPSG:3857", dataProjection: "EPSG:4326" }); await syncCesiumSelection(geojson); } cesiumViewer.resize(); await focusCesiumOnManagedArea(); } catch (error) { page.querySelector("[data-assessment-hint]").textContent = error.message; } } else { window.setTimeout(() => map.updateSize(), 0); } }));
+  page.querySelectorAll("[data-basemap]").forEach((button) => button.addEventListener("click", async () => {
+    const mode = button.dataset.basemap;
+    if (mode !== "3d") {
+      show2dBasemap(mode);
+      return;
+    }
+
+    mapWrap.classList.add("is-3d");
+    roadLayer.setVisible(false);
+    satelliteLayer.setVisible(false);
+    page.querySelectorAll("[data-basemap]").forEach((item) => item.classList.toggle("active", item === button));
+    try {
+      await initializeCesium();
+      if (lastAssessmentGeometry) {
+        const geometry = lastAssessmentGeometry.getType() === "Circle" ? ol.geom.Polygon.fromCircle(lastAssessmentGeometry, 96) : lastAssessmentGeometry;
+        const geojson = new ol.format.GeoJSON().writeGeometryObject(geometry, { featureProjection: "EPSG:3857", dataProjection: "EPSG:4326" });
+        await syncCesiumSelection(geojson);
+      }
+      cesiumViewer.resize();
+      await focusCesiumOnManagedArea();
+    } catch (error) {
+      show2dBasemap();
+      page.querySelector("[data-assessment-hint]").textContent = error.message;
+    }
+  }));
   const clearDisplayedResults = () => { if (cesiumViewer && cesiumSelection) { cesiumViewer.dataSources.remove(cesiumSelection, true); cesiumSelection = null; } selectedAreaSqKm = null; lastAssessmentGeometry = null; refreshPlaceLayerStyles(); renderAffectedPlaces(null); rulePicker.hidden = true; ruleSelect.innerHTML = '<option value="">ยังไม่มีกฎที่ผ่านเงื่อนไข</option>'; ruleSelect.disabled = true; page.querySelectorAll("[data-result-area],[data-result-population],[data-result-households],[data-result-villages]").forEach((element) => { element.textContent = "—"; }); page.querySelector("[data-resource-results]").innerHTML = "<p>ยังไม่มีผลการคำนวณ</p>"; const saveButton = page.querySelector("[data-save-button]"); const planSaveTrigger = page.querySelector("[data-open-plan-save]"); if (saveButton) saveButton.disabled = true; if (planSaveTrigger) planSaveTrigger.disabled = true; };
   page.querySelector("[data-clear-area]").addEventListener("click", () => { selectionSource.clear(); lastAnalysisGeometry = null; areaAnchor = null; areaLine = null; page.querySelector("[data-area-status]").textContent = ""; page.querySelector("[data-clear-area]").disabled = true; clearDisplayedResults(); });
   page.querySelector("[data-clear-simulation]").addEventListener("click", () => { simulationPointSource.clear(); simulationGridSource.clear(); simulationOrigin = null; lastSimulationGeometry = null; simulationRunId += 1; page.querySelector("[data-simulation-grid-legend]").hidden = true; page.querySelector("[data-clear-simulation]").disabled = true; clearDisplayedResults(); page.querySelector("[data-assessment-hint]").textContent = "กำหนดค่าจำลองแล้วกดปักจุดบนแผนที่"; });

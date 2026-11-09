@@ -475,6 +475,7 @@ class IncidentsController < ApplicationController
       "resources" => []
     }
     incident.save!
+    NotificationDispatchJob.perform_later(incident.id.to_s, "disaster.created")
     redirect_to disasters_path(incident_id: incident.id), notice: "เปิดเหตุการณ์เป็นภัยพิบัติเรียบร้อยแล้ว สามารถประเมินสถานการณ์ได้"
   rescue Mongoid::Errors::DocumentNotFound
     redirect_to general_incidents_path, alert: "ไม่พบเหตุการณ์ที่ต้องการ"

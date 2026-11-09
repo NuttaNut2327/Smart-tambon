@@ -166,7 +166,7 @@ class Incident
   private
 
   def notify_channels
-    NotificationDispatchJob.perform_later(id.to_s)
+    NotificationDispatchJob.perform_later(id.to_s, Notifications::Dispatcher.tag_for(self))
   rescue StandardError => error
     Rails.logger.error("Could not queue incident notification: #{error.class}: #{error.message}")
   end

@@ -8,6 +8,8 @@ class OrganizationSettingsController < ApplicationController
   def show; end
 
   def update
+    return reset_organization_information if params[:reset_organization_information] == "1"
+
     @setting.assign_attributes(setting_params)
     @setting.report_sources_text = params.dig(:organization_setting, :report_sources_text) if params.dig(:organization_setting).key?(:report_sources_text)
     # "ใช้ค่าของระบบ" leaves map layers unset so the system default applies.
@@ -52,6 +54,19 @@ class OrganizationSettingsController < ApplicationController
   end
 
   def set_setting = @setting = OrganizationSetting.for(current_user)
+
+  def reset_organization_information
+    IncidentPhotoUploadService.delete_photo(@setting.logo) if @setting.logo.present?
+    @setting.assign_attributes(organization_name: nil, executive_name: nil, address: nil, phone: nil,
+                               email: nil, website: nil, logo: nil, updated_by: current_user.username)
+    @setting.save!
+    redirect_to organization_settings_path(anchor: "settings-organization"), notice: "คืนค่าข้อมูล อบต. เป็นค่าเริ่มต้นแล้ว"
+  rescue IncidentPhotoUploadService::ObjectNotFound, Aws::S3::Errors::ServiceError
+    @setting.assign_attributes(organization_name: nil, executive_name: nil, address: nil, phone: nil,
+                               email: nil, website: nil, logo: nil, updated_by: current_user.username)
+    @setting.save!
+    redirect_to organization_settings_path(anchor: "settings-organization"), notice: "คืนค่าข้อมูล อบต. เป็นค่าเริ่มต้นแล้ว"
+  end
 
   def setting_params
     params.require(:organization_setting).permit(:organization_name, :executive_name, :address, :phone, :email, :website,

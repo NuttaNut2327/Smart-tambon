@@ -35,7 +35,7 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     @admin = User.create!(username: "notify_admin_one", password: "Password123!", role: :subdistrict_admin, subdistrict: @first)
     @staff = User.create!(username: "notify_staff_one", password: "Password123!", role: :subdistrict_user, subdistrict: @first)
     @other = User.create!(username: "notify_admin_two", password: "Password123!", role: :subdistrict_admin, subdistrict: @second)
-    @line = NotificationChannel.create!(organization_key: @admin.organization_key, name: "กลุ่มเวร", kind: "line", target: LINE_GROUP, tags: %w[incident.created])
+    @line = NotificationChannel.create!(organization_key: @admin.organization_key, name: "กลุ่มเวร", kind: "line", target: LINE_GROUP, tags: %w[incident.created disaster.created])
     @disaster_only = NotificationChannel.create!(organization_key: @admin.organization_key, name: "กลุ่มภัยพิบัติ", kind: "telegram", target: "-1001234567890", tags: %w[disaster.created])
     @foreign = NotificationChannel.create!(organization_key: @other.organization_key, name: "กลุ่มตำบลอื่น", kind: "line", target: "C#{'b' * 32}", tags: %w[incident.created])
     sign_in @admin
@@ -78,6 +78,23 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     assert_not_includes text, "นายทดสอบ"
   end
 
+  test "promoting a general incident dispatches disaster notification to subscribed LINE OA" do
+    incident = create_incident(title: "น้ำท่วมฉับพลัน", status: "in_progress")
+    clear_enqueued_jobs
+
+    assert_enqueued_with(job: NotificationDispatchJob, args: [incident.id.to_s, "disaster.created"]) do
+      patch promote_incident_to_disaster_path(incident)
+    end
+
+    assert_redirected_to disasters_path(incident_id: incident.id)
+    assert_equal "disaster", incident.reload.category
+    fake = FakeSender.new
+    Notifications::Senders.stub(:for, ->(channel, setting = nil) { fake.for(channel, setting) }) { perform_enqueued_jobs }
+    assert_includes fake.sent.map(&:first), "กลุ่มเวร"
+    delivery = NotificationDelivery.find_by(channel_id: @line.id, incident_id: incident.id, tag: "disaster.created")
+    assert delivery&.sent?
+  end
+
   test "templates reject unknown variables" do
     template = NotificationTemplate.new(organization_key: @admin.organization_key, name: "ผิด", tag: "incident.created", body: "{{title}} {{reporter_contact}}")
     assert_not template.valid?
@@ -112,9 +129,35 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to notification_tests_path
-    assert_equal ["กลุ่มภัยพิบัติ"], fake.sent.map(&:first)
-    assert_includes fake.sent.first.last, "แจ้งเตือนภัยพิบัติ"
+    assert_equal ["กลุ่มเวร", "กลุ่มภัยพิบัติ"], fake.sent.map(&:first)
+    assert fake.sent.all? { |_name, text| text.include?("แจ้งเตือนภัยพิบัติ") }
     assert_equal "simulation", NotificationDelivery.last.source
+  end
+
+  test "preview uses the template for the selected event tag" do
+    post notification_tests_path, params: { mode: "simulate", tag: "disaster.created", data: "sample", commit_action: "preview" }
+
+    assert_response :success
+    assert_select ".notify-preview-box" do |preview|
+      assert_includes preview.text, "แจ้งเตือนภัยพิบัติ"
+      assert_not_includes preview.text, "มีเหตุการณ์แจ้งเข้ามาใหม่"
+    end
+  end
+
+  test "delivery history filters by an inclusive date range and displays Thai date and time" do
+    before_range = NotificationDelivery.create!(organization_key: @admin.organization_key, channel_name: "ก่อนช่วง", tag: "disaster.created", status: "sent", created_at: Time.zone.local(2026, 11, 6, 12, 0))
+    in_range = NotificationDelivery.create!(organization_key: @admin.organization_key, channel_name: "ในช่วง", tag: "disaster.created", status: "sent", created_at: Time.zone.local(2026, 11, 7, 19, 0))
+    other_tag = NotificationDelivery.create!(organization_key: @admin.organization_key, channel_name: "คนละแท็ก", tag: "incident.created", status: "sent", created_at: Time.zone.local(2026, 11, 7, 20, 0))
+    after_range = NotificationDelivery.create!(organization_key: @admin.organization_key, channel_name: "หลังช่วง", tag: "disaster.created", status: "sent", created_at: Time.zone.local(2026, 11, 8, 12, 0))
+
+    get notification_tests_path, params: { history_start_date: "2026-11-07", history_end_date: "2026-11-07", history_tag: "disaster.created" }
+
+    assert_response :success
+    assert_includes response.body, in_range.channel_name
+    assert_includes response.body, "7 พ.ย. 2569 19.00 น."
+    assert_not_includes response.body, before_range.channel_name
+    assert_not_includes response.body, other_tag.channel_name
+    assert_not_includes response.body, after_range.channel_name
   end
 
   test "test page reports a failed channel without stopping the others" do

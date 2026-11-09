@@ -6,7 +6,7 @@
     <% if @setting.errors.any? %><div class="form-errors"><% @setting.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
 
     <section class="settings-card" id="settings-organization">
-      <header><span class="material-symbols-outlined">account_balance</span><div><h2>ข้อมูล อบต.</h2><p>แสดงบนหน้าแบบฟอร์มแจ้งเหตุสาธารณะ เพื่อให้ประชาชนรู้ว่าแจ้งถึงหน่วยงานใด</p></div></header>
+      <header><span class="material-symbols-outlined">account_balance</span><div><h2>ข้อมูล อบต.</h2><p>แสดงบนหน้าแบบฟอร์มแจ้งเหตุสาธารณะ เพื่อให้ประชาชนรู้ว่าแจ้งถึงหน่วยงานใด</p></div><%= button_tag type: "button", class: "button-link settings-reset-button", data: { open_organization_reset: true } do %><span class="material-symbols-outlined">restart_alt</span>คืนค่าเริ่มต้น<% end %></header>
       <div class="settings-grid">
         <label>ชื่อหน่วยงาน<%= form.text_field :organization_name, placeholder: "เช่น องค์การบริหารส่วนตำบล#{area_name}" %></label>
         <label>ผู้บริหาร/นายก อบต.<%= form.text_field :executive_name %></label>
@@ -24,6 +24,12 @@
         </div>
       </div>
     </section>
+
+    <dialog class="settings-confirm-dialog" data-organization-reset-dialog aria-labelledby="organization-reset-title">
+      <div class="settings-confirm-dialog-heading"><span class="material-symbols-outlined">restart_alt</span><div><small>คืนค่าข้อมูลหน่วยงาน</small><h2 id="organization-reset-title">ยืนยันคืนค่าเริ่มต้น</h2></div><button type="button" data-close-organization-reset aria-label="ปิด">×</button></div>
+      <div class="settings-confirm-dialog-body"><p>ข้อมูลพื้นฐานของ อบต. ที่กำหนดไว้จะถูกล้าง และหน้าแบบฟอร์มแจ้งเหตุจะกลับไปใช้ชื่อพื้นที่กับโลโก้เริ่มต้นของระบบ</p><ul><li>ชื่อหน่วยงานและชื่อผู้บริหาร</li><li>ที่อยู่ โทรศัพท์ อีเมล และเว็บไซต์</li><li>โลโก้ของหน่วยงาน</li></ul><p class="settings-confirm-dialog-note"><span class="material-symbols-outlined">info</span>การตั้งค่าการแจ้งเตือน แผนที่ และลิงก์แจ้งเหตุจะไม่ถูกเปลี่ยนแปลง</p></div>
+      <div class="settings-confirm-dialog-actions"><button type="button" class="button-link" data-close-organization-reset>ยกเลิก</button><%= button_tag type: "submit", name: "reset_organization_information", value: "1", class: "button-link danger", formnovalidate: true do %><span class="material-symbols-outlined">restart_alt</span>ยืนยันคืนค่าเริ่มต้น<% end %></div>
+    </dialog>
 
     <section class="settings-card" id="settings-notifications">
       <header><span class="material-symbols-outlined">notifications</span><div><h2>การแจ้งเตือน</h2><p>ใช้กับผู้ใช้ทุกคนของ อบต. นี้</p></div></header>
@@ -100,5 +106,8 @@
     document.querySelector("[data-confirm-regenerate]")?.addEventListener("submit", event => {
       if (!window.confirm("สร้างลิงก์ใหม่? ลิงก์แจ้งเหตุที่เคยแชร์ไว้ทั้งหมดจะใช้งานไม่ได้")) event.preventDefault();
     });
+    const organizationResetDialog = document.querySelector("[data-organization-reset-dialog]");
+    document.querySelector("[data-open-organization-reset]")?.addEventListener("click", () => organizationResetDialog?.showModal());
+    document.querySelectorAll("[data-close-organization-reset]").forEach(button => button.addEventListener("click", () => organizationResetDialog?.close()));
   });
 </script>

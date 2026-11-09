@@ -88,6 +88,103 @@
   const pinStyle = () => new ol.style.Style({
     image: new ol.style.Icon({ anchor: [0.5, 1], src: "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 34 44"><path d="M17 43s15-14.5 15-26A15 15 0 0 0 2 17c0 11.5 15 26 15 26z" fill="#c2463a" stroke="#fff" stroke-width="2"/><circle cx="17" cy="17" r="6" fill="#fff"/></svg>') })
   });
+  const selectedPinStyle = () => pinStyle();
+
+  const importantPlaceCategories = ["government", "education", "health", "culture", "tourism", "transport", "service", "emergency"];
+  const importantPlaceColors = { government: "#527f9d", education: "#a97924", health: "#b94755", culture: "#795f94", tourism: "#b96132", transport: "#438f86", service: "#985675", emergency: "#b7474d", imported: "#438a61" };
+  let importantPlacesRequest;
+  const loadImportantPlaces = () => importantPlacesRequest ||= Promise.all([
+    ...importantPlaceCategories.map(category => fetch(`/api/places?category=${category}`, { headers: { Accept: "application/json" } })
+      .then(response => response.ok ? response.json() : { data: [] })
+      .then(payload => (payload.data || []).map(place => ({ ...place, category })))
+      .catch(() => [])),
+    fetch("/api/dynamic_layers?layer_key=important_place", { headers: { Accept: "application/json" } })
+      .then(response => response.ok ? response.json() : [])
+      .then(records => records.map(record => ({ name: record.name, lon: record.location?.[0], lat: record.location?.[1], category: "imported" })))
+      .catch(() => [])
+  ]).then(groups => groups.flat().filter(place => Number.isFinite(Number(place.lon)) && Number.isFinite(Number(place.lat))).slice(0, 350));
+
+  function attachImportantPlaces(map, { isInside = () => true } = {}) {
+    if (!map || !window.ol) return null;
+    const source = new ol.source.Vector();
+    const layer = new ol.layer.Vector({
+      source,
+      declutter: true,
+      zIndex: 4,
+      style: feature => {
+        const place = feature.get("place") || {};
+        const color = importantPlaceColors[place.category] || "#806f5f";
+        return new ol.style.Style({
+          image: new ol.style.Circle({ radius: 5, fill: new ol.style.Fill({ color }), stroke: new ol.style.Stroke({ color: "#fff", width: 2 }) }),
+          text: new ol.style.Text({ text: place.name || "สถานที่สำคัญ", offsetY: -13, font: '500 11px "Google Sans", sans-serif', fill: new ol.style.Fill({ color: "#674427" }), stroke: new ol.style.Stroke({ color: "rgba(255,255,255,.95)", width: 3 }), padding: [2, 3, 2, 3] })
+        });
+      }
+    });
+    map.addLayer(layer);
+    loadImportantPlaces().then(places => {
+      places.forEach(place => {
+        const coordinate = ol.proj.fromLonLat([Number(place.lon), Number(place.lat)]);
+        if (isInside(coordinate)) source.addFeature(new ol.Feature({ geometry: new ol.geom.Point(coordinate), place }));
+      });
+    });
+    return layer;
+  }
+
+  function attachAccessArea(map, { fit = false, padding = [28, 28, 28, 28], maxZoom = 16, onReady, onError } = {}) {
+    if (!map || !window.ol) return null;
+    const boundarySource = new ol.source.Vector();
+    const maskSource = new ol.source.Vector();
+    const maskLayer = new ol.layer.Vector({
+      source: maskSource,
+      zIndex: 2,
+      style: new ol.style.Style({ fill: new ol.style.Fill({ color: "rgba(44, 57, 48, 0.58)" }) })
+    });
+    const boundaryLayer = new ol.layer.Vector({
+      source: boundarySource,
+      zIndex: 3,
+      style: new ol.style.Style({
+        fill: new ol.style.Fill({ color: "rgba(0, 0, 0, 0)" }),
+        stroke: new ol.style.Stroke({ color: "#567f6d", width: 2.5 })
+      })
+    });
+    map.addLayer(maskLayer);
+    map.addLayer(boundaryLayer);
+
+    let resolveReady;
+    const controller = {
+      ready: false,
+      features: [],
+      readyPromise: new Promise(resolve => { resolveReady = resolve; }),
+      isInside(coordinate) {
+        return !this.ready || this.features.some(feature => feature.getGeometry()?.intersectsCoordinate(coordinate));
+      }
+    };
+    fetch("/api/access_area", { headers: { Accept: "application/json" } })
+      .then(response => {
+        if (!response.ok) throw new Error("boundary unavailable");
+        return response.json();
+      })
+      .then(data => {
+        const features = new ol.format.GeoJSON().readFeatures(data, { dataProjection: "EPSG:4326", featureProjection: "EPSG:3857" });
+        if (!features.length) throw new Error("boundary unavailable");
+        controller.features = features;
+        controller.ready = true;
+        resolveReady(controller);
+        boundarySource.addFeatures(features);
+        const rings = features.flatMap(feature => {
+          const geometry = feature.getGeometry();
+          if (geometry?.getType() === "Polygon") return [geometry.getCoordinates()[0]];
+          if (geometry?.getType() === "MultiPolygon") return geometry.getCoordinates().map(polygon => polygon[0]);
+          return [];
+        });
+        const world = 20037508.34;
+        if (rings.length) maskSource.addFeature(new ol.Feature(new ol.geom.Polygon([[[-world, -world], [world, -world], [world, world], [-world, world], [-world, -world]], ...rings])));
+        if (fit) map.getView().fit(boundarySource.getExtent(), { padding, maxZoom, duration: 250 });
+        onReady?.(controller);
+      })
+      .catch(error => onError?.(error));
+    return controller;
+  }
 
   function initPicker(element) {
     if (element.dataset.locationPickerReady || !window.ol) return;
@@ -110,6 +207,11 @@
       view: new ol.View({ center: ol.proj.fromLonLat(center), zoom: Number(element.dataset.zoom) || 6 })
     });
     const status = element.querySelector("[data-location-status]");
+    const accessArea = attachAccessArea(map, {
+      fit: !(latInput.value && lonInput.value),
+      onReady: controller => attachImportantPlaces(map, { isInside: coordinate => controller.isInside(coordinate) }),
+      onError: () => { if (status) status.textContent = "ไม่สามารถโหลดขอบเขตพื้นที่ดูแลได้ กรุณาลองเปิดแบบฟอร์มใหม่"; }
+    });
     const describe = () => {
       if (!status) return;
       const lat = parseFloat(latInput.value), lon = parseFloat(lonInput.value);
@@ -130,7 +232,10 @@
       if (pan) map.getView().animate({ center: marker.getGeometry().getCoordinates(), zoom: Math.max(map.getView().getZoom(), 15), duration: 250 });
       describe();
     };
-    map.on("singleclick", event => { const [lon, lat] = ol.proj.toLonLat(event.coordinate); setPoint(lon, lat); });
+    map.on("singleclick", event => {
+      if (accessArea && !accessArea.isInside(event.coordinate)) { if (status) status.textContent = "กรุณาปักหมุดภายในขอบเขตพื้นที่ดูแล"; return; }
+      const [lon, lat] = ol.proj.toLonLat(event.coordinate); setPoint(lon, lat);
+    });
     const drag = new ol.interaction.Translate({ layers: [markerLayer] });
     drag.on("translateend", () => { const [lon, lat] = ol.proj.toLonLat(marker.getGeometry().getCoordinates()); setPoint(lon, lat); });
     map.addInteraction(drag);
@@ -138,6 +243,7 @@
     [latInput, lonInput].forEach(input => input.addEventListener("change", () => syncFromInputs({ pan: true })));
     attachSearch(map, {
       onSelect: (lon, lat, result) => {
+        if (accessArea && !accessArea.isInside(ol.proj.fromLonLat([lon, lat]))) { if (status) status.textContent = `พบ "${result.short_name}" แต่อยู่นอกขอบเขตพื้นที่ดูแล`; return; }
         setPoint(lon, lat);
         if (nameInput && !nameInput.value.trim()) nameInput.value = result.short_name;
       }
@@ -156,6 +262,6 @@
   }
 
   const initAll = (root = document) => root.querySelectorAll("[data-location-picker]").forEach(initPicker);
-  window.SmartTambonLocation = { attachSearch, search, initPicker, initAll };
+  window.SmartTambonLocation = { attachSearch, attachAccessArea, attachImportantPlaces, selectedPinStyle, search, initPicker, initAll };
   document.addEventListener("DOMContentLoaded", () => initAll());
 })();

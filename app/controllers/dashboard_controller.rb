@@ -114,7 +114,15 @@ class DashboardController < ApplicationController
     status_rank = { "pending" => 0, "assessing" => 1, "in_progress" => 1 }
     severity_rank = { "critical" => 0, "very_urgent" => 1, "urgent" => 2, "watch" => 3, "non_urgent" => 4, "waiting" => 4, "general" => 5 }
     severity_label = { "critical" => "วิกฤต", "very_urgent" => "เร่งด่วนมาก", "urgent" => "เร่งด่วน", "watch" => "เฝ้าระวัง", "non_urgent" => "ไม่เร่งด่วน", "waiting" => "ไม่เร่งด่วน", "general" => "ทั่วไป" }
-    severity_class = { "critical" => "emergency", "very_urgent" => "emergency", "urgent" => "priority", "watch" => "watch", "non_urgent" => "normal", "waiting" => "normal", "general" => "normal" }
+    severity_class = {
+      "critical" => "critical",
+      "very_urgent" => "very-urgent",
+      "urgent" => "urgent",
+      "watch" => "urgent",
+      "non_urgent" => "non-urgent",
+      "waiting" => "non-urgent",
+      "general" => "general"
+    }
 
     incidents.select { |incident| status_rank.key?(incident.status) }
       .sort_by { |incident| [status_rank.fetch(incident.status), severity_rank.fetch(incident.severity, 9), -(incident.created_at&.to_i || 0)] }
@@ -134,7 +142,7 @@ class DashboardController < ApplicationController
           detail: incident.description.presence || "ไม่มีรายละเอียดเพิ่มเติม",
           next: status_group == "pending" ? ["ตรวจสอบรายละเอียดและยืนยันรับเรื่อง", "มอบหมายทีมรับผิดชอบ"] : ["ติดตามความคืบหน้าจากทีมรับผิดชอบ", "บันทึกผลการดำเนินงาน"],
           status: status_group, status_label: status_labels.fetch(status_group),
-          level: severity_class.fetch(incident.severity, "normal"), severity_label: severity_label.fetch(incident.severity, "ทั่วไป")
+          level: severity_class.fetch(incident.severity, "general"), severity_label: severity_label.fetch(incident.severity, "ทั่วไป")
         }
       end
   end

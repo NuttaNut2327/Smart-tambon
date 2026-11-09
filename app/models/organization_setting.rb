@@ -5,11 +5,7 @@ class OrganizationSetting
   include Mongoid::Timestamps
 
   DEFAULT_REPORT_SOURCES = [
-    { "type" => "citizen", "name" => "ประชาชน" },
-    { "type" => "organization", "name" => "หน่วยงาน 1" },
-    { "type" => "organization", "name" => "หน่วยงาน 2" },
-    { "type" => "organization", "name" => "โรงพยาบาลส่งเสริมสุขภาพตำบล" },
-    { "type" => "organization", "name" => "สถานีตำรวจภูธร" }
+    { "type" => "citizen", "name" => "ประชาชน" }
   ].freeze
 
   field :organization_key, type: String

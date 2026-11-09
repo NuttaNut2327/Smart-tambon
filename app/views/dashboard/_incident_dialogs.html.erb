@@ -23,7 +23,7 @@
       <label class="wide incident-photo-field">รูปภาพประกอบเหตุการณ์<%= form.file_field :photos, multiple: true, accept: ImageLibrary::ACCEPT %><small>เลือกได้สูงสุด 8 รูป · JPG, PNG, WebP หรือ HEIC · ไม่เกิน 15 MB ต่อรูป · เก็บในคลังข้อมูลภาพอัตโนมัติ</small></label>
       <div class="wide"><%= render "library_images/picker", field: "incident[library_image_ids][]", max: IncidentPhotoUploadService::MAX_FILES %></div>
     </div>
-    <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "บันทึกเหตุการณ์", class: "incident-primary-action" %></footer>
+    <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "บันทึกเหตุการณ์", class: "incident-primary-action incident-confirm-action" %></footer>
   <% end %>
 </dialog>
 
@@ -89,7 +89,7 @@
           <label class="wide">ทีมผู้รับผิดชอบ<%= form.select :assigned_team_code, options_for_select(@incident_team_options), { include_blank: "เลือกทีมผู้รับผิดชอบ" }, required: true %></label>
           <% if @incident_team_options.empty? %><p class="wide incident-form-warning">ยังไม่มีข้อมูลบุคลากร กรุณานำเข้าบุคลากรปฏิบัติงานก่อนรับเรื่อง</p><% end %>
         </div>
-        <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "ยืนยันรับเรื่อง", class: "incident-primary-action", disabled: @incident_team_options.empty? %></footer>
+        <footer><button type="button" class="incident-secondary-action" data-close-incident-dialog>ยกเลิก</button><%= form.submit "ยืนยันรับเรื่อง", class: "incident-primary-action incident-confirm-action", disabled: @incident_team_options.empty? %></footer>
       <% end %>
     </dialog>
   <% end %>

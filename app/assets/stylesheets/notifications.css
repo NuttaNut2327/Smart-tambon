@@ -7,6 +7,13 @@
 .notify-error{color:#b42318}
 .notify-pre{margin:0;padding:10px 12px;border-radius:8px;background:#f6f8f5;font:inherit;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
 .notify-preview-box{min-height:80px;background:#eef6ee;border:1px solid #d7e8da}
+.notify-test-history{margin-top:16px}
+.notify-history-filter{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px}
+.notify-history-filter label{display:grid;gap:5px;min-width:170px;font-size:13px;color:#4b5a50}
+.notify-history-filter>span{padding-bottom:10px;color:#7a847d}
+.notify-history-filter input,.notify-history-filter select,.notify-history-filter .button-link{height:40px;min-height:40px;box-sizing:border-box}
+.notify-history-filter .button-link{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.notify-history-filter .material-symbols-outlined{font-size:18px}
 
 .notify-webhook-box{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 14px;border:1px dashed #c9d8cf;border-radius:10px;font-size:13px}
 .notify-webhook-box b{flex-basis:100%}
@@ -83,4 +90,5 @@
 
 @media (max-width: 900px){
   .notify-editor,.notify-modes{grid-template-columns:1fr}
+  .notify-history-filter label{flex:1 1 180px}
 }

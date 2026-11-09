@@ -245,7 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
     longitudeInput.value = lon.toFixed(6);
     markerSource.clear();
     const marker = new ol.Feature(new ol.geom.Point(coordinate));
-    marker.setStyle(new ol.style.Style({ image: new ol.style.Circle({ radius: 8, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#ffffff", width: 3 }) }) }));
+    marker.setStyle(window.SmartTambonLocation.selectedPinStyle());
     markerSource.addFeature(marker);
     coordinateLabel.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
     coordinateLabel.classList.remove("error");

@@ -478,9 +478,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const setMarker = (longitude, latitude) => {
         markerSource.clear();
         const marker = new ol.Feature(new ol.geom.Point(ol.proj.fromLonLat([longitude, latitude])));
-        marker.setStyle(new ol.style.Style({
-          image: new ol.style.Circle({ radius: 8, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#ffffff", width: 3 }) })
-        }));
+        marker.setStyle(window.SmartTambonLocation.selectedPinStyle());
         markerSource.addFeature(marker);
         latitudeInput.value = latitude.toFixed(6);
         longitudeInput.value = longitude.toFixed(6);
@@ -707,15 +705,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const point = ol.proj.fromLonLat([longitude, latitude]);
   const marker = new ol.Feature(new ol.geom.Point(point));
-  marker.setStyle(new ol.style.Style({
-    image: new ol.style.Circle({ radius: 7, fill: new ol.style.Fill({ color: "#567f6d" }), stroke: new ol.style.Stroke({ color: "#ffffff", width: 3 }) })
-  }));
+  marker.setStyle(window.SmartTambonLocation.selectedPinStyle());
 
   new ol.Map({
     target: element,
     layers: [
       new ol.layer.Tile({ source: new ol.source.OSM() }),
-      new ol.layer.Vector({ source: new ol.source.Vector({ features: [marker] }) })
+      new ol.layer.Vector({ source: new ol.source.Vector({ features: [marker] }), zIndex: 10 })
     ],
     view: new ol.View({ center: point, zoom: 15 }),
     controls: []

@@ -26,7 +26,7 @@
     <section class="settings-card" id="settings-integrations">
       <header><span class="material-symbols-outlined">key</span><div><h2>คีย์และบริการภายนอก</h2><p>ค่าที่บันทึกที่นี่ถูกเข้ารหัส และใช้แทนค่าในไฟล์ .env — เว้นว่างเพื่อคงค่าเดิม</p></div></header>
       <div class="settings-grid">
-        <% { "longdo_map_key" => ["Longdo Map API key", "ใช้ค้นหาสถานที่สำคัญและที่อยู่จากพิกัด — สมัครที่ map.longdo.com/console"], "maptiler_key" => ["MapTiler key", "ใช้แผนที่ภาพดาวเทียม (ถ้าไม่ระบุจะใช้ OpenStreetMap)"], "gistda_api_key" => ["GISTDA Disaster API key", "ชั้นข้อมูลน้ำท่วม จุดความร้อน และภัยแล้งจาก GISTDA — สมัครที่ disaster.gistda.or.th/services/open-api (อบต. ที่ตั้งคีย์ของตนเองจะใช้คีย์นั้นแทน)"] }.each do |name, (label, help)| %>
+        <% { "longdo_map_key" => ["Longdo Map API key", "ใช้ค้นหาสถานที่สำคัญและที่อยู่จากพิกัด — สมัครที่ map.longdo.com/console"], "maptiler_key" => ["MapTiler key", "ใช้แผนที่ภาพดาวเทียม (หากไม่ระบุหรือคีย์ใช้งานไม่ได้ ระบบจะใช้ Esri World Imagery)"], "gistda_api_key" => ["GISTDA Disaster API key", "ชั้นข้อมูลน้ำท่วม จุดความร้อน และภัยแล้งจาก GISTDA — สมัครที่ disaster.gistda.or.th/services/open-api (อบต. ที่ตั้งคีย์ของตนเองจะใช้คีย์นั้นแทน)"] }.each do |name, (label, help)| %>
           <% source = @setting.secret_source(name) %>
           <label><%= label %>
             <%= password_field_tag "system_setting[#{name}]", nil, autocomplete: "new-password", placeholder: @setting.masked_secret(name) || "ยังไม่ได้กำหนด" %>

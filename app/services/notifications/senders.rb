@@ -14,6 +14,7 @@ module Notifications
 
     class Base
       TIMEOUT = 15
+      NETWORK_ATTEMPTS = 3
 
       def initialize(channel, setting)
         @channel = channel
@@ -23,6 +24,9 @@ module Notifications
       private
 
       def post_json(url, body, headers = {})
+        attempts = 0
+        begin
+          attempts += 1
         uri = URI.parse(url)
         request = Net::HTTP::Post.new(uri)
         request["Content-Type"] = "application/json"
@@ -30,18 +34,35 @@ module Notifications
         request.body = body.is_a?(String) ? body : body.to_json
         response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: 8, read_timeout: TIMEOUT) { |http| http.request(request) }
         [response, (JSON.parse(response.body) if response.body.present? rescue nil)]
-      rescue SocketError, SystemCallError, Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError, URI::InvalidURIError => error
-        raise DeliveryError, "เชื่อมต่อไม่ได้: #{error.message.truncate(120)}"
+        rescue SocketError, SystemCallError, Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError => error
+          if attempts < NETWORK_ATTEMPTS
+            sleep(0.4 * attempts)
+            retry
+          end
+          raise DeliveryError, "เชื่อมต่อไม่ได้หลังลอง #{attempts} ครั้ง: #{error.message.truncate(120)}"
+        rescue URI::InvalidURIError => error
+          raise DeliveryError, "URL ไม่ถูกต้อง: #{error.message.truncate(120)}"
+        end
       end
 
       def get_json(url, headers = {})
+        attempts = 0
+        begin
+          attempts += 1
         uri = URI.parse(url)
         request = Net::HTTP::Get.new(uri)
         headers.each { |key, value| request[key] = value }
         response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: 8, read_timeout: TIMEOUT) { |http| http.request(request) }
         [response, (JSON.parse(response.body) if response.body.present? rescue nil)]
-      rescue SocketError, SystemCallError, Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError, URI::InvalidURIError => error
-        raise DeliveryError, "เชื่อมต่อไม่ได้: #{error.message.truncate(120)}"
+        rescue SocketError, SystemCallError, Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError => error
+          if attempts < NETWORK_ATTEMPTS
+            sleep(0.4 * attempts)
+            retry
+          end
+          raise DeliveryError, "เชื่อมต่อไม่ได้หลังลอง #{attempts} ครั้ง: #{error.message.truncate(120)}"
+        rescue URI::InvalidURIError => error
+          raise DeliveryError, "URL ไม่ถูกต้อง: #{error.message.truncate(120)}"
+        end
       end
     end
 

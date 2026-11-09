@@ -24,6 +24,7 @@
 
   const initTestForm = (form) => {
     const tag = form.querySelector("select[name=tag]");
+    const previewButton = form.querySelector("[data-notify-preview]");
     const sync = () => {
       const mode = form.querySelector("[data-notify-mode]:checked")?.value;
       form.querySelectorAll("[data-notify-show]").forEach((node) => {
@@ -40,7 +41,10 @@
       if (none) none.hidden = any;
     };
     form.querySelectorAll("[data-notify-mode]").forEach((radio) => radio.addEventListener("change", sync));
-    tag?.addEventListener("change", sync);
+    tag?.addEventListener("change", () => {
+      sync();
+      form.requestSubmit(previewButton);
+    });
     form.querySelector("[data-notify-send]")?.addEventListener("click", (event) => {
       if (!confirm("ส่งข้อความทดสอบเข้ากลุ่มจริงใช่ไหม?")) event.preventDefault();
     });

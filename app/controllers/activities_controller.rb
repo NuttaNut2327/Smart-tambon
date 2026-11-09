@@ -1,7 +1,7 @@
 # Planned activities in the area (annual fairs, ceremonies, markets), stored as Incident category "activity".
 class ActivitiesController < ApplicationController
   before_action :finish_expired_activities
-  before_action :set_activity, only: %i[edit update destroy acknowledge]
+  before_action :set_activity, only: %i[show edit update destroy acknowledge]
   before_action :require_activity_manager!, only: %i[edit update destroy]
 
   FILTERS = { "current" => "กำลังจัด/กำลังจะเริ่ม", "finished" => "สิ้นสุดแล้ว", "all" => "ทั้งหมด" }.freeze
@@ -17,6 +17,13 @@ class ActivitiesController < ApplicationController
 
   def new
     @activity = Incident.new(category: "activity", incident_type: "festival", starts_at: Time.current.beginning_of_hour + 1.day, ends_at: Time.current.beginning_of_hour + 1.day + 8.hours)
+  end
+
+  # Preserve links already sent in notifications or left open in a browser, while
+  # keeping activity details in the index modal instead of a separate page.
+  def show
+    filter = @activity.status == "completed" ? "finished" : "current"
+    redirect_to activities_path(filter:, activity_id: @activity.id, anchor: "activity-#{@activity.id}")
   end
 
   def create
