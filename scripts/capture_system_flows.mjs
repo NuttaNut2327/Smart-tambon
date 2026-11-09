@@ -275,6 +275,17 @@ try {
     throw new Error(`Unable to sign in as ${username}`);
   }
 
+  if (process.env.VERIFY_AREA_DIALOG === "1") {
+    await navigate("/cctv_cameras/new");
+    const opened = await evaluate(`(() => {
+      document.querySelector("[data-area-name-edit]")?.click();
+      const dialog = document.querySelector("[data-area-name-dialog]");
+      return { button: Boolean(document.querySelector("[data-area-name-edit]")), dialog: Boolean(dialog), open: Boolean(dialog?.open), input: Boolean(dialog?.querySelector('input[name="access_area[name]"]')) };
+    })()`);
+    console.log(JSON.stringify(opened));
+    if (!opened.button || !opened.dialog || !opened.open || !opened.input) throw new Error("Area name dialog verification failed");
+    await capture("area_name_dialog_verification.png");
+  } else {
   if (process.env.COMPLETE_ONLY !== "1") {
   await capturePage("/", "01_overview_01_city_overview.png");
 
@@ -323,6 +334,7 @@ try {
   await capturePage("/notification_tests", "14_settings_06_notification_test.png");
   }
   await captureAllReachableFlows();
+  }
 } finally {
   socket.close();
   chrome.kill();
