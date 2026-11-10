@@ -8,10 +8,19 @@
   const initTemplateEditor = (root) => {
     const body = root.querySelector("[data-notify-body]");
     const preview = root.querySelector("[data-notify-preview]");
+    const form = root.closest("form");
+    const tag = form?.querySelector("[data-notify-tag]");
+    const chips = form?.querySelectorAll("[data-variable]") || [];
     const sample = JSON.parse(root.dataset.sample || "{}");
     const update = () => { preview.textContent = render(body.value, sample) || "(ข้อความว่าง)"; };
+    const syncVariables = () => {
+      const citizen = tag?.value.startsWith("citizen.");
+      chips.forEach((chip) => {
+        chip.hidden = citizen ? chip.dataset.citizenVariable !== "true" : chip.dataset.staffVariable !== "true";
+      });
+    };
     body.addEventListener("input", update);
-    document.querySelectorAll("[data-variable]").forEach((chip) => chip.addEventListener("click", () => {
+    chips.forEach((chip) => chip.addEventListener("click", () => {
       const token = `{{${chip.dataset.variable}}}`;
       const start = body.selectionStart ?? body.value.length;
       const end = body.selectionEnd ?? start;
@@ -19,6 +28,8 @@
       body.focus();
       update();
     }));
+    tag?.addEventListener("change", syncVariables);
+    syncVariables();
     update();
   };
 
@@ -27,10 +38,13 @@
     const previewButton = form.querySelector("[data-notify-preview]");
     const sync = () => {
       const mode = form.querySelector("[data-notify-mode]:checked")?.value;
+      const citizen = tag?.value.startsWith("citizen.");
       form.querySelectorAll("[data-notify-show]").forEach((node) => {
         const tokens = node.dataset.notifyShow.split(" ");
         node.hidden = !(tokens.includes(mode) || (tokens.includes("announcement") && tag?.value === "announcement"));
       });
+      form.querySelectorAll("[data-notify-staff-only]").forEach((node) => { node.hidden = citizen || node.hidden; });
+      form.querySelectorAll("[data-notify-citizen-only]").forEach((node) => { node.hidden = !citizen; });
       let any = false;
       form.querySelectorAll("[data-channel-tags]").forEach((chip) => {
         const match = chip.dataset.channelTags.split(" ").includes(tag?.value);

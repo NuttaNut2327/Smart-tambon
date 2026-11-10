@@ -320,6 +320,9 @@ class IncidentsController < ApplicationController
     end
     incident.resources_used = accumulated_resources
     incident.save!
+    if previous_status != "completed" && incident.status == "completed" && incident.line_notification_enabled?
+      CitizenLineNotificationJob.perform_later(incident.id.to_s, "completed")
+    end
     redirect_to incident_page_path(incident, incident_id: incident.id), notice: "อัปเดตการทำงานเรียบร้อยแล้ว"
   rescue ArgumentError, Mongoid::Errors::Validations => error
     redirect_to incident_page_path(incident, incident_id: incident.id), alert: error.message
@@ -437,6 +440,7 @@ class IncidentsController < ApplicationController
     incident.received_by_user_id = current_user.id
     incident.received_at = Time.current
     incident.save!
+    CitizenLineNotificationJob.perform_later(incident.id.to_s, "acknowledged") if incident.line_notification_enabled?
 
     redirect_to incident_page_path(incident, incident_id: incident.id), notice: "รับเรื่องเรียบร้อยแล้ว"
   rescue Mongoid::Errors::DocumentNotFound

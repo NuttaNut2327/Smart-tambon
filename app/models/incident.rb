@@ -25,6 +25,11 @@ class Incident
   field :subdistrict_id, type: Integer
   field :report_source_type, type: String, default: "staff"
   field :report_source_name, type: String, default: "เจ้าหน้าที่"
+  field :submission_channel, type: String
+  field :reporter_line_user_id, type: String
+  field :reporter_line_display_name, type: String
+  field :reporter_line_verified_at, type: Time
+  field :line_notification_enabled, type: Boolean, default: false
   field :reference_code, type: String
   field :category, type: String, default: "general"
   field :incident_type, type: String

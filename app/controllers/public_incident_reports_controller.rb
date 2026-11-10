@@ -2,12 +2,48 @@ class PublicIncidentReportsController < ApplicationController
   skip_before_action :authenticate_user!
   skip_before_action :require_access_configuration!
 
-  before_action :load_report_scope
-  before_action :load_subdistrict_options, only: %i[show create]
+  before_action :load_report_scope, except: :liff_bootstrap
+  before_action :load_line_configuration, except: :liff_bootstrap
+  before_action :load_subdistrict_options, only: %i[show create liff_show liff_create]
 
   def show
+    @liff_mode = false
     @incident = Incident.new
     @incident.severity = nil
+  end
+
+  def liff_show
+    @liff_mode = true
+    @incident = Incident.new
+    @incident.severity = nil
+    render :show
+  end
+
+  # Primary LIFF endpoint. LINE first opens this URL with liff.state=/report/:token; liff.init then performs
+  # the secondary redirect to /liff/report/:token, where the actual form verifies the user's ID token.
+  def liff_bootstrap
+    state_path = params["liff.state"].to_s
+    token = state_path[%r{\A/report/(.+)\z}, 1]
+    return head :not_found if token.blank?
+
+    payload = Rails.application.message_verifier(:public_incident_form).verify(token)
+    owner = case payload["scope"] || payload[:scope]
+            when "access_area" then UserAccessArea.find_by(id: payload["id"] || payload[:id])&.user
+            when "account" then User.find_by(id: payload["id"] || payload[:id])
+            end
+    setting = OrganizationSetting.for(owner)
+    return head :not_found unless setting&.citizen_liff_ready?
+
+    @liff_id = setting.citizen_line_liff_id
+    @liff_report_path = liff_public_incident_report_path(token: token)
+    render layout: false
+  rescue ActiveSupport::MessageVerifier::InvalidSignature
+    head :not_found
+  end
+
+  def liff_create
+    @liff_mode = true
+    create
   end
 
   def reverse_geocode
@@ -38,8 +74,10 @@ class PublicIncidentReportsController < ApplicationController
     @incident.user_id = @incident.owner_user_id
     @incident.report_source_type = @report_source_type
     @incident.report_source_name = @report_source_name
+    @incident.submission_channel = @liff_mode ? "line_liff" : "public_web"
     @incident.subdistrict_id = @report_subdistrict&.id
     @incident.location_name = "ตำแหน่งที่ผู้แจ้งเหตุปักหมุด" if @incident.location_name.blank?
+    attach_line_identity if @liff_mode
     @incident.errors.add(:description, "กรุณาระบุรายละเอียดเหตุการณ์") if @incident.description.blank?
     @incident.errors.add(:incident_type, "กรุณาเลือกประเภทเหตุการณ์") if @incident.incident_type.blank?
     @incident.errors.add(:severity, "กรุณาเลือกระดับความเร่งด่วน") if @incident.severity.blank?
@@ -73,6 +111,7 @@ class PublicIncidentReportsController < ApplicationController
       load_subdistrict_options
       return render :show, status: :service_unavailable
     end
+    CitizenLineNotificationJob.perform_later(@incident.id.to_s, "submitted") if @incident.line_notification_enabled?
     render :success
   rescue Mongoid::Errors::Validations
     load_subdistrict_options
@@ -132,6 +171,21 @@ class PublicIncidentReportsController < ApplicationController
     )
   end
 
+  def attach_line_identity
+    setting = @organization_setting
+    unless setting.citizen_liff_ready?
+      @incident.errors.add(:base, "ระบบ LINE สำหรับประชาชนยังตั้งค่าไม่ครบ")
+      return
+    end
+    identity = CitizenLine::IdTokenVerifier.call(id_token: params[:line_id_token], channel_id: setting.citizen_line_login_channel_id)
+    @incident.reporter_line_user_id = identity["sub"]
+    @incident.reporter_line_display_name = identity["name"]
+    @incident.reporter_line_verified_at = Time.current
+    @incident.line_notification_enabled = true
+  rescue CitizenLine::IdTokenVerifier::VerificationError => error
+    @incident.errors.add(:base, error.message)
+  end
+
   def cached_important_places
     places = Api::PlacesController::CATEGORIES.keys.flat_map do |category|
       cache = if @report_access_area
@@ -149,6 +203,10 @@ class PublicIncidentReportsController < ApplicationController
       .first(350)
   rescue Mongo::Error
     []
+  end
+
+  def load_line_configuration
+    @line_setting = @organization_setting || OrganizationSetting.new
   end
 
 end

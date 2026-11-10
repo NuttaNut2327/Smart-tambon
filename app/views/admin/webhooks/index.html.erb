@@ -7,6 +7,7 @@
         <option value="<%= type %>" <%= "selected" if @event_type == type %>><%= type %></option>
       <% end %>
     </select>
+    <select name="account_key" aria-label="บัญชี LINE"><option value="">ทุก OA</option><option value="staff" <%= "selected" if @account_key == "staff" %>>เจ้าหน้าที่</option><option value="citizen" <%= "selected" if @account_key == "citizen" %>>ประชาชน</option></select>
     <button type="submit" class="button-link"><span class="material-symbols-outlined">search</span>ค้นหา</button>
   <% end %>
 
@@ -20,14 +21,16 @@
           <details class="webhook-log-entry">
             <summary>
               <span class="webhook-status <%= log.status %>"><%= log.status %></span>
-              <strong><%= log.event_types.join(", ").presence || "ไม่มี event" %></strong>
-              <code><%= log.group_ids.join(", ").presence || log.destination.presence || "—" %></code>
+              <strong class="webhook-account"><%= log.account_key == "citizen" ? "OA ประชาชน" : "OA เจ้าหน้าที่" %></strong>
+              <strong class="webhook-event"><%= log.event_types.join(", ").presence || "ไม่มี event" %></strong>
+              <code class="webhook-target"><%= log.group_ids.join(", ").presence || log.destination.presence || "—" %></code>
               <time><%= thai_short_datetime(log.received_at) %></time>
               <span class="material-symbols-outlined">expand_more</span>
             </summary>
             <div class="webhook-log-detail">
               <dl>
                 <div><dt>Request ID</dt><dd><code><%= log.request_id.presence || "—" %></code></dd></div>
+                <% if log.organization_key.present? %><div><dt>หน่วยงาน</dt><dd><code><%= log.organization_key %></code></dd></div><% end %>
                 <div><dt>ขนาดข้อมูล</dt><dd><%= number_to_human_size(log.body_size) %></dd></div>
                 <div><dt>Signature</dt><dd><%= log.signature_valid? ? "ถูกต้อง" : "ไม่ถูกต้อง/ไม่ได้ตรวจ" %></dd></div>
                 <% if log.error_message.present? %><div><dt>ข้อผิดพลาด</dt><dd><%= log.error_message %></dd></div><% end %>

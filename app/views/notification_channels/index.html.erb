@@ -1,5 +1,5 @@
 <%= stylesheet_link_tag "notifications", "data-turbo-track": "reload" %>
-<%= render layout: "settings/frame", locals: { title: "ช่องทางแจ้งเตือน", kicker: "ตั้งค่าระบบ", description: "กลุ่ม LINE OA ที่จะได้รับแจ้งเตือนเมื่อมีเหตุใหม่เข้ามา", active: :notification_channels } do %>
+<%= render layout: "settings/frame", locals: { title: "ช่องทางการแจ้งเตือนเจ้าหน้าที่", kicker: "ตั้งค่าระบบ", description: "กำหนดกลุ่มเจ้าหน้าที่ที่ระบบจะส่งข้อความแจ้งเตือนเมื่อมีเหตุหรือรายการใหม่เข้ามา ไม่ใช่ช่องทางที่ประชาชนใช้แจ้งเหตุ", active: :notification_channels } do %>
   <section class="settings-card">
     <header><span class="material-symbols-outlined">group</span><div><h2>ช่องทางของ อบต.</h2><p>เพิ่มได้หลายกลุ่ม แต่ละช่องทางเลือกได้ว่าจะรับแจ้งเตือนประเภทใด · ข้อความใช้ <%= link_to "เทมเพลตข้อความ", notification_templates_path %> ตามแท็ก</p></div></header>
     <div class="settings-actions notify-add">

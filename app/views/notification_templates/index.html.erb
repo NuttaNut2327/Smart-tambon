@@ -1,13 +1,14 @@
 <%= stylesheet_link_tag "notifications", "data-turbo-track": "reload" %>
-<%= render layout: "settings/frame", locals: { title: "เทมเพลตข้อความ", kicker: "ตั้งค่าระบบ", description: "ข้อความที่ส่งเข้ากลุ่มเมื่อเกิดเหตุตามแท็ก — แต่ละแท็กใช้เทมเพลตที่แก้ไขล่าสุด ถ้ายังไม่มีจะใช้ข้อความมาตรฐานของระบบ", active: :notification_templates } do %>
-  <section class="settings-card">
-    <header><span class="material-symbols-outlined">edit_note</span><div><h2>เทมเพลตของ อบต.</h2><p>ใส่ตัวแปรเช่น <code>{{reference_code}}</code> <code>{{title}}</code> <code>{{link}}</code> ระบบจะแทนค่าด้วยข้อมูลจริงตอนส่ง</p></div></header>
-    <div class="settings-actions notify-add">
-      <%= link_to new_notification_template_path, class: "button-link primary" do %><span class="material-symbols-outlined">add</span>สร้างเทมเพลต<% end %>
-      <%= link_to notification_tests_path, class: "button-link" do %><span class="material-symbols-outlined">send</span>ทดสอบส่ง<% end %>
-    </div>
-    <div class="notify-tag-grid">
-      <% NotificationChannel::TAGS.each do |tag, label| %>
+<%= render layout: "settings/frame", locals: { title: "เทมเพลตข้อความ", kicker: "ตั้งค่าระบบ", description: "จัดการข้อความอัปเดตสถานะสำหรับประชาชน และข้อความแจ้งเตือนที่ส่งเข้ากลุ่มเจ้าหน้าที่", active: :notification_templates } do %>
+  <div class="settings-actions notify-add">
+    <%= link_to new_notification_template_path, class: "button-link primary" do %><span class="material-symbols-outlined">add</span>สร้างเทมเพลต<% end %>
+    <%= link_to notification_tests_path, class: "button-link" do %><span class="material-symbols-outlined">send</span>ทดสอบการส่ง<% end %>
+  </div>
+  <% NotificationTemplate::TAG_GROUPS.each do |group, tags| %>
+    <section class="settings-card">
+      <header><span class="material-symbols-outlined"><%= group.include?("ประชาชน") ? "chat" : "groups" %></span><div><h2><%= group %></h2><p><%= group.include?("ประชาชน") ? "ส่งเป็นข้อความส่วนตัวผ่าน LINE OA ประจำตำบลให้ผู้แจ้งเหตุ" : "ส่งผ่านช่องทางการแจ้งเตือนที่กำหนดไว้สำหรับกลุ่มเจ้าหน้าที่" %></p></div></header>
+      <div class="notify-tag-grid">
+      <% tags.each do |tag, label| %>
         <% list = @templates.select { |template| template.tag == tag } %>
         <div class="notify-tag-card">
           <header><b><%= label %></b><code><%= tag %></code></header>
@@ -31,6 +32,7 @@
           <% end %>
         </div>
       <% end %>
-    </div>
-  </section>
+      </div>
+    </section>
+  <% end %>
 <% end %>

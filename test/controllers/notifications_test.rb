@@ -42,7 +42,8 @@ class NotificationsTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    [NotificationDelivery, NotificationChannel, NotificationTemplate, LineGroup, LineWebhookLog, NotificationSetting].each(&:delete_all)
+    [NotificationDelivery, CitizenLineDelivery, NotificationChannel, NotificationTemplate, LineGroup, LineWebhookLog, NotificationSetting].each(&:delete_all)
+    OrganizationSetting.where(:organization_key.in => [@admin&.organization_key, @other&.organization_key].compact).delete_all
     Incident.where(:owner_user_id.in => [@admin&.id, @other&.id].compact).delete_all
     [@admin, @staff, @other].compact.each(&:destroy)
     @province&.subdistricts&.destroy_all
@@ -99,6 +100,52 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     template = NotificationTemplate.new(organization_key: @admin.organization_key, name: "ผิด", tag: "incident.created", body: "{{title}} {{reporter_contact}}")
     assert_not template.valid?
     assert_includes template.errors[:body].join, "{{reporter_contact}}"
+  end
+
+  test "admin edits citizen status templates from the message templates page" do
+    get notification_templates_path
+    assert_response :success
+    assert_select ".settings-card h2", text: "ข้อความอัปเดตสถานะสำหรับประชาชน", count: 1
+    assert_select ".notify-tag-card", minimum: NotificationTemplate::TAGS.size
+
+    post notification_templates_path, params: { notification_template: {
+      name: "แจ้งประชาชนเมื่อรับเรื่อง",
+      tag: "citizen.acknowledged",
+      body: "{{organization_name}} กำลังดูแล {{title}} ({{reference_code}})"
+    } }
+
+    assert_redirected_to notification_templates_path
+    template = NotificationTemplate.for_organization(@admin.organization_key).where(tag: "citizen.acknowledged").first
+    assert_equal "แจ้งประชาชนเมื่อรับเรื่อง", template.name
+    assert_equal "{{organization_name}} กำลังดูแล {{title}} ({{reference_code}})", template.body
+
+    get edit_notification_template_path(template)
+    assert_response :success
+    assert_select "select[name='notification_template[tag]'] option[value='citizen.acknowledged'][selected]", count: 1
+  end
+
+  test "shared test page can send a citizen status template to a linked reporter" do
+    incident = create_incident(title: "ไฟถนนดับ")
+    incident.set(line_notification_enabled: true, reporter_line_user_id: "U#{'c' * 32}", reporter_line_display_name: "ผู้แจ้งทดสอบ")
+    setting = OrganizationSetting.for(@admin)
+    setting.update!(citizen_line_enabled: true)
+    setting.assign_citizen_line_channel_access_token("token")
+    setting.save!
+    calls = []
+    client = Object.new
+    client.define_singleton_method(:push) { |user_id, text| calls << [user_id, text]; true }
+
+    CitizenLine::Client.stub(:new, client) do
+      post notification_tests_path, params: {
+        mode: "simulate", tag: "citizen.submitted", data: "sample",
+        citizen_incident_id: incident.id.to_s, commit_action: "send"
+      }
+    end
+
+    assert_redirected_to notification_tests_path
+    assert_equal 1, calls.size
+    assert_equal incident.reporter_line_user_id, calls.first.first
+    assert_includes calls.first.last, incident.reference_code
   end
 
   test "channel validation follows the kind" do
@@ -228,6 +275,28 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "LINE Webhook Log"
   ensure
     admin&.destroy
+  end
+
+  test "citizen LINE webhook uses its own secret and audit account" do
+    setting = OrganizationSetting.for(@admin)
+    setting.assign_citizen_line_channel_secret("citizen-secret")
+    setting.save!
+    body = { events: [{ type: "follow", source: { type: "user", userId: "U#{'c' * 32}" } }] }.to_json
+    signature = Base64.strict_encode64(OpenSSL::HMAC.digest("SHA256", "citizen-secret", body))
+
+    post citizen_line_webhook_path(organization_key: @admin.organization_key), params: body,
+      headers: { "Content-Type" => "application/json", "X-Line-Signature" => signature }
+
+    assert_response :success
+    log = LineWebhookLog.where(account_key: "citizen", organization_key: @admin.organization_key, status: "accepted").first
+    assert_equal ["follow"], log.event_types
+
+    other_setting = OrganizationSetting.for(@other)
+    other_setting.assign_citizen_line_channel_secret("other-secret")
+    other_setting.save!
+    post citizen_line_webhook_path(organization_key: @other.organization_key), params: body,
+      headers: { "Content-Type" => "application/json", "X-Line-Signature" => signature }
+    assert_response :unauthorized
   end
 
   test "central settings are system-admin only and never render saved tokens" do

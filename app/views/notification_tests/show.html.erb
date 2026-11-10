@@ -12,17 +12,19 @@
         <% end %>
       </div>
       <div class="settings-grid">
-        <label data-notify-show="simulate template">แท็ก (เหตุการณ์)<%= select_tag :tag, options_for_select(NotificationChannel::TAGS.map { |tag, label| ["#{label} (#{tag})", tag] }, @form["tag"]) %></label>
-        <label data-notify-show="simulate template">ข้อมูลที่ใช้แทนตัวแปร<%= select_tag :data, options_for_select(NotificationTestsController::DATA_SOURCES.invert, @form["data"]) %></label>
+        <% grouped_test_tags = NotificationTemplate::TAG_GROUPS.transform_values { |tags| tags.map { |tag, label| ["#{label} (#{tag})", tag] } } %>
+        <label data-notify-show="simulate template">ประเภทข้อความ<%= select_tag :tag, grouped_options_for_select(grouped_test_tags, @form["tag"]) %></label>
+        <label data-notify-show="simulate template" data-notify-staff-only>ข้อมูลที่ใช้แทนตัวแปร<%= select_tag :data, options_for_select(NotificationTestsController::DATA_SOURCES.invert, @form["data"]) %></label>
+        <label class="span-2" data-notify-citizen-only hidden>ผู้รับข้อความทดสอบ<%= select_tag :citizen_incident_id, options_for_select(@citizen_recipients.map { |incident| ["#{incident.reference_code} — #{incident.reporter_line_display_name.presence || incident.title}", incident.id.to_s] }, @form["citizen_incident_id"]), include_blank: "เลือกเรื่องที่ผู้แจ้งเชื่อม LINE ไว้" %><small>ระบบจะส่งข้อความจริงไปยังบัญชี LINE ของผู้แจ้งเรื่องที่เลือก</small></label>
         <label class="span-2" data-notify-show="template">เทมเพลต<%= select_tag :template_id, options_for_select(@templates.map { |template| ["#{template.name} — #{template.tag_label}", template.id.to_s] }, @form["template_id"]), include_blank: "ใช้เทมเพลตที่ใช้งานอยู่ของแท็กนี้" %></label>
         <label class="span-2" data-notify-show="custom announcement">ข้อความ<%= text_area_tag :message, @form["message"], rows: 4, maxlength: 2000, placeholder: "พิมพ์ข้อความ (โหมดเทมเพลต/จำลองใช้เป็นค่า {{message}})" %></label>
-        <fieldset class="settings-layers span-2" data-notify-show="template custom"><legend>ส่งไปยังช่องทาง</legend>
+        <fieldset class="settings-layers span-2" data-notify-show="template custom" data-notify-staff-only><legend>ส่งไปยังช่องทาง</legend>
           <% if @channels.empty? %><p class="notify-muted">ยังไม่มีช่องทาง — <%= link_to "เพิ่มช่องทางแจ้งเตือน", notification_channels_path %></p><% end %>
           <% @channels.each do |channel| %>
             <label class="settings-check"><%= check_box_tag "channel_ids[]", channel.id.to_s, Array(@form["channel_ids"]).include?(channel.id.to_s), id: "test_channel_#{channel.id}" %> <%= channel.name %> <small>(<%= channel.kind_label %><%= ", ปิดใช้" unless channel.enabled? %>)</small></label>
           <% end %>
         </fieldset>
-        <div class="span-2 notify-targets" data-notify-show="simulate">
+        <div class="span-2 notify-targets" data-notify-show="simulate" data-notify-staff-only>
           <b>ช่องทางที่จะได้รับ (เปิดใช้และรับแท็กที่เลือก):</b>
           <% @channels.select(&:enabled?).each do |channel| %><span data-channel-tags="<%= channel.tags.join(' ') %>"><%= channel.name %></span><% end %>
           <em data-notify-no-target>ไม่มีช่องทางที่รับแท็กนี้</em>

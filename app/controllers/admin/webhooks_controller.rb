@@ -5,12 +5,14 @@ module Admin
     def index
       @query = params[:q].to_s.strip
       @event_type = params[:event_type].to_s.strip
+      @account_key = params[:account_key].to_s.presence_in(%w[staff citizen])
       @page = [params[:page].to_i, 1].max
       scope = LineWebhookLog.newest_first
+      scope = scope.where(account_key: @account_key) if @account_key
       scope = scope.where(event_types: @event_type) if @event_type.present?
       if @query.present?
         pattern = /#{Regexp.escape(@query)}/i
-        scope = scope.any_of({ group_ids: pattern }, { destination: pattern }, { request_id: pattern })
+        scope = scope.any_of({ group_ids: pattern }, { destination: pattern }, { request_id: pattern }, { organization_key: pattern })
       end
       @total = scope.count
       @logs = scope.skip((@page - 1) * PER_PAGE).limit(PER_PAGE).to_a

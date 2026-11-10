@@ -1,9 +1,12 @@
-<main class="public-report-page" data-public-report-page data-reverse-geocode-url="<%= reverse_geocode_public_incident_report_path(token: params[:token]) %>">
+<% liff_path = liff_public_incident_report_path(token: params[:token]) %>
+<% connect_url = @line_setting.citizen_liff_url(liff_path) %>
+<main class="public-report-page" data-public-report-page data-reverse-geocode-url="<%= reverse_geocode_public_incident_report_path(token: params[:token]) %>" data-liff-mode="<%= @liff_mode %>" data-liff-id="<%= @line_setting.citizen_line_liff_id if @liff_mode %>" data-connect-line-url="<%= connect_url unless @liff_mode %>" data-report-token="<%= params[:token] %>">
   <script type="application/json" data-public-boundary><%= raw json_escape(@report_boundary_feature.to_json) %></script>
   <script type="application/json" data-public-important-places><%= raw json_escape(@important_places.to_json) %></script>
   <%= render "public_incident_reports/header" %>
 
   <div class="public-report-container">
+    <% if @liff_mode %><section class="public-report-welcome" data-line-identity-status><span class="material-symbols-outlined">sync</span><p>กำลังเชื่อมต่อบัญชี LINE เพื่อรับการแจ้งสถานะ…</p></section><% elsif connect_url %><section class="public-report-welcome"><span class="material-symbols-outlined">notifications</span><p>ต้องการรับสถานะเรื่องที่แจ้งทาง LINE หรือไม่? <%= link_to "เชื่อมต่อ LINE", connect_url, class: "public-report-again" %></p></section><% end %>
     <section class="public-report-intro"><div><p>แจ้งเหตุในพื้นที่</p><h1>แบบฟอร์มแจ้งเหตุภายในพื้นที่ <%= @report_area_name %></h1><p>กรอกข้อมูลและปักตำแหน่งภายในขอบเขตพื้นที่ <%= @report_area_name %> เจ้าหน้าที่จะตรวจสอบและรับเรื่องโดยเร็วที่สุด</p></div></section>
 
     <% if @organization_setting&.public_report_welcome.present? %><section class="public-report-welcome"><span class="material-symbols-outlined">campaign</span><p><%= simple_format(@organization_setting.public_report_welcome, {}, wrapper_tag: "span") %></p></section><% end %>
@@ -22,8 +25,9 @@
     <% end %>
     <% if @incident.errors.any? %><div class="public-report-errors"><strong>กรุณาตรวจสอบข้อมูล</strong><ul><% @incident.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul></div><% end %>
 
-    <%= form_with model: @incident, url: public_incident_report_path(token: params[:token]), method: :post, local: true, html: { class: "public-report-form", multipart: true } do |form| %>
+    <%= form_with model: @incident, url: (@liff_mode ? liff_public_incident_report_path(token: params[:token]) : public_incident_report_path(token: params[:token])), method: :post, local: true, html: { class: "public-report-form", multipart: true } do |form| %>
       <input type="text" name="website" class="public-report-honeypot" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <% if @liff_mode %><%= hidden_field_tag :line_id_token, params[:line_id_token], data: { line_id_token: true } %><% end %>
       <section class="public-report-card">
         <div class="public-report-card-title"><span>1</span><div><h2>ข้อมูลเหตุการณ์</h2><p>ระบุข้อมูลที่ช่วยให้เจ้าหน้าที่เข้าใจสถานการณ์</p></div></div>
         <div class="public-report-grid">
@@ -71,3 +75,7 @@
     <img data-public-photo-lightbox-image alt="ภาพตัวอย่างขนาดใหญ่">
   </dialog>
 </main>
+<% if connect_url && !@liff_mode %>
+  <dialog class="public-photo-lightbox public-line-choice" data-line-choice-dialog><section><h2>รับการแจ้งสถานะผ่าน LINE</h2><p>เชื่อมต่อก่อนแจ้งเหตุ เพื่อรับข้อความเมื่อส่งเรื่อง เจ้าหน้าที่รับเรื่อง และดำเนินการเสร็จสิ้น</p><%= link_to "เชื่อมต่อ LINE", connect_url, class: "public-report-submit" %><button type="button" class="public-report-again" data-skip-line>ดำเนินการโดยไม่เชื่อม LINE</button></section></dialog>
+<% end %>
+<% if @liff_mode %><script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><% end %>

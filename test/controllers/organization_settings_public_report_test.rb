@@ -85,6 +85,73 @@ class OrganizationSettingsPublicReportTest < ActionDispatch::IntegrationTest
     assert_nil setting.logo
   end
 
+  test "admin can preview and download a PNG QR for each public report link" do
+    sign_in @admin
+    OrganizationSetting.for(@admin).update!(report_sources_text: "ประชาชน")
+
+    get public_report_qr_organization_settings_path(source_type: "citizen", source_name: "ประชาชน")
+    assert_response :success
+    assert_equal "image/png", response.media_type
+    assert response.body.start_with?("\x89PNG".b)
+
+    get public_report_qr_organization_settings_path(source_type: "citizen", source_name: "ประชาชน", download: "1")
+    assert_match(/attachment/, response.headers["Content-Disposition"])
+  end
+
+  test "citizen LINE credentials are encrypted and scoped to the organization" do
+    sign_in @admin
+    patch organization_settings_path, params: { organization_setting: {
+      citizen_line_enabled: "1", citizen_line_login_channel_id: "login-123", citizen_line_liff_id: "liff-123",
+      citizen_line_channel_access_token: "organization-access-token",
+      citizen_line_channel_secret: "organization-secret"
+    } }
+
+    assert_redirected_to organization_settings_path
+    setting = OrganizationSetting.for(@admin).reload
+    assert_equal "organization-access-token", setting.citizen_line_channel_access_token
+    assert_equal "organization-secret", setting.citizen_line_channel_secret
+    assert_not_includes setting.citizen_line_channel_access_token_ciphertext, "organization-access-token"
+
+    get public_reporting_organization_settings_path
+    assert_not_includes response.body, "organization-access-token"
+    assert_includes response.body, citizen_line_webhook_path(organization_key: @admin.organization_key)
+  end
+
+  test "public reporting settings are separated into their own tab" do
+    sign_in @admin
+
+    get organization_settings_path
+    assert_response :success
+    assert_select "#settings-organization", count: 1
+    assert_select "#settings-citizen-line", count: 0
+    assert_select "#settings-public-report", count: 0
+
+    get public_reporting_organization_settings_path
+    assert_response :success
+    assert_select "#settings-organization", count: 0
+    assert_select "#settings-citizen-line", count: 1
+    assert_select "#settings-public-report", count: 1
+    assert_select "textarea[name='organization_setting[citizen_line_submitted_template]']", count: 0
+    assert_select "textarea[name='organization_setting[citizen_line_acknowledged_template]']", count: 0
+    assert_select "textarea[name='organization_setting[citizen_line_completed_template]']", count: 0
+  end
+
+  test "LIFF bootstrap initializes the organization app and permanent URL uses a secondary path" do
+    setting = OrganizationSetting.for(@admin)
+    setting.update!(citizen_line_enabled: true, citizen_line_login_channel_id: "login-123", citizen_line_liff_id: "liff-123")
+    token = public_report_token(setting)
+
+    assert_equal "https://liff.line.me/liff-123/report/#{token}", setting.citizen_liff_url(liff_public_incident_report_path(token:))
+    payload = Rails.application.message_verifier(:public_incident_form).verify(token)
+    assert_equal @admin.access_area.id.to_s, (payload["id"] || payload[:id]).to_s
+    assert OrganizationSetting.for(@admin).citizen_liff_ready?
+    get "#{liff_bootstrap_path}?liff.state=#{CGI.escape("/report/#{token}")}"
+
+    assert_response :success
+    assert_includes response.body, 'liff.init({ liffId: "liff-123" })'
+  end
+
+
   private
 
   def public_report_token(setting)

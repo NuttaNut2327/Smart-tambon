@@ -1,5 +1,35 @@
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.querySelector("[data-public-report-page]");
+  if (!page) return;
+  const dialog = page.parentElement?.querySelector("[data-line-choice-dialog]") || document.querySelector("[data-line-choice-dialog]");
+  const storageKey = `skip-line:${page.dataset.reportToken}`;
+  if (dialog && sessionStorage.getItem(storageKey) !== "1") dialog.showModal();
+  document.querySelector("[data-skip-line]")?.addEventListener("click", () => {
+    sessionStorage.setItem(storageKey, "1");
+    dialog?.close();
+  });
+  if (page.dataset.liffMode !== "true") return;
+  const status = page.querySelector("[data-line-identity-status] p");
+  const tokenInput = page.querySelector("[data-line-id-token]");
+  const initialize = async () => {
+    try {
+      await liff.init({ liffId: page.dataset.liffId });
+      if (!liff.isLoggedIn()) return liff.login({ redirectUri: window.location.href });
+      tokenInput.value = liff.getIDToken() || "";
+      const profile = await liff.getProfile();
+      page.dataset.liffReady = tokenInput.value ? "true" : "false";
+      status.textContent = `เชื่อมต่อ LINE แล้ว: ${profile.displayName}`;
+      page.dispatchEvent(new CustomEvent("line-identity-ready"));
+    } catch (error) {
+      page.dataset.liffReady = "false";
+      status.textContent = "เชื่อมต่อ LINE ไม่สำเร็จ กรุณาปิดแล้วเปิดแบบฟอร์มจาก LINE อีกครั้ง";
+    }
+  };
+  initialize();
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const page = document.querySelector("[data-public-report-page]");
   const mapElement = page?.querySelector("[data-public-report-map]");
   if (!page || !mapElement || typeof ol === "undefined") return;
 
@@ -231,13 +261,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const hasSeverity = severitySelect?.value !== "";
     const requiredFields = [...form.querySelectorAll("input[required], select[required], textarea[required]")].filter((field) => field !== consent);
     const hasRequiredFields = requiredFields.every((field) => field.value.trim() !== "" && field.checkValidity());
-    const ready = hasLocation && hasConsent && hasIncidentType && hasSeverity && hasRequiredFields;
+    const hasLineIdentity = page.dataset.liffMode !== "true" || page.dataset.liffReady === "true";
+    const ready = hasLocation && hasConsent && hasIncidentType && hasSeverity && hasRequiredFields && hasLineIdentity;
     submit.disabled = !ready;
     submitHint.hidden = ready;
     if (!hasIncidentType || !hasSeverity || !hasRequiredFields) submitHint.textContent = "กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบถ้วน";
     else if (!hasLocation) submitHint.textContent = "กรุณาปักตำแหน่งที่เกิดเหตุก่อนส่งข้อมูล";
     else if (!hasConsent) submitHint.textContent = "กรุณากดยืนยันว่าข้อมูลที่แจ้งเป็นความจริงก่อนส่งข้อมูล";
   };
+  page.addEventListener("line-identity-ready", updateSubmitState);
   const setLocation = (lon, lat, center = false) => {
     const coordinate = ol.proj.fromLonLat([lon, lat]);
     if (!isInsideBoundary(coordinate)) { showOutsideWarning(); return false; }

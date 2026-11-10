@@ -1,3 +1,5 @@
+require "rqrcode"
+
 # Settings for one อบต., edited by its subdistrict admins and shared by every account in the organisation.
 class OrganizationSettingsController < ApplicationController
   skip_before_action :authenticate_user!, only: :logo
@@ -6,6 +8,10 @@ class OrganizationSettingsController < ApplicationController
   before_action :set_setting, except: :logo
 
   def show; end
+
+  def public_reporting
+    render :show
+  end
 
   def update
     return reset_organization_information if params[:reset_organization_information] == "1"
@@ -16,10 +22,15 @@ class OrganizationSettingsController < ApplicationController
     @setting.map_layers = params.dig(:organization_setting, :map_layers_mode) == "custom" ? Array(params.dig(:organization_setting, :map_layers)).compact_blank : nil
     @setting.map_zoom = nil if params.dig(:organization_setting, :map_zoom).blank?
     @setting.assign_gistda_api_key(params.dig(:organization_setting, :gistda_api_key), clear: params.dig(:organization_setting, :clear_gistda_api_key) == "1")
+    %w[citizen_line_channel_access_token citizen_line_channel_secret].each do |name|
+      @setting.public_send(:"assign_#{name}", params.dig(:organization_setting, name),
+        clear: params.dig(:organization_setting, "clear_#{name}") == "1")
+    end
     @setting.updated_by = current_user.username
     replace_logo
     if @setting.save
-      redirect_to organization_settings_path(anchor: params[:section]), notice: "บันทึกการตั้งค่า อบต. เรียบร้อยแล้ว"
+      destination = params[:settings_tab] == "public_reporting" ? public_reporting_organization_settings_path : organization_settings_path
+      redirect_to destination, notice: "บันทึกการตั้งค่า อบต. เรียบร้อยแล้ว"
     else
       render :show, status: :unprocessable_entity
     end
@@ -28,10 +39,28 @@ class OrganizationSettingsController < ApplicationController
     render :show, status: :unprocessable_entity
   end
 
+  def test_citizen_line
+    info = CitizenLine::Client.new(setting: @setting).bot_info
+    @setting.set(citizen_line_bot_name: info["displayName"]) if info["displayName"].present?
+    redirect_to public_reporting_organization_settings_path(anchor: "settings-citizen-line"), notice: "เชื่อมต่อ LINE OA ประชาชนสำเร็จ: #{info['displayName']} (#{info['basicId']})"
+  rescue Notifications::Senders::DeliveryError => error
+    redirect_to public_reporting_organization_settings_path(anchor: "settings-citizen-line"), alert: error.message
+  end
+
   def regenerate_public_link
     @setting.inc(public_report_version: 1)
     @setting.set(updated_by: current_user.username)
-    redirect_to organization_settings_path(anchor: "settings-public-report"), notice: "สร้างลิงก์แจ้งเหตุใหม่แล้ว ลิงก์เดิมทั้งหมดใช้งานไม่ได้อีกต่อไป"
+    redirect_to public_reporting_organization_settings_path(anchor: "settings-public-report"), notice: "สร้างลิงก์แจ้งเหตุใหม่แล้ว ลิงก์เดิมทั้งหมดใช้งานไม่ได้อีกต่อไป"
+  end
+
+  def public_report_qr
+    source = @setting.report_sources.find { |item| item["type"] == params[:source_type] && item["name"] == params[:source_name] }
+    return head :not_found unless source
+
+    url = view_context.public_incident_report_link(source_type: source["type"], source_name: source["name"])
+    png = RQRCode::QRCode.new(url).as_png(size: 720, border_modules: 4)
+    send_data png.to_s, type: "image/png", disposition: params[:download] == "1" ? "attachment" : "inline",
+      filename: "smart-tambon-report-#{source['type']}.png"
   end
 
   def logo
@@ -53,7 +82,9 @@ class OrganizationSettingsController < ApplicationController
     redirect_to(system_admin? ? system_settings_path : root_path, alert: "เฉพาะผู้ดูแลประจำ อบต. เท่านั้นที่ตั้งค่า อบต. ได้")
   end
 
-  def set_setting = @setting = OrganizationSetting.for(current_user)
+  def set_setting
+    @setting = OrganizationSetting.for(current_user)
+  end
 
   def reset_organization_information
     IncidentPhotoUploadService.delete_photo(@setting.logo) if @setting.logo.present?
@@ -71,7 +102,8 @@ class OrganizationSettingsController < ApplicationController
   def setting_params
     params.require(:organization_setting).permit(:organization_name, :executive_name, :address, :phone, :email, :website,
                                                  :notify_new_incidents, :notification_sound, :notify_pending_activities,
-                                                 :map_basemap, :map_zoom, :public_report_enabled, :public_report_welcome)
+                                                 :map_basemap, :map_zoom, :public_report_enabled, :public_report_welcome,
+                                                 :citizen_line_enabled, :citizen_line_login_channel_id, :citizen_line_liff_id)
   end
 
   def replace_logo

@@ -8,6 +8,8 @@ class LineWebhookLog
 
   field :received_at, type: Time
   field :status, type: String
+  field :account_key, type: String, default: "staff"
+  field :organization_key, type: String
   field :signature_valid, type: Boolean, default: false
   field :event_types, type: Array, default: []
   field :group_ids, type: Array, default: []

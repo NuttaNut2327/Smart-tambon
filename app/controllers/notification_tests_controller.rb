@@ -14,11 +14,12 @@ class NotificationTestsController < ApplicationController
 
   def create
     load_page
-    @form = params.permit(:mode, :tag, :data, :template_id, :message, channel_ids: []).to_h
+    @form = params.permit(:mode, :tag, :data, :template_id, :message, :citizen_incident_id, channel_ids: []).to_h
     @form["mode"] = @form["mode"].presence_in(MODES.keys) || "simulate"
-    @form["tag"] = @form["tag"].presence_in(NotificationChannel::TAGS.keys) || "incident.created"
+    @form["tag"] = @form["tag"].presence_in(NotificationTemplate::TAGS.keys) || "incident.created"
     @preview = preview_for(@form)
     return render(:show) if params[:commit_action] == "preview"
+    return send_citizen_test if citizen_tag?(@form["tag"])
 
     targets = selected_channels(@form)
     if targets.empty?
@@ -48,6 +49,9 @@ class NotificationTestsController < ApplicationController
   def load_page
     @channels = NotificationChannel.for_organization(organization_key).order_by(created_at: :asc).to_a
     @templates = NotificationTemplate.for_organization(organization_key).order_by(tag: :asc, updated_at: :desc).to_a
+    @citizen_recipients = Incident.visible_to(current_user)
+      .where(line_notification_enabled: true, :reporter_line_user_id.ne => nil)
+      .desc(:created_at).limit(20).to_a
     @history_start_date = history_date(:history_start_date)
     @history_end_date = history_date(:history_end_date)
     @history_tag = params[:history_tag].presence_in(NotificationChannel::TAGS.keys)
@@ -73,7 +77,11 @@ class NotificationTestsController < ApplicationController
   end
 
   def preview_for(form)
-    incident = latest_incident(form["tag"]) if form["data"] == "latest" && form["mode"] != "custom"
+    incident = if citizen_tag?(form["tag"])
+      @citizen_recipients.find { |item| item.id.to_s == form["citizen_incident_id"].to_s }
+    elsif form["data"] == "latest" && form["mode"] != "custom"
+      latest_incident(form["tag"])
+    end
     variables = incident ? Notifications::Dispatcher.incident_variables(incident, organization_key) : Notifications::Dispatcher.sample_variables(organization_key)
     variables = variables.merge("message" => form["message"].to_s) if form["message"].present?
     body = case form["mode"]
@@ -87,5 +95,26 @@ class NotificationTestsController < ApplicationController
   def latest_incident(tag)
     category = { "disaster.created" => "disaster", "activity.created" => "activity" }.fetch(tag, "general")
     Incident.visible_to(current_user).where(category: category).desc(:created_at).first
+  end
+
+  def citizen_tag?(tag) = NotificationTemplate::CITIZEN_TAGS.key?(tag)
+
+  def send_citizen_test
+    incident = @preview[:incident]
+    unless incident&.reporter_line_user_id.present?
+      flash.now[:alert] = "กรุณาเลือกเรื่องที่เชื่อม LINE เพื่อเป็นผู้รับข้อความทดสอบ"
+      return render(:show, status: :unprocessable_entity)
+    end
+
+    setting = OrganizationSetting.for(current_user)
+    unless setting&.citizen_line_ready?
+      flash.now[:alert] = "ยังไม่ได้ตั้งค่า LINE OA สำหรับรับแจ้งเหตุประจำตำบล"
+      return render(:show, status: :unprocessable_entity)
+    end
+
+    CitizenLine::Client.new(setting:).push(incident.reporter_line_user_id, @preview[:text])
+    redirect_to notification_tests_path, notice: "ส่งข้อความทดสอบให้ผู้แจ้งเรื่อง #{incident.reference_code} สำเร็จ"
+  rescue Notifications::Senders::DeliveryError => error
+    redirect_to notification_tests_path, alert: "ส่งข้อความทดสอบไม่สำเร็จ: #{error.message}"
   end
 end
