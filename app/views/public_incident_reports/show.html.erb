@@ -1,12 +1,12 @@
 <% liff_path = liff_public_incident_report_path(token: params[:token]) %>
 <% connect_url = @line_setting.citizen_liff_url(liff_path) %>
-<main class="public-report-page" data-public-report-page data-reverse-geocode-url="<%= reverse_geocode_public_incident_report_path(token: params[:token]) %>" data-liff-mode="<%= @liff_mode %>" data-liff-id="<%= @line_setting.citizen_line_liff_id if @liff_mode %>" data-connect-line-url="<%= connect_url unless @liff_mode %>" data-report-token="<%= params[:token] %>">
+<main class="public-report-page" data-public-report-page data-reverse-geocode-url="<%= reverse_geocode_public_incident_report_path(token: params[:token]) %>" data-similar-incidents-url="<%= similar_incidents_public_incident_report_path(token: params[:token]) %>" data-confirm-similar-url-template="<%= confirm_similar_incident_public_incident_report_path(token: params[:token], incident_id: "INCIDENT_ID") %>" data-liff-mode="<%= @liff_mode %>" data-liff-id="<%= @line_setting.citizen_line_liff_id if @liff_mode %>" data-connect-line-url="<%= connect_url unless @liff_mode %>" data-report-token="<%= params[:token] %>">
   <script type="application/json" data-public-boundary><%= raw json_escape(@report_boundary_feature.to_json) %></script>
   <script type="application/json" data-public-important-places><%= raw json_escape(@important_places.to_json) %></script>
   <%= render "public_incident_reports/header" %>
 
   <div class="public-report-container">
-    <% if @liff_mode %><section class="public-report-welcome" data-line-identity-status><span class="material-symbols-outlined">sync</span><p>กำลังเชื่อมต่อบัญชี LINE เพื่อรับการแจ้งสถานะ…</p></section><% elsif connect_url %><section class="public-report-welcome"><span class="material-symbols-outlined">notifications</span><p>ต้องการรับสถานะเรื่องที่แจ้งทาง LINE หรือไม่? <%= link_to "เชื่อมต่อ LINE", connect_url, class: "public-report-again" %></p></section><% end %>
+    <% if @liff_mode %><section class="public-report-welcome" data-line-identity-status><span class="material-symbols-outlined">sync</span><p>กำลังเชื่อมต่อบัญชี LINE เพื่อรับการแจ้งสถานะ…</p></section><% elsif connect_url %><section class="public-report-welcome public-line-connect-banner"><span class="material-symbols-outlined">notifications</span><p>ต้องการรับสถานะเรื่องที่แจ้งทาง LINE หรือไม่?</p><%= link_to "เชื่อมต่อ LINE", connect_url, class: "public-report-again" %></section><% end %>
     <section class="public-report-intro"><div><p>แจ้งเหตุในพื้นที่</p><h1>แบบฟอร์มแจ้งเหตุภายในพื้นที่ <%= @report_area_name %></h1><p>กรอกข้อมูลและปักตำแหน่งภายในขอบเขตพื้นที่ <%= @report_area_name %> เจ้าหน้าที่จะตรวจสอบและรับเรื่องโดยเร็วที่สุด</p></div></section>
 
     <% if @organization_setting&.public_report_welcome.present? %><section class="public-report-welcome"><span class="material-symbols-outlined">campaign</span><p><%= simple_format(@organization_setting.public_report_welcome, {}, wrapper_tag: "span") %></p></section><% end %>
@@ -51,6 +51,7 @@
         <div class="public-report-map-legend"><span><i class="boundary"></i>ขอบเขตพื้นที่รับแจ้ง</span><span><i class="place"></i>สถานที่สำคัญ</span></div>
         <p class="public-report-coordinate" data-public-coordinate><%= @incident.latitude.present? ? "#{@incident.latitude}, #{@incident.longitude}" : "ยังไม่ได้ปักหมุด — แตะบนแผนที่เพื่อเลือกตำแหน่ง" %></p>
         <p class="public-report-address" data-public-address><%= @incident.location_name.presence || "เมื่อปักหมุด ระบบจะแสดงที่อยู่โดยประมาณตรงนี้" %></p>
+        <section class="public-similar-incidents" data-public-similar-incidents hidden aria-live="polite"></section>
         <%= form.hidden_field :latitude, data: { public_latitude: true } %>
         <%= form.hidden_field :longitude, data: { public_longitude: true } %>
         <%= form.hidden_field :location_name, value: @incident.location_name, data: { public_location_name: true } %>

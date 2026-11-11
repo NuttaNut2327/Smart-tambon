@@ -27,6 +27,8 @@ class OrganizationSetting
   field :public_report_version, type: Integer, default: 1
   field :public_report_welcome, type: String
   field :public_report_sources, type: Array, default: -> { DEFAULT_REPORT_SOURCES.map(&:dup) }
+  field :public_community_enabled, type: Boolean, default: true
+  field :public_community_slug, type: String, default: -> { SecureRandom.urlsafe_base64(8).downcase }
   field :citizen_line_enabled, type: Boolean, default: false
   field :citizen_line_bot_name, type: String
   field :citizen_line_login_channel_id, type: String
@@ -39,8 +41,10 @@ class OrganizationSetting
   encrypted_secret :citizen_line_channel_secret, purpose: "organization-line-secrets"
 
   index({ organization_key: 1 }, unique: true)
+  index({ public_community_slug: 1 }, unique: true, sparse: true)
 
   validates :organization_key, presence: true
+  validates :public_community_slug, presence: true, uniqueness: true, format: { with: /\A[a-z0-9_-]+\z/ }
   validates :map_basemap, inclusion: { in: SystemSetting::BASEMAPS.keys }, allow_blank: true
   validates :map_zoom, numericality: { only_integer: true, greater_than_or_equal_to: 8, less_than_or_equal_to: 18, message: "ต้องอยู่ระหว่าง 8 ถึง 18" }, allow_nil: true
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP, message: "ไม่ใช่อีเมลที่ถูกต้อง" }, allow_blank: true
@@ -53,6 +57,24 @@ class OrganizationSetting
     find_or_create_by!(organization_key: user.organization_key)
   rescue Mongo::Error, Mongoid::Errors::MongoidError
     new(organization_key: user.organization_key)
+  end
+
+  # Mongoid applies defaults when an older document is loaded, but that value is
+  # not written back to MongoDB. Persist the generated community slug once so
+  # public links remain stable across requests and application restarts.
+  def ensure_public_community_slug!
+    return public_community_slug unless persisted?
+
+    stored_slug = self.class.collection
+      .find(_id: id)
+      .projection(public_community_slug: 1)
+      .first
+      &.dig("public_community_slug")
+    return stored_slug if stored_slug.present?
+
+    slug = public_community_slug.presence || SecureRandom.urlsafe_base64(8).downcase
+    set(public_community_slug: slug)
+    slug
   end
 
   def display_name(fallback = nil) = organization_name.presence || fallback
@@ -118,6 +140,7 @@ class OrganizationSetting
     %i[organization_name executive_name address phone email website public_report_welcome citizen_line_bot_name citizen_line_login_channel_id citizen_line_liff_id].each { |key| self[key] = self[key].to_s.strip.presence }
     self.map_basemap = map_basemap.presence
     self.map_layers = Array(map_layers).compact_blank & SystemSetting::MAP_LAYERS.keys unless map_layers.nil?
+    self.public_community_slug = public_community_slug.to_s.strip.downcase.presence || SecureRandom.urlsafe_base64(8).downcase
   end
 
   def must_keep_a_citizen_source

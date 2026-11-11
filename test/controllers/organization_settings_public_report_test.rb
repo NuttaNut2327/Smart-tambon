@@ -1,4 +1,5 @@
 require "test_helper"
+require "minitest/mock"
 
 class OrganizationSettingsPublicReportTest < ActionDispatch::IntegrationTest
   setup do
@@ -12,10 +13,127 @@ class OrganizationSettingsPublicReportTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    CitizenIncidentFollower.delete_all
+    Broadcast.where(organization_key: @admin&.organization_key).delete_all
+    Incident.where(owner_user_id: @admin&.id).delete_all
     OrganizationSetting.where(organization_key: @admin&.organization_key).delete_all
     @admin&.destroy
     @subdistrict&.destroy
     @province&.destroy
+  end
+
+  test "public community shows accepted incidents and selected news without sensitive reporter data" do
+    setting = OrganizationSetting.for(@admin)
+    setting.update!(public_community_enabled: true, public_community_slug: "test-community")
+    visible = Incident.create!(owner_user_id: @admin.id, user_id: @admin.id, subdistrict_id: @subdistrict.id,
+      category: "general", status: "assessing", incident_type: "น้ำท่วม", title: "น้ำท่วมถนนหลัก",
+      description: "ติดต่อ 0812345678 หรือ secret@example.test", severity: "urgent",
+      reporter_name: "ผู้แจ้งที่ต้องไม่แสดง", reporter_contact: "0899999999", latitude: 14.05, longitude: 100.05)
+    pending = Incident.create!(owner_user_id: @admin.id, user_id: @admin.id, subdistrict_id: @subdistrict.id,
+      category: "general", status: "pending", incident_type: "ไฟป่า", title: "ยังไม่รับเรื่อง",
+      description: "รอตรวจ", severity: "urgent", latitude: 14.051, longitude: 100.051)
+    completed = Incident.create!(owner_user_id: @admin.id, user_id: @admin.id, subdistrict_id: @subdistrict.id,
+      category: "general", status: "completed", incident_type: "พายุ", title: "เสร็จแล้วไม่เป็นหมุด",
+      description: "เสร็จ", severity: "general", latitude: 14.052, longitude: 100.052)
+    public_news = Broadcast.create!(organization_key: @admin.organization_key, title: "ประกาศปิดถนนชั่วคราว",
+      bullets: ["หลีกเลี่ยงเส้นทางหมู่ 1"], status: "published", published_at: Time.current, publish_to_public_web: true)
+    private_news = Broadcast.create!(organization_key: @admin.organization_key, title: "ข่าวภายใน",
+      bullets: ["ไม่ควรแสดง"], status: "published", published_at: Time.current, publish_to_public_web: false)
+
+    get public_community_path(slug: setting.public_community_slug)
+
+    assert_response :success
+    assert_includes response.body, visible.title
+    assert_not_includes response.body, pending.title
+    assert_includes response.body, completed.title
+    assert_includes response.body, completed.reference_code
+    assert_includes response.body, public_news.title
+    assert_not_includes response.body, private_news.title
+    assert_not_includes response.body, visible.reporter_name
+    assert_not_includes response.body, visible.reporter_contact
+    assert_not_includes response.body, "0812345678"
+    assert_not_includes response.body, "secret@example.test"
+    assert_select "[data-community-map]", count: 1
+  end
+
+  test "disabled public community is not accessible" do
+    setting = OrganizationSetting.for(@admin)
+    setting.update!(public_community_enabled: false, public_community_slug: "closed-community")
+
+    get public_community_path(slug: setting.public_community_slug)
+
+    assert_response :not_found
+  end
+
+  test "public form finds only nearby recent unresolved incidents without reporter data" do
+    setting = OrganizationSetting.for(@admin)
+    near = Incident.create!(owner_user_id: @admin.id, user_id: @admin.id, subdistrict_id: @subdistrict.id,
+      category: "general", status: "pending", incident_type: "น้ำท่วม", title: "น้ำท่วมหน้าตลาด",
+      description: "รายละเอียดภายใน", severity: "urgent", reporter_name: "ชื่อห้ามเผยแพร่",
+      reporter_contact: "0800000000", latitude: 14.0500, longitude: 100.0500)
+    Incident.create!(owner_user_id: @admin.id, user_id: @admin.id, subdistrict_id: @subdistrict.id,
+      category: "general", status: "pending", incident_type: "น้ำท่วม", title: "ไกลเกินกำหนด",
+      description: "ไกล", severity: "urgent", latitude: 14.0600, longitude: 100.0600)
+    completed = Incident.create!(owner_user_id: @admin.id, user_id: @admin.id, subdistrict_id: @subdistrict.id,
+      category: "general", status: "completed", incident_type: "น้ำท่วม", title: "เสร็จแล้ว",
+      description: "เสร็จ", severity: "urgent", latitude: 14.0501, longitude: 100.0501)
+
+    get similar_incidents_public_incident_report_path(token: public_report_token(setting)), params: {
+      incident_type: "น้ำท่วม", latitude: 14.0502, longitude: 100.0502
+    }
+
+    assert_response :success
+    payload = JSON.parse(response.body)
+    assert_equal [near.id.to_s], payload.fetch("incidents").pluck("id")
+    assert_equal "รอเจ้าหน้าที่ตรวจสอบ", payload.dig("incidents", 0, "status_label")
+    assert_operator payload.dig("incidents", 0, "distance_meters"), :<=, 300
+    assert_not_includes response.body, near.reporter_name
+    assert_not_includes response.body, near.reporter_contact
+    assert_not_includes payload.fetch("incidents").pluck("id"), completed.id.to_s
+  end
+
+  test "citizen can confirm a nearby incident without creating a duplicate" do
+    setting = OrganizationSetting.for(@admin)
+    incident = Incident.create!(owner_user_id: @admin.id, user_id: @admin.id, subdistrict_id: @subdistrict.id,
+      category: "general", status: "assessing", incident_type: "ไฟป่า", title: "พบควันไฟ",
+      description: "กำลังตรวจสอบ", severity: "urgent", latitude: 14.0500, longitude: 100.0500)
+    count_before = Incident.count
+
+    post confirm_similar_incident_public_incident_report_path(token: public_report_token(setting), incident_id: incident.id), params: {
+      incident_type: "ไฟป่า", latitude: 14.0501, longitude: 100.0501
+    }
+
+    assert_response :success
+    assert_equal count_before, Incident.count
+    assert_equal 1, incident.reload.duplicate_confirmations.size
+    assert_equal "public_web", incident.duplicate_confirmations.first["source"]
+
+    post confirm_similar_incident_public_incident_report_path(token: public_report_token(setting), incident_id: incident.id), params: {
+      incident_type: "ไฟป่า", latitude: 14.0501, longitude: 100.0501
+    }
+    assert_response :success
+    assert_equal 1, incident.reload.duplicate_confirmations.size
+  end
+
+  test "LIFF confirmation subscribes the citizen to updates for the existing incident" do
+    setting = OrganizationSetting.for(@admin)
+    setting.update!(citizen_line_enabled: true, citizen_line_login_channel_id: "login-123", citizen_line_liff_id: "liff-123")
+    incident = Incident.create!(owner_user_id: @admin.id, user_id: @admin.id, subdistrict_id: @subdistrict.id,
+      category: "general", status: "pending", incident_type: "พายุ", title: "ต้นไม้ล้ม",
+      description: "กำลังรอตรวจสอบ", severity: "urgent", latitude: 14.0500, longitude: 100.0500)
+    identity = { "sub" => "U#{'c' * 32}", "name" => "ผู้ติดตามทดสอบ" }
+
+    CitizenLine::IdTokenVerifier.stub(:call, identity) do
+      post confirm_similar_incident_public_incident_report_path(token: public_report_token(setting), incident_id: incident.id), params: {
+        incident_type: "พายุ", latitude: 14.0501, longitude: 100.0501, line_id_token: "valid-id-token"
+      }
+    end
+
+    assert_response :success
+    payload = JSON.parse(response.body)
+    assert_equal true, payload["line_following"]
+    follower = CitizenIncidentFollower.find_by(incident_id: incident.id, line_user_id: identity["sub"])
+    assert_equal "ผู้ติดตามทดสอบ", follower.line_display_name
   end
 
   test "organization details are persisted and rendered on the public report form" do
@@ -95,6 +213,13 @@ class OrganizationSettingsPublicReportTest < ActionDispatch::IntegrationTest
     assert response.body.start_with?("\x89PNG".b)
 
     get public_report_qr_organization_settings_path(source_type: "citizen", source_name: "ประชาชน", download: "1")
+    assert_match(/attachment/, response.headers["Content-Disposition"])
+
+    get public_community_qr_organization_settings_path
+    assert_response :success
+    assert_equal "image/png", response.media_type
+
+    get public_community_qr_organization_settings_path(download: "1")
     assert_match(/attachment/, response.headers["Content-Disposition"])
   end
 

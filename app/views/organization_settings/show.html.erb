@@ -2,7 +2,7 @@
 <% system_map = system_setting.map_defaults %>
 <% custom_layers = !@setting.map_layers.nil? %>
 <% reporting_tab = action_name == "public_reporting" || params[:settings_tab] == "public_reporting" %>
-<% page = reporting_tab ? { title: "ช่องทางการแจ้งเหตุประจำตำบล", description: "ตั้งค่าช่องทางที่ประชาชนใช้แจ้งเหตุผ่าน Public Form และ LINE OA พร้อมข้อความอัปเดตสถานะรายบุคคล", active: :public_reporting } : { title: "ตั้งค่าระบบ", description: "ข้อมูล อบต. การแจ้งเตือนภายใน แผนที่ และบริการของหน่วยงาน", active: :organization } %>
+<% page = reporting_tab ? { title: "ช่องทางการแจ้งเหตุประจำตำบล", description: "ตั้งค่าช่องทางที่ประชาชนใช้แจ้งเหตุผ่านแบบฟอร์มและ LINE OA พร้อมข้อความอัปเดตสถานะรายบุคคล", active: :public_reporting } : { title: "ตั้งค่าระบบ", description: "ข้อมูล อบต. การแจ้งเตือนภายใน แผนที่ และบริการของหน่วยงาน", active: :organization } %>
 <%= render layout: "settings/frame", locals: { title: page[:title], kicker: "สำหรับผู้ดูแลประจำ อบต. · #{area_name}", description: page[:description], active: page[:active] } do %>
   <%= form_with model: @setting, url: organization_settings_path, method: :patch, html: { multipart: true, class: "settings-form" } do |form| %>
     <%= hidden_field_tag :settings_tab, "public_reporting" if reporting_tab %>
@@ -96,8 +96,18 @@
     <% end %>
 
     <% if reporting_tab %>
+    <section class="settings-card" id="settings-public-community">
+      <header><span class="material-symbols-outlined">map</span><div><h2>แผนที่และภาพรวมชุมชน</h2><p>เว็บไซต์สาธารณะสำหรับให้ประชาชนดูเหตุที่รับเรื่องแล้ว กิจกรรม และข่าวประชาสัมพันธ์ของตำบล</p></div></header>
+      <div class="settings-toggles"><label class="settings-switch"><%= form.check_box :public_community_enabled %><span><b>เปิดหน้าแผนที่สาธารณะ</b><small>ผู้ที่มีลิงก์สามารถเปิดดูได้โดยไม่ต้องเข้าสู่ระบบ และระบบจะไม่แสดงข้อมูลผู้แจ้งหรือรูปภาพ</small></span></label></div>
+      <% community_url = public_community_url(slug: @setting.public_community_slug) %>
+      <article class="settings-public-link">
+        <header><span class="material-symbols-outlined">public</span><b>เว็บไซต์ภาพรวมภาพรวมชุมชน <%= @setting.display_name %></b></header>
+        <div class="settings-public-link-control"><input type="text" readonly value="<%= community_url %>" data-copy-source><button type="button" class="button-link" data-copy-link><span class="material-symbols-outlined">content_copy</span>คัดลอก</button><%= link_to community_url, class: "button-link", target: "_blank", rel: "noopener" do %><span class="material-symbols-outlined">open_in_new</span>เปิดดู<% end %><button type="button" class="button-link" data-open-qr data-qr-title="แผนที่และภาพรวมชุมชน" data-qr-src="<%= public_community_qr_organization_settings_path %>" data-qr-download="<%= public_community_qr_organization_settings_path(download: "1") %>"><span class="material-symbols-outlined">qr_code_2</span>ดู QR</button><%= link_to public_community_qr_organization_settings_path(download: "1"), class: "button-link" do %><span class="material-symbols-outlined">download</span>บันทึก QR<% end %></div>
+      </article>
+    </section>
+
     <section class="settings-card" id="settings-public-report">
-      <header><span class="material-symbols-outlined">link</span><div><h2>Public Form และลิงก์รับแจ้งเหตุ</h2><p>ช่องทางให้ประชาชนและหน่วยงานเครือข่ายแจ้งเหตุในพื้นที่ โดยไม่ต้องเข้าสู่ระบบ</p></div></header>
+      <header><span class="material-symbols-outlined">link</span><div><h2>แบบฟอร์มและลิงก์รับแจ้งเหตุ</h2><p>ช่องทางให้ประชาชนและหน่วยงานเครือข่ายแจ้งเหตุในพื้นที่ โดยไม่ต้องเข้าสู่ระบบ</p></div></header>
       <div class="settings-toggles">
         <label class="settings-switch"><%= form.check_box :public_report_enabled %><span><b>เปิดรับแจ้งเหตุผ่านลิงก์สาธารณะ</b><small>เมื่อปิด ผู้ที่เปิดลิงก์จะเห็นข้อความปิดรับแจ้งชั่วคราวพร้อมเบอร์โทรของ อบต.</small></span></label>
       </div>
@@ -112,7 +122,7 @@
             <header><span class="material-symbols-outlined"><%= source["type"] == "citizen" ? "groups" : "apartment" %></span><b><%= source["name"] %></b></header>
             <div class="settings-public-link-control"><input type="text" readonly value="<%= url %>" data-copy-source><button type="button" class="button-link" data-copy-link><span class="material-symbols-outlined">content_copy</span>คัดลอก</button><button type="button" class="button-link" data-open-qr data-qr-title="<%= source["name"] %>" data-qr-src="<%= public_report_qr_organization_settings_path(source_type: source["type"], source_name: source["name"]) %>" data-qr-download="<%= public_report_qr_organization_settings_path(source_type: source["type"], source_name: source["name"], download: "1") %>"><span class="material-symbols-outlined">qr_code_2</span>ดู QR</button><%= link_to public_report_qr_organization_settings_path(source_type: source["type"], source_name: source["name"], download: "1"), class: "button-link" do %><span class="material-symbols-outlined">download</span>บันทึก QR<% end %></div>
           </article>
-          <% if @setting.citizen_liff_ready? %><% token = url.split("/report/", 2).last %><% liff_url = @setting.citizen_liff_url(liff_public_incident_report_path(token: token)) %><article class="settings-public-link settings-public-link-liff"><header><span class="material-symbols-outlined">chat</span><b>LIFF สำหรับ Rich menu — <%= source["name"] %></b></header><div class="settings-public-link-control compact"><input type="text" readonly value="<%= liff_url %>" data-copy-source><button type="button" class="button-link" data-copy-link><span class="material-symbols-outlined">content_copy</span>คัดลอก</button></div></article><% end %>
+          <% if @setting.citizen_liff_ready? %><% token = url.split("/report/", 2).last %><% liff_url = @setting.citizen_liff_url(liff_public_incident_report_path(token: token)) %><article class="settings-public-link settings-public-link-liff"><header><span class="material-symbols-outlined">chat</span><b>ลิงก์ Rich Menu — <%= source["name"] %></b></header><div class="settings-public-link-control compact"><input type="text" readonly value="<%= liff_url %>" data-copy-source><button type="button" class="button-link" data-copy-link><span class="material-symbols-outlined">content_copy</span>คัดลอก</button></div></article><% end %>
         <% end %>
       </div>
     </section>
@@ -124,7 +134,7 @@
     </dialog>
 
     <% end %>
-    <div class="settings-actions"><%= form.submit "บันทึกการตั้งค่าระบบ", class: "button-link primary" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %></div>
+    <div class="settings-actions settings-actions-right"><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %><%= form.submit "บันทึกการตั้งค่าระบบ", class: "button-link primary" %></div>
   <% end %>
   <% if reporting_tab %>
     <%= form_with url: test_citizen_line_organization_settings_path, method: :post, id: "test-citizen-line-form" do %><% end %>

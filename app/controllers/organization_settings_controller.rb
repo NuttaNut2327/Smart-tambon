@@ -63,6 +63,13 @@ class OrganizationSettingsController < ApplicationController
       filename: "smart-tambon-report-#{source['type']}.png"
   end
 
+  def public_community_qr
+    url = public_community_url(slug: @setting.public_community_slug)
+    png = RQRCode::QRCode.new(url).as_png(size: 720, border_modules: 4)
+    send_data png.to_s, type: "image/png", disposition: params[:download] == "1" ? "attachment" : "inline",
+      filename: "smart-tambon-community-#{@setting.public_community_slug}.png"
+  end
+
   def logo
     setting = OrganizationSetting.where(organization_key: params[:key]).first
     return redirect_to(view_context.image_path("logo-smart-tambon.png")) if setting&.logo.blank?
@@ -84,6 +91,7 @@ class OrganizationSettingsController < ApplicationController
 
   def set_setting
     @setting = OrganizationSetting.for(current_user)
+    @setting.ensure_public_community_slug!
   end
 
   def reset_organization_information
@@ -103,6 +111,7 @@ class OrganizationSettingsController < ApplicationController
     params.require(:organization_setting).permit(:organization_name, :executive_name, :address, :phone, :email, :website,
                                                  :notify_new_incidents, :notification_sound, :notify_pending_activities,
                                                  :map_basemap, :map_zoom, :public_report_enabled, :public_report_welcome,
+                                                 :public_community_enabled,
                                                  :citizen_line_enabled, :citizen_line_login_channel_id, :citizen_line_liff_id)
   end
 

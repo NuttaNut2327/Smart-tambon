@@ -16,7 +16,7 @@ class BroadcastsController < ApplicationController
   end
 
   def update
-    @broadcast.assign_attributes(params.require(:broadcast).permit(:title, :script, :internal_alert_level, :internal_alert_hours, channel_ids: [], delivery_modes: []).merge(updated_by: current_user.username))
+    @broadcast.assign_attributes(params.require(:broadcast).permit(:title, :script, :internal_alert_level, :internal_alert_hours, :publish_to_public_web, channel_ids: [], delivery_modes: []).merge(updated_by: current_user.username))
     @broadcast.bullets_text = params.dig(:broadcast, :bullets_text) if params.dig(:broadcast).key?(:bullets_text)
     @broadcast.save!
     redirect_to broadcast_path(@broadcast), notice: @broadcast.audio.present? && !@broadcast.audio_current? ? "บันทึกแล้ว — ข้อความเปลี่ยน กรุณาสร้างเสียงใหม่ก่อนส่งไปเสียงตามสาย" : "บันทึกข่าวเรียบร้อยแล้ว"

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>ติดตามความคืบหน้า <%= @follow_incident.reference_code %></title>
+    <%= csrf_meta_tags %>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+      *{box-sizing:border-box}body{display:grid;min-height:100vh;margin:0;padding:20px;place-items:center;background:#fffefb;color:#2c3930;font-family:sans-serif}.card{width:min(100%,520px);padding:30px;border:1px solid #e2dac8;border-radius:18px;background:#fff;box-shadow:0 12px 36px #2c393018;text-align:center}.icon{font-size:50px}.meta{margin:18px 0;padding:15px;border-radius:10px;background:#f3f6f4}.meta strong,.meta small{display:block}.meta small{color:#607466}.actions{display:grid;gap:10px;margin-top:20px}button{min-height:48px;border:0;border-radius:10px;background:#607466;color:#fff;font:inherit;font-weight:700;cursor:pointer}button.secondary{border:1px solid #b9c7bd;background:#fff;color:#2c3930}p{color:#607466;line-height:1.6}.error{color:#b94050}
+    </style>
+  </head>
+  <body>
+    <main class="card" data-follow-page data-liff-id="<%= @line_setting.citizen_line_liff_id %>" data-follow-url="<%= follow_existing_public_incident_report_path(token: params[:token], incident_id: @follow_incident.id) %>">
+      <div class="icon">🔔</div>
+      <h1>รับความคืบหน้าผ่าน LINE</h1>
+      <p data-follow-status>กำลังเชื่อมต่อบัญชี LINE…</p>
+      <div class="meta"><small>เลขที่เรื่อง</small><strong><%= @follow_incident.reference_code %></strong><small><%= { "pending" => "รอเจ้าหน้าที่ตรวจสอบ", "assessing" => "เจ้าหน้าที่รับเรื่องแล้ว", "in_progress" => "กำลังดำเนินการ" }.fetch(@follow_incident.status, @follow_incident.status) %></small></div>
+      <div class="actions" hidden data-follow-actions><button type="button" data-close-liff>ปิดหน้าต่าง</button></div>
+    </main>
+    <script>
+      (() => {
+        const page = document.querySelector("[data-follow-page]");
+        const status = page.querySelector("[data-follow-status]");
+        const actions = page.querySelector("[data-follow-actions]");
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || "";
+        const run = async () => {
+          try {
+            await liff.init({ liffId: page.dataset.liffId });
+            if (!liff.isLoggedIn()) return liff.login({ redirectUri: window.location.href });
+            const body = new FormData();
+            body.set("line_id_token", liff.getIDToken() || "");
+            const response = await fetch(page.dataset.followUrl, { method: "POST", headers: { Accept: "application/json", "X-CSRF-Token": csrf }, body });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || "เชื่อมต่อไม่สำเร็จ");
+            page.querySelector(".icon").textContent = "✅";
+            page.querySelector("h1").textContent = "ติดตามเรื่องนี้แล้ว";
+            status.textContent = "ระบบจะส่งความคืบหน้าให้คุณผ่าน LINE เมื่อเจ้าหน้าที่อัปเดตสถานะ";
+            actions.hidden = false;
+          } catch (error) {
+            status.textContent = error.message;
+            status.classList.add("error");
+          }
+        };
+        page.querySelector("[data-close-liff]").addEventListener("click", () => liff.isInClient() ? liff.closeWindow() : window.close());
+        run();
+      })();
+    </script>
+  </body>
+</html>

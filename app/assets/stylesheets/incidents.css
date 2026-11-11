@@ -49,3 +49,4 @@
 .incident-plan-resource-section h4{margin:0 0 7px;color:#2c3930;font-size:13px}
 .incident-plan-resource-section .incident-plan-resources{margin-top:0}
 .incident-plan-resource-empty{margin:0;padding:13px;border:1px dashed #e2dac8;border-radius:8px;color:#806f5f;font-size:11px;text-align:center}
+.incident-card dl>div.incident-duplicate-confirmations{margin-top:3px;padding-top:9px;border-top:1px solid #eee8dc}.incident-duplicate-confirmations dd{display:flex;align-items:center;gap:5px;min-height:20px;color:#3f6b52!important;line-height:1.25}.incident-duplicate-confirmations dd .material-symbols-outlined{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;font-size:16px;line-height:1}.incident-duplicate-confirmations dd strong{display:inline-flex;align-items:center;color:#28583b;font-size:13px;line-height:1}

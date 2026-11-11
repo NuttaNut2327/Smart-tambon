@@ -41,6 +41,7 @@ class Broadcast
   field :error_message, type: String
   field :generated_at, type: Time
   field :published_at, type: Time
+  field :publish_to_public_web, type: Boolean, default: false
   field :created_by, type: String
   field :updated_by, type: String
 
@@ -59,6 +60,7 @@ class Broadcast
 
   def status_label = STATUSES.fetch(status, status)
   def program_name = broadcast_program&.name || "ข่าวประกาศ"
+  def publish_to_public_web? = publish_to_public_web == true
   def bullets_text = Array(bullets).join("\n")
   def bullets_text=(text)
     self.bullets = text.to_s.lines.map { |line| line.strip.sub(/\A[-•*·\d.)\s]+/, "").strip }.compact_blank.first(20)
