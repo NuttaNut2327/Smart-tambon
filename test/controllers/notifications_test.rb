@@ -102,10 +102,28 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     assert_includes template.errors[:body].join, "{{reporter_contact}}"
   end
 
+  test "admin explicitly selects the active template for each message type" do
+    first = NotificationTemplate.create!(organization_key: @admin.organization_key, name: "แบบแรก",
+      tag: "incident.created", body: "แบบแรก {{title}}")
+    second = NotificationTemplate.create!(organization_key: @admin.organization_key, name: "แบบที่สอง",
+      tag: "incident.created", body: "แบบที่สอง {{title}}")
+
+    assert first.reload.active?
+    assert_not second.reload.active?
+    assert_equal "แบบแรก {{title}}", NotificationTemplate.body_for(@admin.organization_key, "incident.created")
+
+    patch activate_notification_template_path(second)
+
+    assert_redirected_to notification_templates_path(anchor: "template-incident-created")
+    assert_not first.reload.active?
+    assert second.reload.active?
+    assert_equal "แบบที่สอง {{title}}", NotificationTemplate.body_for(@admin.organization_key, "incident.created")
+  end
+
   test "admin edits citizen status templates from the message templates page" do
     get notification_templates_path
     assert_response :success
-    assert_select ".settings-card h2", text: "ข้อความอัปเดตสถานะสำหรับประชาชน", count: 1
+    assert_select ".settings-card h2", text: "ข้อความแจ้งความคืบหน้าสำหรับประชาชน", count: 1
     assert_select ".notify-tag-card", minimum: NotificationTemplate::TAGS.size
 
     post notification_templates_path, params: { notification_template: {
@@ -181,6 +199,19 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     assert_equal "simulation", NotificationDelivery.last.source
   end
 
+  test "simulation sends only to the selected eligible group" do
+    fake = FakeSender.new
+    Notifications::Senders.stub(:for, ->(channel, setting = nil) { fake.for(channel, setting) }) do
+      post notification_tests_path, params: {
+        mode: "simulate", tag: "disaster.created", data: "sample",
+        channel_selection_present: "1", channel_ids: [@disaster_only.id.to_s], commit_action: "send"
+      }
+    end
+
+    assert_redirected_to notification_tests_path
+    assert_equal ["กลุ่มภัยพิบัติ"], fake.sent.map(&:first)
+  end
+
   test "preview uses the template for the selected event tag" do
     post notification_tests_path, params: { mode: "simulate", tag: "disaster.created", data: "sample", commit_action: "preview" }
 
@@ -189,6 +220,18 @@ class NotificationsTest < ActionDispatch::IntegrationTest
       assert_includes preview.text, "แจ้งเตือนภัยพิบัติ"
       assert_not_includes preview.text, "มีเหตุการณ์แจ้งเข้ามาใหม่"
     end
+  end
+
+  test "preview responds with JSON for the AJAX test form" do
+    post notification_tests_path,
+      params: { mode: "simulate", tag: "disaster.created", data: "sample", commit_action: "preview" },
+      as: :json
+
+    assert_response :success
+    payload = JSON.parse(response.body)
+    assert_equal true, payload["ok"]
+    assert_includes payload["preview"], "แจ้งเตือนภัยพิบัติ"
+    assert_equal "ใช้ข้อมูลตัวอย่าง", payload["preview_source"]
   end
 
   test "delivery history filters by an inclusive date range and displays Thai date and time" do

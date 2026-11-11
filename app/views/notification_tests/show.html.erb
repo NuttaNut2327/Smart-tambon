@@ -6,7 +6,7 @@
       <div class="notify-modes">
         <% NotificationTestsController::MODES.each do |mode, label| %>
           <label class="notify-mode"><%= radio_button_tag :mode, mode, @form["mode"] == mode, data: { notify_mode: true } %><span><b><%= label %></b>
-            <small><%= { "simulate" => "เลือกแท็กแล้วระบบส่งไปทุกช่องทางที่รับแท็กนั้น เหมือนตอนมีเหตุจริง",
+            <small><%= { "simulate" => "เลือกประเภทข้อความและกลุ่มผู้รับ แล้วส่งด้วยเทมเพลตเดียวกับเหตุจริง",
                          "template" => "เลือกเทมเพลตและช่องทางเอง",
                          "custom" => "พิมพ์ข้อความเองแล้วส่งไปยังช่องทางที่เลือก" }[mode] %></small></span></label>
         <% end %>
@@ -15,29 +15,35 @@
         <% grouped_test_tags = NotificationTemplate::TAG_GROUPS.transform_values { |tags| tags.map { |tag, label| ["#{label} (#{tag})", tag] } } %>
         <label data-notify-show="simulate template">ประเภทข้อความ<%= select_tag :tag, grouped_options_for_select(grouped_test_tags, @form["tag"]) %></label>
         <label data-notify-show="simulate template" data-notify-staff-only>ข้อมูลที่ใช้แทนตัวแปร<%= select_tag :data, options_for_select(NotificationTestsController::DATA_SOURCES.invert, @form["data"]) %></label>
-        <label class="span-2" data-notify-citizen-only hidden>ผู้รับข้อความทดสอบ<%= select_tag :citizen_incident_id, options_for_select(@citizen_recipients.map { |incident| ["#{incident.reference_code} — #{incident.reporter_line_display_name.presence || incident.title}", incident.id.to_s] }, @form["citizen_incident_id"]), include_blank: "เลือกเรื่องที่ผู้แจ้งเชื่อม LINE ไว้" %><small>ระบบจะส่งข้อความจริงไปยังบัญชี LINE ของผู้แจ้งเรื่องที่เลือก</small></label>
         <label class="span-2" data-notify-show="template">เทมเพลต<%= select_tag :template_id, options_for_select(@templates.map { |template| ["#{template.name} — #{template.tag_label}", template.id.to_s] }, @form["template_id"]), include_blank: "ใช้เทมเพลตที่ใช้งานอยู่ของแท็กนี้" %></label>
         <label class="span-2" data-notify-show="custom announcement">ข้อความ<%= text_area_tag :message, @form["message"], rows: 4, maxlength: 2000, placeholder: "พิมพ์ข้อความ (โหมดเทมเพลต/จำลองใช้เป็นค่า {{message}})" %></label>
-        <fieldset class="settings-layers span-2" data-notify-show="template custom" data-notify-staff-only><legend>ส่งไปยังช่องทาง</legend>
-          <% if @channels.empty? %><p class="notify-muted">ยังไม่มีช่องทาง — <%= link_to "เพิ่มช่องทางแจ้งเตือน", notification_channels_path %></p><% end %>
-          <% @channels.each do |channel| %>
-            <label class="settings-check"><%= check_box_tag "channel_ids[]", channel.id.to_s, Array(@form["channel_ids"]).include?(channel.id.to_s), id: "test_channel_#{channel.id}" %> <%= channel.name %> <small>(<%= channel.kind_label %><%= ", ปิดใช้" unless channel.enabled? %>)</small></label>
-          <% end %>
-        </fieldset>
-        <div class="span-2 notify-targets" data-notify-show="simulate" data-notify-staff-only>
-          <b>ช่องทางที่จะได้รับ (เปิดใช้และรับแท็กที่เลือก):</b>
-          <% @channels.select(&:enabled?).each do |channel| %><span data-channel-tags="<%= channel.tags.join(' ') %>"><%= channel.name %></span><% end %>
-          <em data-notify-no-target>ไม่มีช่องทางที่รับแท็กนี้</em>
+        <div class="notify-recipient-picker">
+          <label>ผู้รับข้อความทดสอบ</label>
+          <div data-notify-citizen-only hidden>
+            <div class="notify-searchable-select" data-notify-searchable-select>
+              <input type="text" placeholder="เลือกหรือพิมพ์ค้นหาชื่อผู้แจ้ง/เลขที่เรื่อง" autocomplete="off" data-notify-select-search>
+              <%= select_tag :citizen_incident_id, options_for_select(@citizen_recipients.map { |incident| ["#{incident.reporter_line_display_name.presence || incident.title} — #{incident.reference_code}", incident.id.to_s] }, @form["citizen_incident_id"]), include_blank: "เลือกผู้รับข้อความทดสอบ", data: { notify_select: true } %>
+            </div>
+            <small><span class="material-symbols-outlined notify-picker-hint-icon">touch_app</span>คลิกเพื่อเลือก หรือพิมพ์เพื่อค้นหา · แสดงเฉพาะผู้แจ้งที่เชื่อม LINE และเปิดรับการแจ้งความคืบหน้า</small>
+          </div>
+          <div data-notify-staff-only>
+            <%= hidden_field_tag :channel_selection_present, "1" %>
+            <div class="notify-searchable-select" data-notify-searchable-select data-notify-channel-picker>
+              <input type="text" placeholder="เลือกหรือพิมพ์ค้นหาชื่อกลุ่ม LINE OA" autocomplete="off" data-notify-select-search>
+              <%= select_tag "channel_ids[]", options_for_select(@channels.select { |channel| channel.enabled? && channel.kind == "line" }.map { |channel| [channel.name, channel.id.to_s, { "data-channel-tags" => channel.tags.join(" ") }] }, Array(@form["channel_ids"]).first), include_blank: "เลือกกลุ่มที่ต้องการส่งทดสอบ", data: { notify_select: true } %>
+            </div>
+            <em class="notify-error" data-notify-no-target hidden>ไม่มีกลุ่มที่รองรับประเภทข้อความนี้</em>
+          </div>
         </div>
       </div>
-    </section>
-
-    <section class="settings-card">
-      <header><span class="material-symbols-outlined">preview</span><div><h2>ตัวอย่างข้อความ</h2><p><%= @preview[:incident] ? "ใช้ข้อมูลจริงจากเรื่อง #{@preview[:incident].reference_code}" : "ใช้ข้อมูลตัวอย่าง" %> — ตัวอย่างจะอัปเดตตามแท็กที่เลือก</p></div></header>
-      <pre class="notify-pre notify-preview-box"><%= @preview[:text].presence || "(ข้อความว่าง)" %></pre>
+      <div class="notify-inline-preview">
+        <div><b>ตัวอย่างข้อความ</b><small data-notify-preview-source><%= @preview[:incident] ? "ใช้ข้อมูลจริงจากเรื่อง #{@preview[:incident].reference_code}" : "ใช้ข้อมูลตัวอย่าง" %></small></div>
+        <pre class="notify-pre notify-preview-box" data-notify-test-preview><%= @preview[:text].presence || "(ข้อความว่าง)" %></pre>
+      </div>
       <div class="settings-actions">
         <%= button_tag type: "submit", name: "commit_action", value: "preview", class: "button-link", data: { notify_preview: true } do %><span class="material-symbols-outlined">visibility</span>แสดงตัวอย่าง<% end %>
         <%= button_tag type: "submit", name: "commit_action", value: "send", class: "button-link primary", data: { notify_send: true } do %><span class="material-symbols-outlined">send</span>ส่งทดสอบ<% end %>
+        <span class="notify-ajax-result" data-notify-ajax-result role="status" aria-live="polite"></span>
       </div>
     </section>
   <% end %>

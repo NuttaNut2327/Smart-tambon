@@ -127,7 +127,9 @@ Rails.application.routes.draw do
       get :signal_groups
     end
   end
-  resources :notification_templates, except: :show
+  resources :notification_templates, except: :show do
+    patch :activate, on: :member
+  end
   get "notification_tests", to: "notification_tests#show", as: :notification_tests
   post "notification_tests", to: "notification_tests#create"
   post "line/webhooks", to: "webhooks/line#create", as: :line_webhook

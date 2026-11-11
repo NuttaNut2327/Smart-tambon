@@ -32,7 +32,7 @@ class NotificationTemplate
   }.freeze
   TAGS = NotificationChannel::TAGS.merge(CITIZEN_TAGS).freeze
   TAG_GROUPS = {
-    "ข้อความอัปเดตสถานะสำหรับประชาชน" => CITIZEN_TAGS,
+    "ข้อความแจ้งความคืบหน้าสำหรับประชาชน" => CITIZEN_TAGS,
     "ข้อความแจ้งเตือนสำหรับกลุ่มเจ้าหน้าที่" => NotificationChannel::TAGS
   }.freeze
 
@@ -74,6 +74,7 @@ class NotificationTemplate
   field :name, type: String
   field :tag, type: String
   field :body, type: String
+  field :active, type: Boolean, default: false
   field :updated_by, type: String
 
   index({ organization_key: 1, tag: 1, updated_at: -1 })
@@ -82,11 +83,13 @@ class NotificationTemplate
   validates :tag, inclusion: { in: TAGS.keys }
   validates :body, length: { maximum: 3000 }
   validate :variables_must_be_known
+  before_create :activate_if_first_for_tag
 
   scope :for_organization, ->(key) { where(organization_key: key) }
 
   def self.body_for(organization_key, tag)
-    for_organization(organization_key).where(tag: tag).desc(:updated_at).first&.body || DEFAULTS.fetch(tag, "{{title}}")
+    scope = for_organization(organization_key).where(tag: tag)
+    (scope.where(active: true).desc(:updated_at).first || scope.desc(:updated_at).first)&.body || DEFAULTS.fetch(tag, "{{title}}")
   end
 
   def tag_label = TAGS.fetch(tag, tag)
@@ -95,6 +98,10 @@ class NotificationTemplate
   def unknown_variables = body.to_s.scan(/\{\{\s*([a-z_]+)\s*\}\}/).flatten.uniq - available_variables.keys
 
   private
+
+  def activate_if_first_for_tag
+    self.active = true unless self.class.for_organization(organization_key).where(tag: tag).exists?
+  end
 
   def variables_must_be_known
     errors.add(:body, "มีตัวแปรที่ไม่รู้จัก: #{unknown_variables.map { |name| "{{#{name}}}" }.join(', ')}") if unknown_variables.any?
