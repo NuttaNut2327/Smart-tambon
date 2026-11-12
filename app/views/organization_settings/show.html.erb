@@ -134,13 +134,16 @@
     </dialog>
 
     <% end %>
-    <div class="settings-actions settings-actions-right"><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %><%= form.submit "บันทึกการตั้งค่าระบบ", class: "button-link primary" %></div>
+    <div class="settings-actions settings-save-actions"><%= form.submit "บันทึกการตั้งค่าระบบ", class: "button-link primary settings-save-submit" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %></div>
   <% end %>
   <% if reporting_tab %>
     <%= form_with url: test_citizen_line_organization_settings_path, method: :post, id: "test-citizen-line-form" do %><% end %>
-    <section class="settings-card settings-danger">
-      <header><span class="material-symbols-outlined">sync_lock</span><div><h2>สร้างลิงก์แจ้งเหตุใหม่</h2><p>ใช้เมื่อลิงก์รั่วไหลหรือถูกใช้ผิดวัตถุประสงค์ ลิงก์ที่เคยแชร์ไว้ทั้งหมดจะใช้งานไม่ได้ทันที (ลิงก์ปัจจุบันรุ่นที่ <%= @setting.public_report_version %>)</p></div></header>
-      <%= button_to regenerate_public_link_organization_settings_path, method: :post, class: "button-link danger", form: { data: { confirm_regenerate: true } } do %><span class="material-symbols-outlined">autorenew</span>สร้างลิงก์ใหม่<% end %>
+    <section class="settings-danger-zone" aria-labelledby="settings-danger-zone-title">
+      <header class="settings-danger-zone-heading"><span class="material-symbols-outlined">warning</span><div><b id="settings-danger-zone-title">โซนอันตราย</b><small>การดำเนินการในส่วนนี้ส่งผลต่อลิงก์ที่เผยแพร่และไม่สามารถย้อนกลับได้</small></div></header>
+      <section class="settings-card settings-danger">
+        <header><span class="material-symbols-outlined">sync_lock</span><div><h2>สร้างลิงก์แจ้งเหตุใหม่</h2><p>ใช้เมื่อลิงก์รั่วไหลหรือถูกใช้ผิดวัตถุประสงค์ ลิงก์ที่เคยแชร์ไว้ทั้งหมดจะใช้งานไม่ได้ทันที (ลิงก์ปัจจุบันรุ่นที่ <%= @setting.public_report_version %>)</p></div></header>
+        <%= button_to regenerate_public_link_organization_settings_path, method: :post, class: "button-link danger", form: { data: { confirm_regenerate: true } } do %><span class="material-symbols-outlined">autorenew</span>สร้างลิงก์ใหม่<% end %>
+      </section>
     </section>
   <% end %>
 <% end %>
