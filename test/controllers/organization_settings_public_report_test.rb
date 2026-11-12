@@ -22,21 +22,26 @@ class OrganizationSettingsPublicReportTest < ActionDispatch::IntegrationTest
     @province&.destroy
   end
 
-  test "public community shows accepted incidents and selected news without sensitive reporter data" do
+  test "public community shows in-progress incidents and selected news without sensitive reporter data" do
     setting = OrganizationSetting.for(@admin)
     setting.update!(public_community_enabled: true, public_community_slug: "test-community")
     visible = Incident.create!(owner_user_id: @admin.id, user_id: @admin.id, subdistrict_id: @subdistrict.id,
-      category: "general", status: "assessing", incident_type: "น้ำท่วม", title: "น้ำท่วมถนนหลัก",
+      category: "general", status: "in_progress", incident_type: "น้ำท่วม", title: "น้ำท่วมถนนหลัก",
       description: "ติดต่อ 0812345678 หรือ secret@example.test", severity: "urgent",
       reporter_name: "ผู้แจ้งที่ต้องไม่แสดง", reporter_contact: "0899999999", latitude: 14.05, longitude: 100.05)
     pending = Incident.create!(owner_user_id: @admin.id, user_id: @admin.id, subdistrict_id: @subdistrict.id,
       category: "general", status: "pending", incident_type: "ไฟป่า", title: "ยังไม่รับเรื่อง",
       description: "รอตรวจ", severity: "urgent", latitude: 14.051, longitude: 100.051)
+    assessing = Incident.create!(owner_user_id: @admin.id, user_id: @admin.id, subdistrict_id: @subdistrict.id,
+      category: "general", status: "assessing", incident_type: "ดินถล่ม", title: "รับเรื่องแต่ยังไม่เริ่มดำเนินการ",
+      description: "ยังไม่ควรแสดง", severity: "urgent", latitude: 14.0515, longitude: 100.0515)
     completed = Incident.create!(owner_user_id: @admin.id, user_id: @admin.id, subdistrict_id: @subdistrict.id,
       category: "general", status: "completed", incident_type: "พายุ", title: "เสร็จแล้วไม่เป็นหมุด",
       description: "เสร็จ", severity: "general", latitude: 14.052, longitude: 100.052)
     public_news = Broadcast.create!(organization_key: @admin.organization_key, title: "ประกาศปิดถนนชั่วคราว",
       bullets: ["หลีกเลี่ยงเส้นทางหมู่ 1"], status: "published", published_at: Time.current, publish_to_public_web: true)
+    old_public_news = Broadcast.create!(organization_key: @admin.organization_key, title: "ประกาศเก่าเกินสามสิบวัน",
+      bullets: ["ข่าวเก่าสำหรับตรวจช่วงเวลา"], status: "published", published_at: 31.days.ago, publish_to_public_web: true)
     private_news = Broadcast.create!(organization_key: @admin.organization_key, title: "ข่าวภายใน",
       bullets: ["ไม่ควรแสดง"], status: "published", published_at: Time.current, publish_to_public_web: false)
 
@@ -45,6 +50,7 @@ class OrganizationSettingsPublicReportTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, visible.title
     assert_not_includes response.body, pending.title
+    assert_not_includes response.body, assessing.title
     assert_includes response.body, completed.title
     assert_includes response.body, completed.reference_code
     assert_includes response.body, public_news.title
@@ -54,6 +60,16 @@ class OrganizationSettingsPublicReportTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "0812345678"
     assert_not_includes response.body, "secret@example.test"
     assert_select "[data-community-map]", count: 1
+    assert_select ".community-news-alert h2", text: public_news.title
+    assert_select ".community-feed h2", text: "เหตุการณ์ล่าสุด"
+    assert_select ".community-feed", text: /#{Regexp.escape(visible.title)}/
+    assert_select ".community-feed", text: /#{Regexp.escape(public_news.title)}/, count: 0
+    assert_select ".community-news .community-news-card h3", text: public_news.title
+    assert_select ".community-news", text: /#{Regexp.escape(old_public_news.title)}/, count: 0
+    assert_select ".community-completed", text: /#{Regexp.escape(completed.title)}/
+    assert_select ".community-completed", text: /#{Regexp.escape(public_news.title)}/, count: 0
+    assert_select "[data-community-archive-filter-toggle][aria-expanded='false']", count: 1
+    assert_select "[data-community-archive-date-filters][hidden]", count: 1
   end
 
   test "disabled public community is not accessible" do

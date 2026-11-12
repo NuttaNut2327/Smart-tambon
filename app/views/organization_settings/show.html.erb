@@ -101,7 +101,7 @@
       <div class="settings-toggles"><label class="settings-switch"><%= form.check_box :public_community_enabled %><span><b>เปิดหน้าแผนที่สาธารณะ</b><small>ผู้ที่มีลิงก์สามารถเปิดดูได้โดยไม่ต้องเข้าสู่ระบบ และระบบจะไม่แสดงข้อมูลผู้แจ้งหรือรูปภาพ</small></span></label></div>
       <% community_url = public_community_url(slug: @setting.public_community_slug) %>
       <article class="settings-public-link">
-        <header><span class="material-symbols-outlined">public</span><b>เว็บไซต์ภาพรวมภาพรวมชุมชน <%= @setting.display_name %></b></header>
+        <header><span class="material-symbols-outlined">public</span><b>เว็บไซต์ภาพรวมเหตุการณ์ชุมชน <%= @setting.display_name %></b></header>
         <div class="settings-public-link-control"><input type="text" readonly value="<%= community_url %>" data-copy-source><button type="button" class="button-link" data-copy-link><span class="material-symbols-outlined">content_copy</span>คัดลอก</button><%= link_to community_url, class: "button-link", target: "_blank", rel: "noopener" do %><span class="material-symbols-outlined">open_in_new</span>เปิดดู<% end %><button type="button" class="button-link" data-open-qr data-qr-title="แผนที่และภาพรวมชุมชน" data-qr-src="<%= public_community_qr_organization_settings_path %>" data-qr-download="<%= public_community_qr_organization_settings_path(download: "1") %>"><span class="material-symbols-outlined">qr_code_2</span>ดู QR</button><%= link_to public_community_qr_organization_settings_path(download: "1"), class: "button-link" do %><span class="material-symbols-outlined">download</span>บันทึก QR<% end %></div>
       </article>
     </section>

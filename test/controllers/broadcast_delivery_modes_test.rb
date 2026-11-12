@@ -20,16 +20,23 @@ class BroadcastDeliveryModesTest < ActionDispatch::IntegrationTest
     sign_in @admin
     get new_broadcast_program_path
     assert_response :success
-    assert_select ".broadcast-delivery-mode", 3
+    assert_select ".broadcast-delivery-mode", 4
     assert_select "input#broadcast_program_delivery_pa[checked]"
     assert_select "input#broadcast_program_delivery_internal:not([checked])"
     assert_select "input#broadcast_program_channel_#{@line.id}"
+    assert_select "input#broadcast_program_publish_to_public_web"
+    assert_select "b", text: "เผยแพร่บนเว็บไซต์ภาพรวมเหตุการณ์ชุมชน"
 
     post broadcast_programs_path, params: { broadcast_program: { name: "ข่าวเตือนภัย", prompt: "เตือนภัย", delivery_modes: ["notification", "internal", ""],
-                                                                  channel_ids: [@line.id.to_s, ""], internal_alert_level: "urgent", internal_alert_hours: "12" } }
+                                                                  channel_ids: [@line.id.to_s, ""], publish_to_public_web: "1",
+                                                                  internal_alert_level: "urgent", internal_alert_hours: "12" } }
     program = BroadcastProgram.find_by(organization_key: @admin.organization_key)
     assert_equal %w[notification internal], program.delivery_modes
     assert_equal ["urgent", 12], [program.internal_alert_level, program.internal_alert_hours]
+    assert program.publish_to_public_web?
+
+    broadcast = Broadcasts::Runner.queue(program, trigger: "manual", user: @admin)
+    assert broadcast.publish_to_public_web?
 
     get broadcasts_path
     assert_select ".broadcast-program-channels", /กลุ่ม LINE อบต\..*แจ้งเตือนภายในระบบ/m
@@ -51,5 +58,27 @@ class BroadcastDeliveryModesTest < ActionDispatch::IntegrationTest
     announcement = Announcement.find_by(broadcast_id: broadcast.id)
     get feed_announcements_path, params: { shown: [announcement.id.to_s] }
     assert_response :no_content
+  end
+
+  test "publishing from the editor saves the public website target first" do
+    broadcast = Broadcast.create!(organization_key: @admin.organization_key, title: "ข่าวชุมชน", script: "รายละเอียดข่าวชุมชน", status: "draft")
+    sign_in @admin
+
+    patch broadcast_path(broadcast), params: {
+      publish_after_save: "1",
+      broadcast: {
+        title: broadcast.title,
+        script: broadcast.script,
+        bullets_text: "รายละเอียดข่าวชุมชน",
+        publish_to_public_web: "1",
+        delivery_modes: [""],
+        channel_ids: [""]
+      }
+    }
+
+    assert_redirected_to broadcast_path(broadcast)
+    broadcast.reload
+    assert broadcast.publish_to_public_web?
+    assert_includes broadcast.pending_tasks, "publish"
   end
 end

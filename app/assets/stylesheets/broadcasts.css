@@ -60,6 +60,8 @@
 .tts-test-status.error{color:#b42318}
 
 @media (max-width:1000px){.broadcast-layout{grid-template-columns:1fr}}
+.broadcasts-shell .dashboard-main{display:flex;min-width:0;min-height:100vh;flex-direction:column}.broadcasts-shell .dashboard-header.gis-topbar{position:sticky!important;z-index:100!important;top:0!important;display:flex!important;align-items:center;justify-content:space-between;flex:0 0 64px;width:100%;height:64px!important;min-height:64px!important;box-sizing:border-box;padding:0 28px!important;border-bottom:1px solid #e3e8e4;background:#fff!important;isolation:isolate}.broadcasts-shell .dashboard-header.gis-topbar>div:first-child{min-width:0}.broadcasts-shell .dashboard-header .breadcrumb{min-width:0;overflow:hidden;white-space:nowrap}.broadcasts-shell .dashboard-header .breadcrumb>span:last-child{overflow:hidden;text-overflow:ellipsis}.broadcasts-shell .dashboard-content.users-workspace{position:relative;z-index:1;flex:1;box-sizing:border-box;padding-top:28px!important}.broadcasts-shell .users-workspace>.users-title-row{position:static!important;height:auto!important;min-height:0!important;margin:0 0 20px!important;padding:0!important;background:transparent!important;box-shadow:none!important}
+@media(max-width:760px){.broadcasts-shell .dashboard-header.gis-topbar{flex-basis:58px;height:58px!important;min-height:58px!important;padding:0 16px!important}.broadcasts-shell .dashboard-content.users-workspace{padding-top:20px!important}.broadcasts-shell .dashboard-header .breadcrumb{font-size:11px}}
 .broadcast-templates{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 16px}
 .broadcast-templates>span{font-size:13px;color:#4b5a50}
 .broadcast-templates .material-symbols-outlined{font-size:18px}

@@ -1,5 +1,40 @@
 document.addEventListener("DOMContentLoaded", () => {
   const page = document.querySelector("[data-community-page]");
+  const modal = page?.querySelector("[data-community-modal]");
+  const modalContent = modal?.querySelector("[data-community-modal-content]");
+  page?.querySelectorAll("[data-community-modal-target]").forEach((button) => button.addEventListener("click", () => {
+    const template = document.getElementById(button.dataset.communityModalTarget);
+    if (!modal || !modalContent || !template) return;
+    modalContent.replaceChildren(template.content.cloneNode(true));
+    modal.showModal();
+  }));
+  modal?.querySelector("[data-community-modal-close]")?.addEventListener("click", () => modal.close());
+  modal?.addEventListener("click", (event) => {
+    if (event.target !== modal) return;
+    const bounds = modal.getBoundingClientRect();
+    const outside = event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom;
+    if (outside) modal.close();
+  });
+  const truncateNewsPreviews = () => page?.querySelectorAll(".community-news-card p").forEach((text) => {
+    text.dataset.fullText ||= text.textContent.trim();
+    const fullText = text.dataset.fullText;
+    text.textContent = fullText;
+    const lineHeight = Number.parseFloat(getComputedStyle(text).lineHeight) || 18;
+    const maxHeight = lineHeight * 2 + 1;
+    if (text.scrollHeight <= maxHeight) return;
+
+    let low = 0;
+    let high = fullText.length;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      text.textContent = `${fullText.slice(0, middle).trimEnd()}..`;
+      if (text.scrollHeight <= maxHeight) low = middle;
+      else high = middle - 1;
+    }
+    text.textContent = `${fullText.slice(0, low).trimEnd()}..`;
+  });
+  requestAnimationFrame(truncateNewsPreviews);
+  window.addEventListener("resize", truncateNewsPreviews);
   const mapElement = page?.querySelector("[data-community-map]");
   if (!page || !mapElement || typeof ol === "undefined") return;
 
@@ -40,8 +75,15 @@ document.addEventListener("DOMContentLoaded", () => {
       communityItem: item
     });
     const color = markerColor(item);
+    const markerSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42"><path d="M16 1.5C8.27 1.5 2 7.77 2 15.5 2 26 16 40 16 40s14-14 14-24.5C30 7.77 23.73 1.5 16 1.5Z" fill="${color}" stroke="white" stroke-width="2.5"/><circle cx="16" cy="15.5" r="5.2" fill="white" fill-opacity=".95"/></svg>`;
     const style = new ol.style.Style({
-      image: new ol.style.Circle({ radius: 9, fill: new ol.style.Fill({ color }), stroke: new ol.style.Stroke({ color: "#fff", width: 3 }) })
+      image: new ol.style.Icon({
+        src: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(markerSvg)}`,
+        anchor: [0.5, 1],
+        anchorXUnits: "fraction",
+        anchorYUnits: "fraction",
+        scale: 0.9
+      })
     });
     feature.set("communityStyle", style);
     feature.setStyle(style);
@@ -132,6 +174,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const toInput = archive.querySelector("[data-community-archive-to]");
     const count = archive.querySelector("[data-community-archive-count]");
     const empty = archive.querySelector("[data-community-archive-empty]");
+    const filterToggle = archive.querySelector("[data-community-archive-filter-toggle]");
+    const dateFilters = archive.querySelector("[data-community-archive-date-filters]");
     let archiveType = "all";
     const updateDateCue = (input) => {
       const wrapper = input?.closest(".community-date-input");
@@ -159,6 +203,14 @@ document.addEventListener("DOMContentLoaded", () => {
       archive.querySelectorAll("[data-community-archive-type]").forEach((candidate) => candidate.classList.toggle("active", candidate === button));
       applyArchiveFilters();
     }));
+    filterToggle?.addEventListener("click", () => {
+      const expanded = filterToggle.getAttribute("aria-expanded") === "true";
+      filterToggle.setAttribute("aria-expanded", String(!expanded));
+      if (dateFilters) dateFilters.hidden = expanded;
+      archive.classList.toggle("filters-expanded", !expanded);
+      const label = filterToggle.querySelector("[data-community-filter-toggle-label]");
+      if (label) label.textContent = expanded ? "ตัวกรองเพิ่มเติม" : "ซ่อนตัวกรอง";
+    });
     [fromInput, toInput].forEach((input) => {
       updateDateCue(input);
       const wrapper = input?.closest(".community-date-input");

@@ -16,8 +16,16 @@
       <small><span class="material-symbols-outlined">update</span>อัปเดตล่าสุด <%= thai_short_datetime(Time.current) %></small>
     </section>
 
+    <% if @latest_news %>
+      <% latest_news = @latest_news %>
+      <section class="community-news-alert" aria-label="ประกาศข่าวล่าสุด">
+        <span class="community-news-alert-icon material-symbols-outlined">campaign</span>
+        <div><small>ประกาศล่าสุด</small><h2><%= latest_news[:title] %></h2><p><%= latest_news[:summary] %></p></div>
+        <% if latest_news[:published_at].present? %><time><%= thai_short_datetime(Time.zone.parse(latest_news[:published_at])) %></time><% end %>
+      </section>
+    <% end %>
+
     <section class="community-stats" aria-label="สรุปสถานการณ์">
-      <article><span class="accepted material-symbols-outlined">task_alt</span><div><strong><%= @counts[:accepted] %></strong><small>รับเรื่องแล้ว</small></div></article>
       <article><span class="progress material-symbols-outlined">engineering</span><div><strong><%= @counts[:in_progress] %></strong><small>กำลังดำเนินการ</small></div></article>
       <article><span class="completed material-symbols-outlined">verified</span><div><strong><%= @counts[:completed] %></strong><small>เสร็จสิ้นใน 30 วัน</small></div></article>
       <article><span class="activity material-symbols-outlined">event</span><div><strong><%= @counts[:activities] %></strong><small>กิจกรรมในพื้นที่</small></div></article>
@@ -28,18 +36,17 @@
       <button type="button" data-community-filter="general">เหตุการณ์</button>
       <button type="button" data-community-filter="disaster">ภัยพิบัติ</button>
       <button type="button" data-community-filter="activity">กิจกรรม</button>
-      <button type="button" data-community-filter="news">ข่าวประชาสัมพันธ์</button>
     </nav>
 
     <div class="community-layout">
       <section class="community-map-card">
         <div class="community-map" data-community-map aria-label="แผนที่สถานการณ์ในพื้นที่"></div>
-        <div class="community-map-legend"><span><i class="accepted"></i>รับเรื่องแล้ว</span><span><i class="progress"></i>กำลังดำเนินการ</span><span><i class="activity"></i>กิจกรรม</span></div>
+        <div class="community-map-legend"><span><i class="progress"></i>กำลังดำเนินการ</span><span><i class="activity"></i>กิจกรรม</span></div>
         <article class="community-map-detail" data-community-detail hidden></article>
       </section>
 
       <aside class="community-feed">
-        <header><div><h2>รายการล่าสุด</h2><p>ไม่มีการแสดงข้อมูลผู้แจ้งและรูปภาพประกอบ</p></div><span><%= @map_items.size + @news.size %> รายการ</span></header>
+        <header><div><h2>เหตุการณ์ล่าสุด</h2><p>ไม่มีการแสดงข้อมูลผู้แจ้งและรูปภาพประกอบ</p></div><span><%= @map_items.size %> รายการ</span></header>
         <div class="community-feed-list" data-community-feed>
           <% @map_items.each do |item| %>
             <button type="button" class="community-feed-item" data-community-item-id="<%= item[:id] %>" data-community-category="<%= item[:category] %>">
@@ -47,22 +54,38 @@
               <span class="community-feed-copy"><b><%= item[:title] %></b><small><%= item[:incident_type] %> · <%= item[:status_label] %></small><time><%= thai_short_datetime(Time.zone.parse(item[:updated_at])) %></time></span>
             </button>
           <% end %>
-          <% @news.each do |news| %>
-            <article class="community-feed-item community-news-item" data-community-category="news">
-              <span class="community-feed-icon news"><span class="material-symbols-outlined">campaign</span></span>
-              <span class="community-feed-copy"><b><%= news[:title] %></b><small><%= news[:summary] %></small><time><%= thai_short_datetime(Time.zone.parse(news[:published_at])) %></time></span>
-            </article>
-          <% end %>
-          <% if @map_items.empty? && @news.empty? %><div class="community-empty"><span class="material-symbols-outlined">inbox</span><p>ยังไม่มีเหตุการณ์หรือข่าวสารที่เผยแพร่</p></div><% end %>
+          <% if @map_items.empty? %><div class="community-empty"><span class="material-symbols-outlined">inbox</span><p>ยังไม่มีเหตุการณ์ที่กำลังดำเนินการหรือกิจกรรมในพื้นที่</p></div><% end %>
         </div>
       </aside>
     </div>
+
+    <div class="community-information-grid">
+    <section class="community-news" aria-labelledby="community-news-title">
+      <header><div><p>ข่าวสารชุมชน</p><h2 id="community-news-title">ข่าวประชาสัมพันธ์</h2><small>ประกาศและข้อมูลข่าวสารย้อนหลังไม่เกิน 30 วันที่หน่วยงานเลือกเผยแพร่ต่อประชาชน</small></div><span><%= @news.size %> รายการ</span></header>
+      <% if @news.any? %>
+        <div class="community-news-list">
+          <% @news.each do |news| %>
+            <button type="button" class="community-news-card" data-community-modal-target="community-news-<%= news[:id] %>">
+              <span class="material-symbols-outlined">campaign</span>
+              <div><h3><%= news[:title] %></h3><p><%= news[:summary] %></p><% if news[:published_at].present? %><time><%= thai_short_datetime(Time.zone.parse(news[:published_at])) %></time><% end %></div>
+            </button>
+            <template id="community-news-<%= news[:id] %>">
+              <div class="community-modal-heading"><span class="material-symbols-outlined">campaign</span><div><small>ข่าวประชาสัมพันธ์</small><h2><%= news[:title] %></h2></div></div>
+              <p class="community-modal-summary"><%= news[:content] %></p>
+              <% if news[:published_at].present? %><p class="community-modal-date">เผยแพร่เมื่อ <%= thai_short_datetime(Time.zone.parse(news[:published_at])) %></p><% end %>
+            </template>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="community-completed-empty"><span class="material-symbols-outlined">campaign</span><p>ยังไม่มีข่าวประชาสัมพันธ์ที่เผยแพร่ในช่วง 30 วันที่ผ่านมา</p></div>
+      <% end %>
+    </section>
 
     <section class="community-completed" aria-labelledby="community-completed-title" data-community-archive>
       <header>
         <div>
           <p>ผลการดำเนินงาน</p>
-          <h2 id="community-completed-title">เหตุการณ์ที่ดำเนินการเสร็จสิ้นและข่าวสารล่าสุด</h2>
+          <h2 id="community-completed-title">เหตุการณ์ที่ดำเนินการเสร็จสิ้นล่าสุด</h2>
           <small>แสดงรายการย้อนหลังไม่เกิน 30 วัน โดยไม่เปิดเผยข้อมูลผู้แจ้งและรูปภาพประกอบ</small>
         </div>
         <span data-community-archive-count><%= @archive_items.size %> รายการ</span>
@@ -70,11 +93,12 @@
 
       <div class="community-archive-filters">
         <div class="community-archive-types" role="group" aria-label="กรองประเภทรายการย้อนหลัง">
-          <% [["all", "ทั้งหมด"], ["general", "เหตุการณ์"], ["disaster", "ภัยพิบัติ"], ["activity", "กิจกรรม"], ["news", "ข่าวประชาสัมพันธ์"]].each do |value, label| %>
+          <% [["all", "ทั้งหมด"], ["general", "เหตุการณ์"], ["disaster", "ภัยพิบัติ"], ["activity", "กิจกรรม"]].each do |value, label| %>
             <button type="button" class="<%= 'active' if value == 'all' %>" data-community-archive-type="<%= value %>"><%= label %></button>
           <% end %>
+          <button type="button" class="community-more-filters" data-community-archive-filter-toggle aria-expanded="false"><span class="material-symbols-outlined">tune</span><span data-community-filter-toggle-label>ตัวกรองเพิ่มเติม</span></button>
         </div>
-        <div class="community-archive-dates">
+        <div class="community-archive-dates" data-community-archive-date-filters hidden>
           <label>ตั้งแต่ <span class="community-date-input" role="button" tabindex="0"><input type="date" min="<%= 30.days.ago.to_date.iso8601 %>" max="<%= Time.zone.today.iso8601 %>" data-community-archive-from><span class="community-date-placeholder">เลือกวันที่</span><span class="community-date-icon material-symbols-outlined">calendar_month</span></span></label>
           <label>ถึง <span class="community-date-input" role="button" tabindex="0"><input type="date" min="<%= 30.days.ago.to_date.iso8601 %>" max="<%= Time.zone.today.iso8601 %>" data-community-archive-to><span class="community-date-placeholder">เลือกวันที่</span><span class="community-date-icon material-symbols-outlined">calendar_month</span></span></label>
           <button type="button" data-community-archive-reset>ล้างตัวกรอง</button>
@@ -84,17 +108,18 @@
       <% if @archive_items.any? %>
         <div class="community-completed-list">
           <% @archive_items.each do |item| %>
-            <details class="community-completed-item" data-community-archive-item data-archive-category="<%= item[:category] %>" data-archive-date="<%= Time.zone.parse(item[:displayed_at]).to_date.iso8601 %>">
-              <summary>
-                <span class="community-completed-icon <%= item[:category] %> material-symbols-outlined"><%= item[:category] == "news" ? "campaign" : (item[:category] == "activity" ? "event" : (item[:category] == "disaster" ? "warning" : "verified")) %></span>
+            <article class="community-completed-item" data-community-archive-item data-archive-category="<%= item[:category] %>" data-archive-date="<%= Time.zone.parse(item[:displayed_at]).to_date.iso8601 %>">
+              <button type="button" class="community-completed-summary" data-community-modal-target="community-completed-<%= item[:id] %>">
+                <span class="community-completed-icon <%= item[:category] %> material-symbols-outlined"><%= item[:category] == "activity" ? "event" : (item[:category] == "disaster" ? "warning" : "verified") %></span>
                 <span class="community-completed-heading">
                   <b><%= item[:title] %></b>
                   <small><%= item[:incident_type] %><%= " · #{item[:location_name]}" if item[:location_name].present? %></small>
                 </span>
-                <span class="community-completed-date"><small><%= item[:category] == "news" ? "เผยแพร่เมื่อ" : "เสร็จสิ้นเมื่อ" %></small><time><%= thai_short_datetime(Time.zone.parse(item[:displayed_at])) %></time></span>
-                <span class="community-completed-toggle material-symbols-outlined">expand_more</span>
-              </summary>
-              <div class="community-completed-detail">
+                <span class="community-completed-date"><small>เสร็จสิ้นเมื่อ</small><time><%= thai_short_datetime(Time.zone.parse(item[:displayed_at])) %></time></span>
+              </button>
+              <template id="community-completed-<%= item[:id] %>">
+              <div class="community-modal-heading"><span class="community-completed-icon <%= item[:category] %> material-symbols-outlined"><%= item[:category] == "activity" ? "event" : (item[:category] == "disaster" ? "warning" : "verified") %></span><div><small><%= item[:category_label] %></small><h2><%= item[:title] %></h2></div></div>
+              <div class="community-completed-detail community-modal-completed-detail">
                 <% if item[:summary].present? %><p><%= item[:summary] %></p><% end %>
                 <dl>
                   <% if item[:reference_code].present? %><div><dt>เลขที่เรื่อง</dt><dd><%= item[:reference_code] %></dd></div><% end %>
@@ -104,14 +129,20 @@
                   <% if item[:confirmations].positive? %><div><dt>ผู้ยืนยันเหตุเพิ่มเติม</dt><dd><%= item[:confirmations] %> คน</dd></div><% end %>
                 </dl>
               </div>
-            </details>
+              </template>
+            </article>
           <% end %>
         </div>
         <div class="community-completed-empty" data-community-archive-empty hidden><span class="material-symbols-outlined">filter_alt_off</span><p>ไม่พบรายการตามตัวกรองที่เลือก</p></div>
       <% else %>
-        <div class="community-completed-empty"><span class="material-symbols-outlined">task_alt</span><p>ยังไม่มีเหตุการณ์ที่เสร็จสิ้นหรือข่าวที่เผยแพร่ในช่วง 30 วันที่ผ่านมา</p></div>
+        <div class="community-completed-empty"><span class="material-symbols-outlined">task_alt</span><p>ยังไม่มีเหตุการณ์ที่ดำเนินการเสร็จสิ้นในช่วง 30 วันที่ผ่านมา</p></div>
       <% end %>
     </section>
+    </div>
+    <dialog class="community-modal" data-community-modal>
+      <button type="button" class="community-modal-close" data-community-modal-close aria-label="ปิดหน้าต่าง">&times;</button>
+      <div data-community-modal-content></div>
+    </dialog>
   </div>
 </main>
 <%= javascript_include_tag "public_community", defer: true, "data-turbo-track": "reload" %>

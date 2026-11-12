@@ -56,7 +56,7 @@ class BroadcastProgramsController < ApplicationController
   end
 
   def program_params
-    params.require(:broadcast_program).permit(:name, :prompt, :lookahead_days, :max_words, :schedule_enabled, :auto_publish, :enabled, :alert_only, :history_years,
+    params.require(:broadcast_program).permit(:name, :prompt, :lookahead_days, :max_words, :schedule_enabled, :auto_publish, :publish_to_public_web, :enabled, :alert_only, :history_years,
                                               :ai_provider_id, :tts_provider_id, :tts_voice, :internal_alert_level, :internal_alert_hours,
                                               data_sources: [], schedule_days: [], channel_ids: [], delivery_modes: [])
   end

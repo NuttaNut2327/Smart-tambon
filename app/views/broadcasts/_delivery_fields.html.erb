@@ -18,10 +18,10 @@
       </div>
     </fieldset>
   <% end %>
-  <% if scope == "broadcast" && record.respond_to?(:publish_to_public_web) %>
+  <% if record.respond_to?(:publish_to_public_web) %>
     <fieldset class="broadcast-delivery-mode" <%= "disabled" if disabled %>>
-      <%= hidden_field_tag "broadcast[publish_to_public_web]", "0", id: nil %>
-      <label class="settings-switch"><%= check_box_tag "broadcast[publish_to_public_web]", "1", record.publish_to_public_web?, id: "broadcast_publish_to_public_web" %><span><span class="material-symbols-outlined">public</span><b>เผยแพร่บนเว็บไซต์ภาพรวมชุมชน</b></span></label>
+      <%= hidden_field_tag "#{scope}[publish_to_public_web]", "0", id: nil %>
+      <label class="settings-switch"><%= check_box_tag "#{scope}[publish_to_public_web]", "1", record.publish_to_public_web?, id: "#{scope}_publish_to_public_web" %><span><span class="material-symbols-outlined">public</span><b>เผยแพร่บนเว็บไซต์ภาพรวมเหตุการณ์ชุมชน</b><small>นำข่าวที่เผยแพร่แล้วไปแสดงบนเว็บไซต์สาธารณะของตำบล</small></span></label>
     </fieldset>
   <% end %>
   <%= hidden_field_tag "#{scope}[delivery_modes][]", "", id: nil %>

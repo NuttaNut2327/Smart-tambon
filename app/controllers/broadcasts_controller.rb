@@ -19,6 +19,14 @@ class BroadcastsController < ApplicationController
     @broadcast.assign_attributes(params.require(:broadcast).permit(:title, :script, :internal_alert_level, :internal_alert_hours, :publish_to_public_web, channel_ids: [], delivery_modes: []).merge(updated_by: current_user.username))
     @broadcast.bullets_text = params.dig(:broadcast, :bullets_text) if params.dig(:broadcast).key?(:bullets_text)
     @broadcast.save!
+    if params[:publish_after_save] == "1"
+      return redirect_to(broadcast_path(@broadcast), alert: "เฉพาะผู้ดูแลประจำ อบต. เท่านั้นที่เผยแพร่ข่าวได้") unless current_user.subdistrict_admin?
+      return redirect_to(broadcast_path(@broadcast), alert: "เลือกรูปแบบการแจ้งเตือนและช่องทางอย่างน้อย 1 ช่องทางก่อน") unless @broadcast.delivery_targets?
+
+      tasks = []
+      tasks << "synthesize" if @broadcast.channels.any? { |channel| channel.kind == "pa_mqtt" } && !@broadcast.audio_current?
+      return queue([*tasks, "publish"], "บันทึกและกำลังเผยแพร่ข่าว…")
+    end
     redirect_to broadcast_path(@broadcast), notice: @broadcast.audio.present? && !@broadcast.audio_current? ? "บันทึกแล้ว — ข้อความเปลี่ยน กรุณาสร้างเสียงใหม่ก่อนส่งไปเสียงตามสาย" : "บันทึกข่าวเรียบร้อยแล้ว"
   end
 

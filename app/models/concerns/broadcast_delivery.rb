@@ -53,7 +53,7 @@ module BroadcastDelivery
       names = picked.select { |channel| config[:kinds].include?(channel.kind) }.map(&:name)
       "#{config[:label]}: #{names.join(', ')}" if names.any?
     end
-    summaries << "เว็บไซต์ภาพรวมชุมชน" if respond_to?(:publish_to_public_web?) && publish_to_public_web?
+    summaries << "เว็บไซต์ภาพรวมเหตุการณ์ชุมชน" if respond_to?(:publish_to_public_web?) && publish_to_public_web?
     summaries.join(" · ")
   end
 
