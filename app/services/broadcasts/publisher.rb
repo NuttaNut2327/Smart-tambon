@@ -14,7 +14,7 @@ module Broadcasts
     def call
       channels = @broadcast.channels.select(&:enabled?)
       internal = @broadcast.delivers?("internal")
-      raise "ยังไม่ได้เลือกรูปแบบหรือช่องทางเผยแพร่" if channels.empty? && !internal
+      raise "ยังไม่ได้เลือกรูปแบบหรือช่องทางเผยแพร่" if channels.empty? && !internal && !@broadcast.publish_to_public_web?
       raise "เสียงยังไม่ตรงกับข้อความล่าสุด — สร้างเสียงใหม่ก่อนส่งไปเสียงตามสาย" if channels.any? { |channel| channel.kind == "pa_mqtt" } && !@broadcast.audio_current?
 
       @broadcast.set(status: "publishing", error_message: nil)

@@ -1,10 +1,14 @@
 <% area_name = current_user.access_area&.name.presence || current_user.subdistrict&.name_th %>
 <% system_map = system_setting.map_defaults %>
 <% custom_layers = !@setting.map_layers.nil? %>
-<%= render layout: "settings/frame", locals: { title: "ตั้งค่าระบบ", kicker: "สำหรับผู้ดูแลประจำ อบต. · #{area_name}", description: "ใช้กับผู้ใช้ทุกคนของหน่วยงานนี้ — ข้อมูล อบต. การแจ้งเตือน แผนที่ และลิงก์แจ้งเหตุสาธารณะ", active: :organization } do %>
+<% reporting_tab = action_name == "public_reporting" || params[:settings_tab] == "public_reporting" %>
+<% page = reporting_tab ? { title: "ช่องทางการแจ้งเหตุประจำตำบล", description: "ตั้งค่าช่องทางที่ประชาชนใช้แจ้งเหตุผ่านแบบฟอร์มและ LINE OA พร้อมข้อความอัปเดตสถานะรายบุคคล", active: :public_reporting } : { title: "ตั้งค่าระบบ", description: "ข้อมูล อบต. การแจ้งเตือนภายใน แผนที่ และบริการของหน่วยงาน", active: :organization } %>
+<%= render layout: "settings/frame", locals: { title: page[:title], kicker: "สำหรับผู้ดูแลประจำ อบต. · #{area_name}", description: page[:description], active: page[:active] } do %>
   <%= form_with model: @setting, url: organization_settings_path, method: :patch, html: { multipart: true, class: "settings-form" } do |form| %>
+    <%= hidden_field_tag :settings_tab, "public_reporting" if reporting_tab %>
     <% if @setting.errors.any? %><div class="form-errors"><% @setting.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
 
+    <% unless reporting_tab %>
     <section class="settings-card" id="settings-organization">
       <header><span class="material-symbols-outlined">account_balance</span><div><h2>ข้อมูล อบต.</h2><p>แสดงบนหน้าแบบฟอร์มแจ้งเหตุสาธารณะ เพื่อให้ประชาชนรู้ว่าแจ้งถึงหน่วยงานใด</p></div><%= button_tag type: "button", class: "button-link settings-reset-button", data: { open_organization_reset: true } do %><span class="material-symbols-outlined">restart_alt</span>คืนค่าเริ่มต้น<% end %></header>
       <div class="settings-grid">
@@ -25,6 +29,29 @@
       </div>
     </section>
 
+    <% end %>
+
+    <% if reporting_tab %>
+    <section class="settings-card" id="settings-citizen-line">
+      <header><span class="material-symbols-outlined">chat</span><div><h2>LINE OA สำหรับรับแจ้งเหตุประจำตำบล</h2><p>ช่องทางสำหรับประชาชนแจ้งเหตุผ่าน LIFF และรับข้อความอัปเดตสถานะเป็นรายบุคคล ค่าลับถูกเข้ารหัสและแยกจากตำบลอื่น</p></div></header>
+      <div class="settings-grid">
+        <label class="settings-switch span-2"><%= form.check_box :citizen_line_enabled %><span><b>เปิดใช้งาน LINE OA สำหรับรับแจ้งเหตุ</b><small><%= "เชื่อมต่อกับ #{@setting.citizen_line_bot_name}" if @setting.citizen_line_bot_name %></small></span></label>
+        <label>LINE Login Channel ID<%= form.text_field :citizen_line_login_channel_id, placeholder: "Channel ID ของ LINE Login" %><small>ใช้ตรวจสอบตัวตน LIFF ไม่ใช่ Channel ID ของ Messaging API</small></label>
+        <label>LIFF ID<%= form.text_field :citizen_line_liff_id, placeholder: "เช่น 1234567890-AbCdEf" %></label>
+        <div class="span-2 settings-webhook-field"><div><b>LIFF Endpoint URL</b><small>คัดลอก URL นี้ไปใส่ใน LINE Developers → LINE Login → LIFF → Endpoint URL</small></div><div class="settings-webhook-control"><input type="text" readonly value="<%= liff_bootstrap_url %>" data-copy-source><button type="button" class="button-link" data-copy-link><span class="material-symbols-outlined">content_copy</span>คัดลอก</button></div></div>
+        <label>Messaging API Channel access token<%= password_field_tag "organization_setting[citizen_line_channel_access_token]", nil, autocomplete: "new-password", placeholder: @setting.masked_citizen_line_channel_access_token || "ยังไม่ได้กำหนด" %><small>เว้นว่างเพื่อคงค่าเดิม</small><% if @setting.citizen_line_channel_access_token? %><span class="settings-check"><%= check_box_tag "organization_setting[clear_citizen_line_channel_access_token]", "1" %> ลบค่าที่บันทึก</span><% end %></label>
+        <label>Messaging API Channel secret<%= password_field_tag "organization_setting[citizen_line_channel_secret]", nil, autocomplete: "new-password", placeholder: @setting.masked_citizen_line_channel_secret || "ยังไม่ได้กำหนด" %><small>ใช้ตรวจลายมือชื่อ Webhook</small><% if @setting.citizen_line_channel_secret? %><span class="settings-check"><%= check_box_tag "organization_setting[clear_citizen_line_channel_secret]", "1" %> ลบค่าที่บันทึก</span><% end %></label>
+        <div class="span-2 settings-webhook-field">
+          <div><b>Webhook URL เฉพาะตำบลนี้</b><small>นำ URL นี้ไปใส่ใน Messaging API ของ OA ตำบลนี้ และเปิด Use webhook</small></div>
+          <div class="settings-webhook-control"><input type="text" readonly value="<%= citizen_line_webhook_url(organization_key: @setting.organization_key) %>" data-copy-source><button type="button" class="button-link" data-copy-link><span class="material-symbols-outlined">content_copy</span>คัดลอก</button></div>
+        </div>
+      </div>
+      <div class="settings-actions"><%= button_tag type: "submit", form: "test-citizen-line-form", class: "button-link" do %><span class="material-symbols-outlined">network_check</span>ทดสอบ LINE OA ประชาชน<% end %></div>
+    </section>
+
+    <% end %>
+
+    <% unless reporting_tab %>
     <dialog class="settings-confirm-dialog" data-organization-reset-dialog aria-labelledby="organization-reset-title">
       <div class="settings-confirm-dialog-heading"><span class="material-symbols-outlined">restart_alt</span><div><small>คืนค่าข้อมูลหน่วยงาน</small><h2 id="organization-reset-title">ยืนยันคืนค่าเริ่มต้น</h2></div><button type="button" data-close-organization-reset aria-label="ปิด">×</button></div>
       <div class="settings-confirm-dialog-body"><p>ข้อมูลพื้นฐานของ อบต. ที่กำหนดไว้จะถูกล้าง และหน้าแบบฟอร์มแจ้งเหตุจะกลับไปใช้ชื่อพื้นที่กับโลโก้เริ่มต้นของระบบ</p><ul><li>ชื่อหน่วยงานและชื่อผู้บริหาร</li><li>ที่อยู่ โทรศัพท์ อีเมล และเว็บไซต์</li><li>โลโก้ของหน่วยงาน</li></ul><p class="settings-confirm-dialog-note"><span class="material-symbols-outlined">info</span>การตั้งค่าการแจ้งเตือน แผนที่ และลิงก์แจ้งเหตุจะไม่ถูกเปลี่ยนแปลง</p></div>
@@ -66,8 +93,21 @@
       </div>
     </section>
 
+    <% end %>
+
+    <% if reporting_tab %>
+    <section class="settings-card" id="settings-public-community">
+      <header><span class="material-symbols-outlined">map</span><div><h2>แผนที่และภาพรวมชุมชน</h2><p>เว็บไซต์สาธารณะสำหรับให้ประชาชนดูเหตุที่รับเรื่องแล้ว กิจกรรม และข่าวประชาสัมพันธ์ของตำบล</p></div></header>
+      <div class="settings-toggles"><label class="settings-switch"><%= form.check_box :public_community_enabled %><span><b>เปิดหน้าแผนที่สาธารณะ</b><small>ผู้ที่มีลิงก์สามารถเปิดดูได้โดยไม่ต้องเข้าสู่ระบบ และระบบจะไม่แสดงข้อมูลผู้แจ้งหรือรูปภาพ</small></span></label></div>
+      <% community_url = public_community_url(slug: @setting.public_community_slug) %>
+      <article class="settings-public-link">
+        <header><span class="material-symbols-outlined">public</span><b>เว็บไซต์ภาพรวมเหตุการณ์ชุมชน <%= @setting.display_name %></b></header>
+        <div class="settings-public-link-control"><input type="text" readonly value="<%= community_url %>" data-copy-source><button type="button" class="button-link" data-copy-link><span class="material-symbols-outlined">content_copy</span>คัดลอก</button><%= link_to community_url, class: "button-link", target: "_blank", rel: "noopener" do %><span class="material-symbols-outlined">open_in_new</span>เปิดดู<% end %><button type="button" class="button-link" data-open-qr data-qr-title="แผนที่และภาพรวมชุมชน" data-qr-src="<%= public_community_qr_organization_settings_path %>" data-qr-download="<%= public_community_qr_organization_settings_path(download: "1") %>"><span class="material-symbols-outlined">qr_code_2</span>ดู QR</button><%= link_to public_community_qr_organization_settings_path(download: "1"), class: "button-link" do %><span class="material-symbols-outlined">download</span>บันทึก QR<% end %></div>
+      </article>
+    </section>
+
     <section class="settings-card" id="settings-public-report">
-      <header><span class="material-symbols-outlined">link</span><div><h2>ลิงก์แจ้งเหตุสาธารณะ</h2><p>แบบฟอร์มให้ประชาชนและหน่วยงานเครือข่ายแจ้งเหตุในพื้นที่ โดยไม่ต้องเข้าสู่ระบบ</p></div></header>
+      <header><span class="material-symbols-outlined">link</span><div><h2>แบบฟอร์มและลิงก์รับแจ้งเหตุ</h2><p>ช่องทางให้ประชาชนและหน่วยงานเครือข่ายแจ้งเหตุในพื้นที่ โดยไม่ต้องเข้าสู่ระบบ</p></div></header>
       <div class="settings-toggles">
         <label class="settings-switch"><%= form.check_box :public_report_enabled %><span><b>เปิดรับแจ้งเหตุผ่านลิงก์สาธารณะ</b><small>เมื่อปิด ผู้ที่เปิดลิงก์จะเห็นข้อความปิดรับแจ้งชั่วคราวพร้อมเบอร์โทรของ อบต.</small></span></label>
       </div>
@@ -78,18 +118,34 @@
       <div class="settings-links">
         <% @setting.report_sources.each do |source| %>
           <% url = public_incident_report_link(source_type: source["type"], source_name: source["name"]) %>
-          <div class="settings-link-row"><span class="material-symbols-outlined"><%= source["type"] == "citizen" ? "groups" : "apartment" %></span><b><%= source["name"] %></b><input type="text" readonly value="<%= url %>" data-copy-source><button type="button" class="button-link" data-copy-link><span class="material-symbols-outlined">content_copy</span>คัดลอก</button></div>
+          <article class="settings-public-link">
+            <header><span class="material-symbols-outlined"><%= source["type"] == "citizen" ? "groups" : "apartment" %></span><b><%= source["name"] %></b></header>
+            <div class="settings-public-link-control"><input type="text" readonly value="<%= url %>" data-copy-source><button type="button" class="button-link" data-copy-link><span class="material-symbols-outlined">content_copy</span>คัดลอก</button><button type="button" class="button-link" data-open-qr data-qr-title="<%= source["name"] %>" data-qr-src="<%= public_report_qr_organization_settings_path(source_type: source["type"], source_name: source["name"]) %>" data-qr-download="<%= public_report_qr_organization_settings_path(source_type: source["type"], source_name: source["name"], download: "1") %>"><span class="material-symbols-outlined">qr_code_2</span>ดู QR</button><%= link_to public_report_qr_organization_settings_path(source_type: source["type"], source_name: source["name"], download: "1"), class: "button-link" do %><span class="material-symbols-outlined">download</span>บันทึก QR<% end %></div>
+          </article>
+          <% if @setting.citizen_liff_ready? %><% token = url.split("/report/", 2).last %><% liff_url = @setting.citizen_liff_url(liff_public_incident_report_path(token: token)) %><article class="settings-public-link settings-public-link-liff"><header><span class="material-symbols-outlined">chat</span><b>ลิงก์ Rich Menu — <%= source["name"] %></b></header><div class="settings-public-link-control compact"><input type="text" readonly value="<%= liff_url %>" data-copy-source><button type="button" class="button-link" data-copy-link><span class="material-symbols-outlined">content_copy</span>คัดลอก</button></div></article><% end %>
         <% end %>
       </div>
     </section>
 
-    <div class="settings-actions"><%= form.submit "บันทึกการตั้งค่าระบบ", class: "button-link primary" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %></div>
-  <% end %>
+    <dialog class="settings-qr-dialog" data-qr-dialog aria-labelledby="settings-qr-title">
+      <header><div><small>QR Code แบบฟอร์มแจ้งเหตุ</small><h2 id="settings-qr-title" data-qr-modal-title></h2></div><button type="button" data-close-qr aria-label="ปิด">×</button></header>
+      <div class="settings-qr-preview"><img data-qr-modal-image alt="QR Code สำหรับแบบฟอร์มแจ้งเหตุ"></div>
+      <footer><button type="button" class="button-link" data-close-qr>ปิด</button><a class="button-link primary" data-qr-modal-download><span class="material-symbols-outlined">download</span>บันทึก QR</a></footer>
+    </dialog>
 
-  <section class="settings-card settings-danger">
-    <header><span class="material-symbols-outlined">sync_lock</span><div><h2>สร้างลิงก์แจ้งเหตุใหม่</h2><p>ใช้เมื่อลิงก์รั่วไหลหรือถูกใช้ผิดวัตถุประสงค์ ลิงก์ที่เคยแชร์ไว้ทั้งหมดจะใช้งานไม่ได้ทันที (ลิงก์ปัจจุบันรุ่นที่ <%= @setting.public_report_version %>)</p></div></header>
-    <%= button_to regenerate_public_link_organization_settings_path, method: :post, class: "button-link danger", form: { data: { confirm_regenerate: true } } do %><span class="material-symbols-outlined">autorenew</span>สร้างลิงก์ใหม่<% end %>
-  </section>
+    <% end %>
+    <div class="settings-actions settings-save-actions"><%= form.submit "บันทึกการตั้งค่าระบบ", class: "button-link primary settings-save-submit" %><% if @setting.updated_by %><small>แก้ไขล่าสุดโดย <%= @setting.updated_by %> · <%= thai_short_datetime(@setting.updated_at) %></small><% end %></div>
+  <% end %>
+  <% if reporting_tab %>
+    <%= form_with url: test_citizen_line_organization_settings_path, method: :post, id: "test-citizen-line-form" do %><% end %>
+    <section class="settings-danger-zone" aria-labelledby="settings-danger-zone-title">
+      <header class="settings-danger-zone-heading"><span class="material-symbols-outlined">warning</span><div><b id="settings-danger-zone-title">โซนอันตราย</b><small>การดำเนินการในส่วนนี้ส่งผลต่อลิงก์ที่เผยแพร่และไม่สามารถย้อนกลับได้</small></div></header>
+      <section class="settings-card settings-danger">
+        <header><span class="material-symbols-outlined">sync_lock</span><div><h2>สร้างลิงก์แจ้งเหตุใหม่</h2><p>ใช้เมื่อลิงก์รั่วไหลหรือถูกใช้ผิดวัตถุประสงค์ ลิงก์ที่เคยแชร์ไว้ทั้งหมดจะใช้งานไม่ได้ทันที (ลิงก์ปัจจุบันรุ่นที่ <%= @setting.public_report_version %>)</p></div></header>
+        <%= button_to regenerate_public_link_organization_settings_path, method: :post, class: "button-link danger", form: { data: { confirm_regenerate: true } } do %><span class="material-symbols-outlined">autorenew</span>สร้างลิงก์ใหม่<% end %>
+      </section>
+    </section>
+  <% end %>
 <% end %>
 <script>
   document.addEventListener("DOMContentLoaded", () => {
@@ -103,6 +159,15 @@
       button.lastChild.textContent = "คัดลอกแล้ว";
       setTimeout(() => { button.lastChild.textContent = "คัดลอก"; }, 1500);
     }));
+    const qrDialog = document.querySelector("[data-qr-dialog]");
+    document.querySelectorAll("[data-open-qr]").forEach(button => button.addEventListener("click", () => {
+      qrDialog.querySelector("[data-qr-modal-title]").textContent = button.dataset.qrTitle;
+      qrDialog.querySelector("[data-qr-modal-image]").src = button.dataset.qrSrc;
+      qrDialog.querySelector("[data-qr-modal-download]").href = button.dataset.qrDownload;
+      qrDialog.showModal();
+    }));
+    document.querySelectorAll("[data-close-qr]").forEach(button => button.addEventListener("click", () => qrDialog?.close()));
+    qrDialog?.addEventListener("click", event => { if (event.target === qrDialog) qrDialog.close(); });
     document.querySelector("[data-confirm-regenerate]")?.addEventListener("submit", event => {
       if (!window.confirm("สร้างลิงก์ใหม่? ลิงก์แจ้งเหตุที่เคยแชร์ไว้ทั้งหมดจะใช้งานไม่ได้")) event.preventDefault();
     });

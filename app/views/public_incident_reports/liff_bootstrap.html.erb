@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>กำลังเปิดแบบฟอร์มแจ้งเหตุ</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>body{display:grid;min-height:100vh;margin:0;place-items:center;background:#fffefb;color:#3f4f44;font-family:sans-serif;text-align:center}main{padding:24px}p{color:#6d7b72}</style>
+  </head>
+  <body>
+    <main><h1>กำลังเปิดแบบฟอร์มแจ้งเหตุ</h1><p id="status">กำลังเชื่อมต่อกับ LINE…</p></main>
+    <script>
+      liff.init({ liffId: <%= raw json_escape(@liff_id.to_json) %> })
+        .then(() => {
+          window.location.replace(<%= raw json_escape(@liff_report_path.to_json) %>);
+        })
+        .catch(() => {
+          document.getElementById("status").textContent = "เปิด LIFF ไม่สำเร็จ กรุณาปิดหน้านี้แล้วลองอีกครั้ง";
+        });
+    </script>
+  </body>
+</html>

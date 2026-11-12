@@ -16,6 +16,26 @@ class NotificationTemplate
     "reported_at" => "วันเวลาที่แจ้ง", "link" => "ลิงก์เปิดเรื่องในระบบ", "message" => "ข้อความ (ใช้กับแท็กประกาศ)"
   }.freeze
 
+  CITIZEN_ONLY_VARIABLES = {
+    "reporter_name" => "ชื่อผู้แจ้ง", "reporter_contact" => "เบอร์ติดต่อผู้แจ้ง",
+    "initial_impact" => "ผลกระทบเบื้องต้นที่ผู้แจ้งระบุ"
+  }.freeze
+  # Details supplied by the reporter for their own incident. Internal links, assignments and resources stay hidden.
+  CITIZEN_VARIABLES = VARIABLES.slice(
+    "organization_name", "reference_code", "category", "title", "description", "incident_type", "severity", "status",
+    "report_source", "location_name", "subdistrict", "latitude", "longitude", "map_url", "reported_at"
+  ).merge(CITIZEN_ONLY_VARIABLES).freeze
+  CITIZEN_TAGS = {
+    "citizen.submitted" => "ประชาชนส่งเรื่องเข้าสู่ระบบแล้ว",
+    "citizen.acknowledged" => "เจ้าหน้าที่รับเรื่องแล้ว",
+    "citizen.completed" => "ดำเนินการเสร็จสิ้นแล้ว"
+  }.freeze
+  TAGS = NotificationChannel::TAGS.merge(CITIZEN_TAGS).freeze
+  TAG_GROUPS = {
+    "ข้อความแจ้งความคืบหน้าสำหรับประชาชน" => CITIZEN_TAGS,
+    "ข้อความแจ้งเตือนสำหรับกลุ่มเจ้าหน้าที่" => NotificationChannel::TAGS
+  }.freeze
+
   DEFAULTS = {
     "incident.created" => <<~TEXT.strip,
       🔔 มีเหตุการณ์แจ้งเข้ามาใหม่
@@ -44,32 +64,44 @@ class NotificationTemplate
       สถานที่: {{location_name}}
       เปิดในระบบ: {{link}}
     TEXT
-    "announcement" => "📢 {{organization_name}}\n{{message}}"
+    "announcement" => "📢 {{organization_name}}\n{{message}}",
+    "citizen.submitted" => "ระบบได้รับเรื่องของคุณแล้ว\nเลขอ้างอิง: {{reference_code}}\nเรื่อง: {{title}}",
+    "citizen.acknowledged" => "เจ้าหน้าที่รับเรื่องแล้ว\nเลขอ้างอิง: {{reference_code}}\nเรื่อง: {{title}}",
+    "citizen.completed" => "ดำเนินการเสร็จสิ้นแล้ว\nเลขอ้างอิง: {{reference_code}}\nเรื่อง: {{title}}"
   }.freeze
 
   field :organization_key, type: String
   field :name, type: String
   field :tag, type: String
   field :body, type: String
+  field :active, type: Boolean, default: false
   field :updated_by, type: String
 
   index({ organization_key: 1, tag: 1, updated_at: -1 })
 
   validates :organization_key, :name, :body, presence: true
-  validates :tag, inclusion: { in: NotificationChannel::TAGS.keys }
+  validates :tag, inclusion: { in: TAGS.keys }
   validates :body, length: { maximum: 3000 }
   validate :variables_must_be_known
+  before_create :activate_if_first_for_tag
 
   scope :for_organization, ->(key) { where(organization_key: key) }
 
   def self.body_for(organization_key, tag)
-    for_organization(organization_key).where(tag: tag).desc(:updated_at).first&.body || DEFAULTS.fetch(tag, "{{title}}")
+    scope = for_organization(organization_key).where(tag: tag)
+    (scope.where(active: true).desc(:updated_at).first || scope.desc(:updated_at).first)&.body || DEFAULTS.fetch(tag, "{{title}}")
   end
 
-  def tag_label = NotificationChannel::TAGS.fetch(tag, tag)
-  def unknown_variables = body.to_s.scan(/\{\{\s*([a-z_]+)\s*\}\}/).flatten.uniq - VARIABLES.keys
+  def tag_label = TAGS.fetch(tag, tag)
+  def citizen? = CITIZEN_TAGS.key?(tag)
+  def available_variables = citizen? ? CITIZEN_VARIABLES : VARIABLES
+  def unknown_variables = body.to_s.scan(/\{\{\s*([a-z_]+)\s*\}\}/).flatten.uniq - available_variables.keys
 
   private
+
+  def activate_if_first_for_tag
+    self.active = true unless self.class.for_organization(organization_key).where(tag: tag).exists?
+  end
 
   def variables_must_be_known
     errors.add(:body, "มีตัวแปรที่ไม่รู้จัก: #{unknown_variables.map { |name| "{{#{name}}}" }.join(', ')}") if unknown_variables.any?

@@ -79,6 +79,7 @@ module Webhooks
       parsed = payload || (JSON.parse(body) if signature_valid)
       events = Array(parsed&.fetch("events", nil))
       LineWebhookLog.create!(
+        account_key: "staff",
         received_at: Time.current,
         status:,
         signature_valid:,

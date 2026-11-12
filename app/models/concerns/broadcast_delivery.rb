@@ -7,7 +7,7 @@ module BroadcastDelivery
 
   MODES = {
     "pa" => { label: "ส่งออกระบบเสียงตามสาย", icon: "campaign", hint: "สร้างไฟล์เสียงแล้วส่งไปอุปกรณ์เสียงตามสายผ่าน MQTT", kinds: %w[pa_mqtt] },
-    "notification" => { label: "ระบบแจ้งเตือน (LINE ฯลฯ)", icon: "notifications_active", hint: "ส่งข้อความไปกลุ่ม LINE, Telegram, Signal, Facebook Page, Instagram หรือ Webhook",
+    "notification" => { label: "ระบบแจ้งเตือน LINE OA", icon: "notifications_active", hint: "ส่งข้อความไปกลุ่ม LINE ที่เลือก",
                         kinds: %w[line telegram signal webhook facebook instagram] },
     "internal" => { label: "แจ้งเตือนภายในระบบ (Internal Alert)", icon: "notification_important", hint: "แสดง popup ให้เจ้าหน้าที่ของ อบต. ที่กำลังใช้งานระบบเห็นทันที และคนที่เข้าระบบภายหลังจนกว่าจะหมดเวลา",
                     kinds: [] }
@@ -41,18 +41,20 @@ module BroadcastDelivery
 
   # The channels this record will actually publish to.
   def channels = selected_channels.select { |channel| delivery_kinds.include?(channel.kind) }
-  def delivery_targets? = channels.any? || delivers?("internal")
+  def delivery_targets? = channels.any? || delivers?("internal") || (respond_to?(:publish_to_public_web?) && publish_to_public_web?)
 
   # e.g. "เสียงตามสาย: หอกระจายข่าว ม.1 · แจ้งเตือนภายในระบบ"
   def delivery_summary
     picked = channels
-    delivery_modes.filter_map do |mode|
+    summaries = delivery_modes.filter_map do |mode|
       config = MODES[mode]
       next config[:label] if mode == "internal"
 
       names = picked.select { |channel| config[:kinds].include?(channel.kind) }.map(&:name)
       "#{config[:label]}: #{names.join(', ')}" if names.any?
-    end.join(" · ")
+    end
+    summaries << "เว็บไซต์ภาพรวมเหตุการณ์ชุมชน" if respond_to?(:publish_to_public_web?) && publish_to_public_web?
+    summaries.join(" · ")
   end
 
   private

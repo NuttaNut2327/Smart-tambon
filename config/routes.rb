@@ -37,7 +37,15 @@ Rails.application.routes.draw do
   get "disaster_statistics", to: "disaster_statistics#show", as: :disaster_statistics
   get "report/:token", to: "public_incident_reports#show", as: :public_incident_report
   post "report/:token", to: "public_incident_reports#create"
+  get "liff/report/:token", to: "public_incident_reports#liff_show", as: :liff_public_incident_report
+  post "liff/report/:token", to: "public_incident_reports#liff_create"
+  get "liff/follow/:token/:incident_id", to: "public_incident_reports#liff_follow", as: :liff_follow_public_incident_report
+  post "liff/follow/:token/:incident_id", to: "public_incident_reports#follow_existing", as: :follow_existing_public_incident_report
+  get "liff", to: "public_incident_reports#liff_bootstrap", as: :liff_bootstrap
   get "report/:token/reverse_geocode", to: "public_incident_reports#reverse_geocode", as: :reverse_geocode_public_incident_report
+  get "report/:token/similar_incidents", to: "public_incident_reports#similar_incidents", as: :similar_incidents_public_incident_report
+  post "report/:token/similar_incidents/:incident_id/confirm", to: "public_incident_reports#confirm_similar_incident", as: :confirm_similar_incident_public_incident_report
+  get "community/:slug", to: "public_communities#show", as: :public_community
   get "incidents/notification", to: "incidents#notification", as: :incident_notification
   get "incidents/map_points", to: "incidents#map_points", as: :incident_map_points
   post "incidents", to: "incidents#create", as: :incidents
@@ -124,10 +132,13 @@ Rails.application.routes.draw do
       get :signal_groups
     end
   end
-  resources :notification_templates, except: :show
+  resources :notification_templates, except: :show do
+    patch :activate, on: :member
+  end
   get "notification_tests", to: "notification_tests#show", as: :notification_tests
   post "notification_tests", to: "notification_tests#create"
   post "line/webhooks", to: "webhooks/line#create", as: :line_webhook
+  post "line/webhooks/citizen/:organization_key", to: "webhooks/citizen_line#create", as: :citizen_line_webhook
   resources :ai_providers, except: :show do
     member do
       post :test
@@ -141,7 +152,11 @@ Rails.application.routes.draw do
     get :logo
   end
   resource :organization_settings, only: %i[show update] do
+    get :public_reporting
     post :regenerate_public_link
+    post :test_citizen_line
+    get :public_report_qr
+    get :public_community_qr
     get "logo/:key", action: :logo, as: :logo
   end
   # News broadcasts (ข่าวประชาสัมพันธ์/เสียงตามสาย): programmes, generated episodes and public media links.

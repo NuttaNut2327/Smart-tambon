@@ -42,7 +42,8 @@ class NotificationsTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
-    [NotificationDelivery, NotificationChannel, NotificationTemplate, LineGroup, LineWebhookLog, NotificationSetting].each(&:delete_all)
+    [NotificationDelivery, CitizenLineDelivery, NotificationChannel, NotificationTemplate, LineGroup, LineWebhookLog, NotificationSetting].each(&:delete_all)
+    OrganizationSetting.where(:organization_key.in => [@admin&.organization_key, @other&.organization_key].compact).delete_all
     Incident.where(:owner_user_id.in => [@admin&.id, @other&.id].compact).delete_all
     [@admin, @staff, @other].compact.each(&:destroy)
     @province&.subdistricts&.destroy_all
@@ -101,6 +102,70 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     assert_includes template.errors[:body].join, "{{reporter_contact}}"
   end
 
+  test "admin explicitly selects the active template for each message type" do
+    first = NotificationTemplate.create!(organization_key: @admin.organization_key, name: "แบบแรก",
+      tag: "incident.created", body: "แบบแรก {{title}}")
+    second = NotificationTemplate.create!(organization_key: @admin.organization_key, name: "แบบที่สอง",
+      tag: "incident.created", body: "แบบที่สอง {{title}}")
+
+    assert first.reload.active?
+    assert_not second.reload.active?
+    assert_equal "แบบแรก {{title}}", NotificationTemplate.body_for(@admin.organization_key, "incident.created")
+
+    patch activate_notification_template_path(second)
+
+    assert_redirected_to notification_templates_path(anchor: "template-incident-created")
+    assert_not first.reload.active?
+    assert second.reload.active?
+    assert_equal "แบบที่สอง {{title}}", NotificationTemplate.body_for(@admin.organization_key, "incident.created")
+  end
+
+  test "admin edits citizen status templates from the message templates page" do
+    get notification_templates_path
+    assert_response :success
+    assert_select ".settings-card h2", text: "ข้อความแจ้งความคืบหน้าสำหรับประชาชน", count: 1
+    assert_select ".notify-tag-card", minimum: NotificationTemplate::TAGS.size
+
+    post notification_templates_path, params: { notification_template: {
+      name: "แจ้งประชาชนเมื่อรับเรื่อง",
+      tag: "citizen.acknowledged",
+      body: "{{organization_name}} กำลังดูแล {{title}} ({{reference_code}})"
+    } }
+
+    assert_redirected_to notification_templates_path
+    template = NotificationTemplate.for_organization(@admin.organization_key).where(tag: "citizen.acknowledged").first
+    assert_equal "แจ้งประชาชนเมื่อรับเรื่อง", template.name
+    assert_equal "{{organization_name}} กำลังดูแล {{title}} ({{reference_code}})", template.body
+
+    get edit_notification_template_path(template)
+    assert_response :success
+    assert_select "select[name='notification_template[tag]'] option[value='citizen.acknowledged'][selected]", count: 1
+  end
+
+  test "shared test page can send a citizen status template to a linked reporter" do
+    incident = create_incident(title: "ไฟถนนดับ")
+    incident.set(line_notification_enabled: true, reporter_line_user_id: "U#{'c' * 32}", reporter_line_display_name: "ผู้แจ้งทดสอบ")
+    setting = OrganizationSetting.for(@admin)
+    setting.update!(citizen_line_enabled: true)
+    setting.assign_citizen_line_channel_access_token("token")
+    setting.save!
+    calls = []
+    client = Object.new
+    client.define_singleton_method(:push) { |user_id, text| calls << [user_id, text]; true }
+
+    CitizenLine::Client.stub(:new, client) do
+      post notification_tests_path, params: {
+        mode: "simulate", tag: "citizen.submitted", data: "sample",
+        citizen_incident_id: incident.id.to_s, commit_action: "send"
+      }
+    end
+
+    assert_redirected_to notification_tests_path
+    assert_equal 1, calls.size
+    assert_equal incident.reporter_line_user_id, calls.first.first
+    assert_includes calls.first.last, incident.reference_code
+  end
+
   test "channel validation follows the kind" do
     assert_not NotificationChannel.new(organization_key: "x", name: "a", kind: "line", target: "groupid").valid?
     assert_not NotificationChannel.new(organization_key: "x", name: "a", kind: "telegram", target: "abc").valid?
@@ -134,6 +199,19 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     assert_equal "simulation", NotificationDelivery.last.source
   end
 
+  test "simulation sends only to the selected eligible group" do
+    fake = FakeSender.new
+    Notifications::Senders.stub(:for, ->(channel, setting = nil) { fake.for(channel, setting) }) do
+      post notification_tests_path, params: {
+        mode: "simulate", tag: "disaster.created", data: "sample",
+        channel_selection_present: "1", channel_ids: [@disaster_only.id.to_s], commit_action: "send"
+      }
+    end
+
+    assert_redirected_to notification_tests_path
+    assert_equal ["กลุ่มภัยพิบัติ"], fake.sent.map(&:first)
+  end
+
   test "preview uses the template for the selected event tag" do
     post notification_tests_path, params: { mode: "simulate", tag: "disaster.created", data: "sample", commit_action: "preview" }
 
@@ -142,6 +220,18 @@ class NotificationsTest < ActionDispatch::IntegrationTest
       assert_includes preview.text, "แจ้งเตือนภัยพิบัติ"
       assert_not_includes preview.text, "มีเหตุการณ์แจ้งเข้ามาใหม่"
     end
+  end
+
+  test "preview responds with JSON for the AJAX test form" do
+    post notification_tests_path,
+      params: { mode: "simulate", tag: "disaster.created", data: "sample", commit_action: "preview" },
+      as: :json
+
+    assert_response :success
+    payload = JSON.parse(response.body)
+    assert_equal true, payload["ok"]
+    assert_includes payload["preview"], "แจ้งเตือนภัยพิบัติ"
+    assert_equal "ใช้ข้อมูลตัวอย่าง", payload["preview_source"]
   end
 
   test "delivery history filters by an inclusive date range and displays Thai date and time" do
@@ -228,6 +318,28 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "LINE Webhook Log"
   ensure
     admin&.destroy
+  end
+
+  test "citizen LINE webhook uses its own secret and audit account" do
+    setting = OrganizationSetting.for(@admin)
+    setting.assign_citizen_line_channel_secret("citizen-secret")
+    setting.save!
+    body = { events: [{ type: "follow", source: { type: "user", userId: "U#{'c' * 32}" } }] }.to_json
+    signature = Base64.strict_encode64(OpenSSL::HMAC.digest("SHA256", "citizen-secret", body))
+
+    post citizen_line_webhook_path(organization_key: @admin.organization_key), params: body,
+      headers: { "Content-Type" => "application/json", "X-Line-Signature" => signature }
+
+    assert_response :success
+    log = LineWebhookLog.where(account_key: "citizen", organization_key: @admin.organization_key, status: "accepted").first
+    assert_equal ["follow"], log.event_types
+
+    other_setting = OrganizationSetting.for(@other)
+    other_setting.assign_citizen_line_channel_secret("other-secret")
+    other_setting.save!
+    post citizen_line_webhook_path(organization_key: @other.organization_key), params: body,
+      headers: { "Content-Type" => "application/json", "X-Line-Signature" => signature }
+    assert_response :unauthorized
   end
 
   test "central settings are system-admin only and never render saved tokens" do

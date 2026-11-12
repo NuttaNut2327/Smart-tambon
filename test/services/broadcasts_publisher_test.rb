@@ -63,4 +63,14 @@ class BroadcastsPublisherTest < ActiveSupport::TestCase
     error = assert_raises(RuntimeError) { Broadcasts::Publisher.call(record) }
     assert_match "ยังไม่ได้เลือก", error.message
   end
+
+  test "public community website can be the only publishing target" do
+    record = broadcast(delivery_modes: [], publish_to_public_web: true)
+
+    Broadcasts::Publisher.call(record)
+
+    assert_equal "published", record.reload.status
+    assert record.published_at.present?
+    assert_empty record.deliveries
+  end
 end

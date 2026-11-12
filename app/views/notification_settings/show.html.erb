@@ -6,7 +6,7 @@
     <% if @setting.errors.any? %><div class="form-errors"><% @setting.errors.full_messages.each do |message| %><p><%= message %></p><% end %></div><% end %>
 
     <section class="settings-card">
-      <header><span class="material-symbols-outlined">chat</span><div><h2>LINE Official Account (ส่วนกลาง)</h2><p>สร้าง Messaging API channel ที่ LINE Developers แล้วนำ Channel access token (long-lived) และ Channel secret มาใส่ — ค่าที่บันทึกถูกเข้ารหัส</p></div></header>
+      <header><span class="material-symbols-outlined">chat</span><div><h2>LINE OA เจ้าหน้าที่ (ส่งเข้ากลุ่ม)</h2><p>สร้าง Messaging API channel ที่ LINE Developers แล้วนำ Channel access token (long-lived) และ Channel secret มาใส่ — ค่าที่บันทึกถูกเข้ารหัส</p></div></header>
       <div class="settings-grid">
         <label class="settings-switch span-2"><%= form.check_box :line_enabled %><span><b>เปิดใช้ LINE OA</b><small>ปิดเพื่อหยุดส่งทุกช่องทาง LINE ของทุก อบต. ชั่วคราว<%= " · บัญชี: #{@setting.line_bot_name}" if @setting.line_bot_name %></small></span></label>
         <label>Channel access token

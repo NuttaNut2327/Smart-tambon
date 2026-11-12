@@ -82,6 +82,7 @@ class BroadcastProgram
   field :schedule_times, type: Array, default: -> { ["07:00"] }
   field :schedule_days, type: Array, default: -> { DAYS.keys }
   field :auto_publish, type: Boolean, default: false
+  field :publish_to_public_web, type: Boolean, default: false
   field :channel_ids, type: Array, default: []
   field :ai_provider_id, type: BSON::ObjectId
   field :tts_provider_id, type: BSON::ObjectId

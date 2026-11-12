@@ -2,16 +2,15 @@
 class NotificationTemplatesController < ApplicationController
   include OrganizationNotifications
 
-  before_action :set_template, only: %i[edit update destroy]
+  before_action :set_template, only: %i[edit update destroy activate]
 
   def index
-    @templates = NotificationTemplate.for_organization(organization_key).order_by(tag: :asc, updated_at: :desc).to_a
-    @in_use = @templates.group_by(&:tag).transform_values { |list| list.max_by(&:updated_at).id }
+    load_index
   end
 
   def new
-    tag = params[:tag].presence_in(NotificationChannel::TAGS.keys) || "incident.created"
-    @template = NotificationTemplate.new(tag: tag, name: NotificationChannel::TAGS[tag], body: NotificationTemplate::DEFAULTS[tag])
+    tag = params[:tag].presence_in(NotificationTemplate::TAGS.keys) || "incident.created"
+    @template = NotificationTemplate.new(tag: tag, name: NotificationTemplate::TAGS[tag], body: NotificationTemplate::DEFAULTS[tag])
   end
 
   def create
@@ -34,9 +33,21 @@ class NotificationTemplatesController < ApplicationController
     redirect_to notification_templates_path, notice: "ลบเทมเพลต #{@template.name} แล้ว"
   end
 
+  def activate
+    NotificationTemplate.for_organization(organization_key).where(tag: @template.tag).update_all(active: false)
+    @template.set(active: true, updated_by: current_user.username)
+    redirect_to notification_templates_path(anchor: "template-#{@template.tag.tr('.', '-')}") , notice: "เลือกเทมเพลต #{@template.name} เป็นข้อความที่ใช้งานแล้ว"
+  end
+
   private
+
+  def load_index
+    @templates = NotificationTemplate.for_organization(organization_key).order_by(tag: :asc, updated_at: :desc).to_a
+    @in_use = @templates.group_by(&:tag).transform_values { |list| (list.find(&:active?) || list.max_by(&:updated_at)).id }
+  end
 
   def set_template = @template = NotificationTemplate.for_organization(organization_key).find(params[:id])
 
   def template_params = params.require(:notification_template).permit(:name, :tag, :body)
+
 end

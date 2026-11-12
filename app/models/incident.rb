@@ -25,6 +25,11 @@ class Incident
   field :subdistrict_id, type: Integer
   field :report_source_type, type: String, default: "staff"
   field :report_source_name, type: String, default: "เจ้าหน้าที่"
+  field :submission_channel, type: String
+  field :reporter_line_user_id, type: String
+  field :reporter_line_display_name, type: String
+  field :reporter_line_verified_at, type: Time
+  field :line_notification_enabled, type: Boolean, default: false
   field :reference_code, type: String
   field :category, type: String, default: "general"
   field :incident_type, type: String
@@ -43,6 +48,7 @@ class Incident
   field :affected_people, type: Integer, default: 0
   field :affected_households, type: Integer, default: 0
   field :initial_impact, type: String
+  field :duplicate_confirmations, type: Array, default: []
   field :photos, type: Array, default: []
   field :assigned_to, type: String
   field :received_by, type: String
@@ -76,6 +82,7 @@ class Incident
   index({ tracking_token: 1 }, { unique: true, sparse: true })
   index({ imported_dataset_id: 1 })
   index({ category: 1, status: 1, ends_at: 1 })
+  index({ owner_user_id: 1, category: 1, status: 1, created_at: -1, latitude: 1, longitude: 1 })
 
   validates :title, :category, :status, presence: true
   validates :category, inclusion: { in: CATEGORIES }

@@ -1,4 +1,4 @@
-<%# Page frame for the settings pages. locals: title, kicker, description, active (:system, :status, :ai, :notifications, :organization, :notification_channels, :notification_templates, :notification_tests) %>
+<%# Page frame for the settings pages. locals: title, kicker, description, active (:system, :status, :ai, :notifications, :organization, :public_reporting, :notification_channels, :notification_templates, :notification_tests) %>
 <% settings_area = current_user.access_area&.name.presence || current_user.subdistrict&.name_th || "ประเทศไทย" %>
 <div class="shell dashboard-shell gis-dashboard users-shell settings-shell">
   <%= render "dashboard/sidebar", active_nav: :settings, initial_area: settings_area %>
@@ -18,7 +18,8 @@
       <% elsif current_user.subdistrict_admin? %>
         <nav class="settings-tabs" aria-label="หมวดการตั้งค่า">
           <%= link_to organization_settings_path, class: ("active" if active == :organization) do %><span class="material-symbols-outlined">account_balance</span>ตั้งค่าระบบ<% end %>
-          <%= link_to notification_channels_path, class: ("active" if active == :notification_channels) do %><span class="material-symbols-outlined">group</span>ช่องทางแจ้งเตือน<% end %>
+          <%= link_to public_reporting_organization_settings_path, class: ("active" if active == :public_reporting) do %><span class="material-symbols-outlined">quickreply</span>ช่องทางการแจ้งเหตุประจำตำบล<% end %>
+          <%= link_to notification_channels_path, class: ("active" if active == :notification_channels) do %><span class="material-symbols-outlined">group</span>ช่องทางการแจ้งเตือนเจ้าหน้าที่<% end %>
           <%= link_to notification_templates_path, class: ("active" if active == :notification_templates) do %><span class="material-symbols-outlined">edit_note</span>เทมเพลตข้อความ<% end %>
           <%= link_to notification_tests_path, class: ("active" if active == :notification_tests) do %><span class="material-symbols-outlined">send</span>ทดสอบการส่ง<% end %>
           <%= link_to tts_providers_path, class: ("active" if active == :tts) do %><span class="material-symbols-outlined">record_voice_over</span>เสียงอ่านข่าว (TTS)<% end %>
