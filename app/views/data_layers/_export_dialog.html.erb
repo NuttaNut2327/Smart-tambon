@@ -1,0 +1,47 @@
+<dialog class="dataset-modal dataset-export-dialog" id="dataset-export-dialog">
+  <form method="get" action="<%= dataset_export_path(data_type: @selected_type, format: :xlsx) %>">
+    <header>
+      <div><small>ข้อมูลปัจจุบัน</small><h2>ดาวน์โหลด<%= ImportedDataset::TYPE_LABELS.fetch(@selected_type) %></h2></div>
+      <button type="button" data-close-export-dialog aria-label="ปิด">×</button>
+    </header>
+    <div class="dataset-export-dialog-body">
+      <p>เลือกสังกัดของข้อมูลที่จะดาวน์โหลด ไฟล์ Excel สามารถแก้ไขแล้วนำกลับเข้าระบบโดยเลือกสังกัดเดียวกัน</p>
+      <% if @export_scope.agency_options.empty? %><p class="dataset-export-empty">ยังไม่มีข้อมูลที่ระบุหน่วยงานสำหรับดาวน์โหลด</p><% end %>
+      <label>หน่วยงาน *
+        <select name="agency" required data-export-agency>
+          <option value="">เลือกหน่วยงาน</option>
+          <% @export_scope.agency_options.each do |option| %><option value="<%= option[:key] %>"><%= option[:label] %></option><% end %>
+        </select>
+      </label>
+      <% if @selected_type == "workforce" %>
+        <label>ทีมปฏิบัติงาน *
+          <select name="team" required disabled data-export-team><option value="">เลือกหน่วยงานก่อน</option></select>
+        </label>
+        <script type="application/json" data-export-teams><%= raw json_escape(@export_scope.agency_options.to_h { |agency| [agency[:key], @export_scope.team_options(agency[:key])] }.to_json) %></script>
+      <% end %>
+    </div>
+    <footer>
+      <button type="button" class="button-link" data-close-export-dialog>ยกเลิก</button>
+      <button type="submit" class="button-link" formaction="<%= dataset_export_path(data_type: @selected_type, format: :pdf) %>" <%= "disabled" if @export_scope.agency_options.empty? %>>ดาวน์โหลด PDF</button>
+      <button type="submit" class="data-layer-add" <%= "disabled" if @export_scope.agency_options.empty? %>>ดาวน์โหลด Excel</button>
+    </footer>
+  </form>
+</dialog>
+<%= javascript_tag nonce: true do %>
+  document.addEventListener("DOMContentLoaded", () => {
+    const dialog = document.getElementById("dataset-export-dialog");
+    const trigger = document.querySelector("[data-open-export-dialog]");
+    if (!dialog || !trigger) return;
+    trigger.addEventListener("click", () => dialog.showModal());
+    dialog.querySelectorAll("[data-close-export-dialog]").forEach(button => button.addEventListener("click", () => dialog.close()));
+    const agency = dialog.querySelector("[data-export-agency]");
+    const team = dialog.querySelector("[data-export-team]");
+    if (!team) return;
+    const choices = JSON.parse(dialog.querySelector("[data-export-teams]").textContent);
+    agency.addEventListener("change", () => {
+      team.replaceChildren(new Option(agency.value ? "เลือกทีมปฏิบัติงาน" : "เลือกหน่วยงานก่อน", ""));
+      (choices[agency.value] || []).forEach(choice => team.add(new Option(choice.label, choice.key)));
+      team.disabled = !agency.value;
+    });
+  });
+<% end %>

@@ -1,6 +1,6 @@
 class ImportedDatasetsController < ApplicationController
-  before_action :require_importer!, except: %i[index show]
-  before_action :set_dataset, only: %i[show edit update destroy]
+  before_action :require_importer!, except: %i[index show export]
+  before_action :set_dataset, only: %i[show edit update destroy export]
   before_action :authorize_owner!, only: %i[edit update destroy]
 
   def index
@@ -66,6 +66,8 @@ class ImportedDatasetsController < ApplicationController
           schema: @dataset.effective_schema_definition,
           records: Array(@dataset.current_version&.records).first(100),
           record_count: @dataset.record_count,
+          export_xlsx_url: export_imported_dataset_path(id: @dataset.id, format: :xlsx),
+          export_pdf_url: export_imported_dataset_path(id: @dataset.id, format: :pdf),
           current_version_number: @dataset.current_version&.version_number,
           editable: current_user.can_manage_organization_data?(@dataset.user_id),
           versions: @versions.map { |version|
@@ -99,6 +101,21 @@ class ImportedDatasetsController < ApplicationController
 
   def edit
     load_subdistricts
+  end
+
+  def export
+    return head :not_found unless @dataset.data_type == "custom" && %w[xlsx pdf].include?(params[:format])
+
+    schema = @dataset.effective_schema_definition
+    records = Array(@dataset.current_version&.records)
+    filename = "dataset_#{@dataset.id}_current_#{Time.zone.today.iso8601}"
+    if params[:format] == "xlsx"
+      send_data DatasetTemplateWorkbookService.new(data_type: "custom", schema: schema, records: records).generate,
+        filename: "#{filename}.xlsx", type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    else
+      send_data DatasetPdfReportService.new(title: @dataset.name, schema: schema, records: records).generate,
+        filename: "#{filename}.pdf", type: "application/pdf"
+    end
   end
 
   def update
