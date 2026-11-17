@@ -98,6 +98,8 @@ Rails.application.routes.draw do
     end
   end
   get "dataset_templates/:data_type", to: "data_layers#template", as: :dataset_template
+  get "dataset_exports/:data_type(.:format)", to: "data_layers#export", constraints: { format: /xlsx|pdf/ }, as: :dataset_export
+  get "imported_datasets/:id/export(.:format)", to: "imported_datasets#export", constraints: { format: /xlsx|pdf/ }, as: :export_imported_dataset
   resources :place_imports, only: :create
   resources :cctv_cameras, except: :show
   resources :activities do

@@ -13,6 +13,14 @@ document.addEventListener("input", event => {
   });
 });
 
+// Export menus can be added after the page loads; keep only the clicked menu open.
+document.addEventListener("click", event => {
+  const clickedMenu = event.target.closest?.(".dataset-export-menu");
+  document.querySelectorAll(".dataset-export-menu[open]").forEach(menu => {
+    if (menu !== clickedMenu || event.target.closest?.(".dataset-export-menu-options a")) menu.open = false;
+  });
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   const rulesList = document.querySelector("[data-rules-list]");
   if (rulesList) {

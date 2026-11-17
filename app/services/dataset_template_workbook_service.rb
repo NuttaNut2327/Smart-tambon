@@ -2,9 +2,11 @@ require "cgi"
 require "zip"
 
 class DatasetTemplateWorkbookService
-  def initialize(data_type:, schema:)
+  def initialize(data_type:, schema:, records: [], context: {})
     @data_type = data_type
     @schema = schema
+    @records = records
+    @context = context
   end
 
   def generate
@@ -103,12 +105,20 @@ class DatasetTemplateWorkbookService
     last_column = column_name(@schema.length)
     headers = @schema.each_with_index.map { |field, index| inline_cell("#{column_name(index + 1)}1", field["label"], 1) }.join
     columns = @schema.each_index.map { |index| %(<col min="#{index + 1}" max="#{index + 1}" width="22" customWidth="1"/>) }.join
+    data_rows = @records.each_with_index.map do |record, row_index|
+      cells = @schema.each_with_index.map do |field, column_index|
+        value = record[field["key"]]
+        value = value.to_json if value.is_a?(Hash) || value.is_a?(Array)
+        inline_cell("#{column_name(column_index + 1)}#{row_index + 2}", value)
+      end.join
+      %(<row r="#{row_index + 2}">#{cells}</row>)
+    end.join
     <<~XML
       <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
       <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
         <sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
-        <cols>#{columns}</cols><sheetData><row r="1" ht="24" customHeight="1">#{headers}</row></sheetData>
-        <autoFilter ref="A1:#{last_column}1"/>
+        <cols>#{columns}</cols><sheetData><row r="1" ht="24" customHeight="1">#{headers}</row>#{data_rows}</sheetData>
+        <autoFilter ref="A1:#{last_column}#{@records.length + 1}"/>
       </worksheet>
     XML
   end
@@ -119,7 +129,8 @@ class DatasetTemplateWorkbookService
       ["2. ห้ามแก้ไขชื่อหัวคอลัมน์ เพื่อให้ระบบจับคู่ข้อมูลอัตโนมัติ"],
       ["3. ช่องที่ระบุว่าไม่บังคับสามารถเว้นว่างได้"],
       ["4. ต้องมีข้อมูลอย่างน้อย 1 แถวก่อนอัปโหลด"],
-      ["ประเภทข้อมูล", ImportedDataset::TYPE_LABELS.fetch(@data_type, @data_type)]]
+      ["ประเภทข้อมูล", ImportedDataset::TYPE_LABELS.fetch(@data_type, @data_type)]] +
+      @context.map { |label, value| [label, value] }
     sheet_rows = rows.each_with_index.map do |values, row_index|
       cells = values.each_with_index.map { |value, column_index| inline_cell("#{column_name(column_index + 1)}#{row_index + 1}", value, row_index.zero? ? 1 : nil) }.join
       %(<row r="#{row_index + 1}">#{cells}</row>)

@@ -533,7 +533,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (resourceTable && editDatasetType === "resources") {
     const resourceFields = [
       ["code", "รหัส", false], ["name", "ชื่อทรัพยากร/อุปกรณ์", true], ["registration", "ทะเบียน", false],
-      ["resource_type", "ประเภท", true], ["status", "สถานะ", false], ["responsible_person", "ผู้รับผิดชอบ", false],
+      ["resource_type", "ประเภท", false], ["status", "สถานะ", false], ["responsible_person", "ผู้รับผิดชอบ", false],
       ["storage_location", "สถานที่เก็บ", false]
     ];
     if (!resourceTable.querySelector(".record-actions-heading")) resourceTable.querySelector("thead tr")?.insertAdjacentHTML("beforeend", '<th class="record-actions-heading">จัดการ</th>');

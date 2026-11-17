@@ -14,6 +14,10 @@ class DataLayersController < ApplicationController
     regular_fields, status_fields = @selected_schema.partition { |field| !field["key"].end_with?("status") }
     @selected_schema = regular_fields + status_fields
     @selected_datasets = @imported_datasets.select { |dataset| dataset.data_type == @selected_type }
+    if DatasetOrganizationExportScope::TYPES.include?(@selected_type)
+      @export_scope = DatasetOrganizationExportScope.new(data_type: @selected_type,
+        records: @selected_datasets.flat_map { |dataset| Array(dataset.current_version&.records) })
+    end
     active_assignment_keys = Incident.visible_to(current_user).where(:status.ne => "completed").pluck(:active_assignments)
       .flatten.compact.select { |assignment| assignment["released_at"].blank? }.map { |assignment| assignment["key"] }.to_set
     all_fixed_records = @selected_datasets.flat_map do |dataset|
@@ -173,6 +177,43 @@ class DataLayersController < ApplicationController
     workbook = DatasetTemplateWorkbookService.new(data_type: type, schema: input_schema).generate
     send_data workbook, filename: "#{type}_template.xlsx",
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  end
+
+  def export
+    type = params[:data_type].to_s
+    return head :not_found unless %w[xlsx pdf].include?(params[:format])
+    schema = ImportedDataset.schema_for(type)
+    return head :not_found unless schema && type != "custom"
+
+    relation_fields = DatasetImportDraftsController::FILE_RELATION_FIELDS.fetch(type, [])
+    input_schema = schema.reject { |field| field["generated"] || relation_fields.include?(field["key"]) }
+    records = ImportedDataset.visible_to(current_user).where(data_type: type).to_a.flat_map do |dataset|
+      Array(dataset.current_version&.records)
+    end
+    context = {}
+    scope_suffix = nil
+    if DatasetOrganizationExportScope::TYPES.include?(type)
+      scope = DatasetOrganizationExportScope.new(data_type: type, records: records)
+      agency = params[:agency].to_s
+      team = params[:team].to_s
+      records = scope.select(agency: agency, team: team)
+      context["หน่วยงาน"] = scope.agency_label_for(agency)
+      context["ทีมปฏิบัติงาน"] = scope.team_label_for(agency, team) if type == "workforce"
+      scope_suffix = [agency, (team if type == "workforce")].compact.map do |key|
+        key.sub(/\A(?:code|name):/, "").gsub(/[^\p{Alnum}-]+/u, "_")[0, 40]
+      end.join("_")
+    end
+    filename = [type, scope_suffix, "current", Time.zone.today.iso8601].compact_blank.join("_")
+    if params[:format] == "xlsx"
+      send_data DatasetTemplateWorkbookService.new(data_type: type, schema: input_schema, records: records, context: context).generate,
+        filename: "#{filename}.xlsx", type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    else
+      title = ([ImportedDataset::TYPE_LABELS.fetch(type)] + context.values).join(" · ")
+      send_data DatasetPdfReportService.new(title: title, schema: schema.reject { |field| field["hidden"] }, records: records).generate,
+        filename: "#{filename}.pdf", type: "application/pdf"
+    end
+  rescue ArgumentError
+    head :unprocessable_entity
   end
 
   private

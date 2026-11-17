@@ -1,7 +1,7 @@
 FROM ruby:3.3.6-slim
 
 RUN apt-get update -qq && apt-get install --no-install-recommends -y \
-    build-essential libpq-dev libgeos-dev postgresql-client curl libvips42 && \
+    build-essential libpq-dev libgeos-dev postgresql-client curl libvips42 fonts-tlwg-garuda-ttf && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /rails
 COPY Gemfile Gemfile.lock* ./

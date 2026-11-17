@@ -31,7 +31,7 @@ class ImportedDataset
       { "key" => "code", "label" => "รหัสทรัพยากร", "type" => "text", "required" => false, "generated" => true },
       { "key" => "name", "label" => "ชื่อทรัพยากร/อุปกรณ์", "type" => "text", "required" => true },
       { "key" => "registration", "label" => "ทะเบียน", "type" => "text", "required" => false },
-      { "key" => "resource_type", "label" => "ประเภท", "type" => "text", "required" => true },
+      { "key" => "resource_type", "label" => "ประเภท", "type" => "text", "required" => false },
       { "key" => "status", "label" => "สถานะความพร้อม", "type" => "text", "required" => true },
       { "key" => "responsible_person", "label" => "หน่วยงานผู้รับผิดชอบ", "type" => "text", "required" => true },
       { "key" => "agency_code", "label" => "รหัสหน่วยงาน", "type" => "text", "required" => true, "hidden" => true },
@@ -40,7 +40,7 @@ class ImportedDataset
     "consumables" => [
       { "key" => "consumable_code", "label" => "รหัสวัสดุ", "type" => "text", "required" => false, "generated" => true },
       { "key" => "name", "label" => "ชื่อวัสดุสิ้นเปลือง", "type" => "text", "required" => true },
-      { "key" => "category", "label" => "ประเภท", "type" => "text", "required" => true },
+      { "key" => "category", "label" => "ประเภท", "type" => "text", "required" => false },
       { "key" => "unit", "label" => "หน่วยนับ", "type" => "text", "required" => true },
       { "key" => "agency_code", "label" => "รหัสหน่วยงาน", "type" => "text", "required" => true, "hidden" => true },
       { "key" => "agency_name", "label" => "หน่วยงานผู้รับผิดชอบ", "type" => "text", "required" => true },
@@ -66,7 +66,7 @@ class ImportedDataset
       { "key" => "team_name", "label" => "ชื่อทีม", "type" => "text", "required" => true },
       { "key" => "agency_code", "label" => "รหัสหน่วยงาน", "type" => "text", "required" => true, "hidden" => true },
       { "key" => "agency_name", "label" => "หน่วยงานต้นสังกัด", "type" => "text", "required" => true },
-      { "key" => "team_type", "label" => "ประเภททีม", "type" => "text", "required" => true },
+      { "key" => "team_type", "label" => "ประเภททีม", "type" => "text", "required" => false },
       { "key" => "leader_name", "label" => "หัวหน้าทีม", "type" => "text", "required" => false },
       { "key" => "responsible_area", "label" => "พื้นที่รับผิดชอบ", "type" => "text", "required" => false },
       { "key" => "status", "label" => "สถานะทีม", "type" => "text", "required" => true }
@@ -74,7 +74,7 @@ class ImportedDataset
     "agencies" => [
       { "key" => "agency_code", "label" => "รหัสหน่วยงาน", "type" => "text", "required" => false, "generated" => true },
       { "key" => "agency_name", "label" => "ชื่อหน่วยงาน", "type" => "text", "required" => true },
-      { "key" => "agency_type", "label" => "ประเภทหน่วยงาน", "type" => "text", "required" => true },
+      { "key" => "agency_type", "label" => "ประเภทหน่วยงาน", "type" => "text", "required" => false },
       { "key" => "contact_person", "label" => "ผู้ประสานงาน", "type" => "text", "required" => false },
       { "key" => "phone", "label" => "เบอร์ติดต่อ", "type" => "text", "required" => false },
       { "key" => "email", "label" => "อีเมล", "type" => "text", "required" => false },
