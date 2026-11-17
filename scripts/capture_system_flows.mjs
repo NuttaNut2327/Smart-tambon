@@ -333,7 +333,7 @@ try {
   await capturePage("/notification_templates", "14_settings_05_notification_templates.png");
   await capturePage("/notification_tests", "14_settings_06_notification_test.png");
   }
-  await captureAllReachableFlows();
+  if (process.env.CURATED_ONLY !== "1") await captureAllReachableFlows();
   }
 } finally {
   socket.close();
